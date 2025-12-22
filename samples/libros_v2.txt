@@ -1,0 +1,19 @@
+1. Contexto (actualización)
+- Se mantiene el TXT como fuente de importación, pero ahora el formato puede variar.
+
+2. Cambios en el formato
+- Nuevo formato soportado: `Título | Autor | Año | ISBN | Género`
+- El campo `ISBN` puede venir vacío.
+- `Género` es opcional (si falta, usar "Sin género").
+
+3. Cambios funcionales
+- En el listado, añadir filtro por género.
+- En el detalle del libro, mostrar y permitir editar ISBN y género.
+- Añadir exportación a CSV del catálogo actual.
+
+4. Reglas de negocio
+- Un libro se considera duplicado si coincide `ISBN` (si existe) o, si no hay ISBN, por `Título + Autor + Año`.
+
+5. No funcional
+- Mantener la importación rápida y con mensajes claros de error.
+

@@ -1,0 +1,27 @@
+1. Contexto
+- Queremos una aplicación web sencilla para gestionar un catálogo de libros.
+- El usuario parte de un fichero TXT (codificación UTF-8) que contiene **un libro por línea**.
+- Formato de cada línea (MVP): `Título | Autor | Año` (separado por `|`).
+
+2. Alcance funcional (MVP)
+- Importar el TXT desde la UI y mostrar un resumen de importación (líneas válidas/invalidas/duplicadas).
+- Listar libros en una tabla con búsqueda por título y autor, y filtros por año.
+- Ver detalle de un libro (título, autor, año) y poder editarlo manualmente.
+- Crear un libro manualmente desde la UI.
+- Eliminar un libro del catálogo.
+
+3. Reglas de negocio
+- No se permiten libros duplicados con el mismo `Título + Autor + Año`.
+- Si el TXT trae duplicados, se ignoran y se reportan en el resumen.
+- Si una línea no cumple el formato, se marca como error y se reporta.
+
+4. No funcional
+- Interfaz clara para usuarios no técnicos.
+- Tiempo de importación objetivo: < 5s para 2.000 líneas (en un portátil).
+- Persistencia local del catálogo (no hace falta login).
+
+5. Preguntas / info pendiente (para validar con el cliente)
+- ¿Se permite que el autor tenga `|` en el nombre (y habría que escapar)?
+- ¿Qué hacemos con años desconocidos o vacíos?
+- ¿Se quiere exportar el catálogo a CSV también?
+

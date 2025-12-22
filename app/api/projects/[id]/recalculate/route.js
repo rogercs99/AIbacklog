@@ -20,6 +20,39 @@ function safeString(value) {
   return typeof value === "string" ? value.trim() : "";
 }
 
+function deduplicateBacklog(db, projectId) {
+  const items = db
+    .prepare(
+      "SELECT id, parent_id, type, title FROM backlog_items WHERE project_id = ? ORDER BY id ASC",
+    )
+    .all(projectId);
+  const keep = new Map();
+  const duplicates = [];
+  items.forEach((item) => {
+    const key = `${String(item.type || "").toLowerCase()}|${item.parent_id || 0}|${String(item.title || "")
+      .trim()
+      .toLowerCase()}`;
+    if (!keep.has(key)) {
+      keep.set(key, item.id);
+    } else {
+      duplicates.push({ id: item.id, keepId: keep.get(key) });
+    }
+  });
+  if (!duplicates.length) {
+    return { removed: 0 };
+  }
+  const updateParent = db.prepare("UPDATE backlog_items SET parent_id = ? WHERE parent_id = ?");
+  const deleteItem = db.prepare("DELETE FROM backlog_items WHERE id = ?");
+  const tx = db.transaction(() => {
+    duplicates.forEach(({ id, keepId }) => {
+      updateParent.run(keepId, id);
+      deleteItem.run(id);
+    });
+  });
+  tx();
+  return { removed: duplicates.length };
+}
+
 function buildLocalFallback({ project, latestDoc, backlog }) {
   const total = backlog.length;
   const done = backlog.filter((item) => item.status === "done").length;
@@ -144,7 +177,8 @@ export async function POST(request, { params }) {
         "INSERT INTO project_memory (project_id, memory, created_at, updated_at) VALUES (?, ?, ?, ?)",
       ).run(projectId, memory_update, now, now);
     }
-    return NextResponse.json({ description, memory: memory_update, generated: false });
+    const dedup = deduplicateBacklog(db, projectId);
+    return NextResponse.json({ description, memory: memory_update, generated: false, dedup });
   }
 
   const description = {
@@ -183,6 +217,12 @@ export async function POST(request, { params }) {
     }
   }
 
-  return NextResponse.json({ description, memory: memory_update || currentMemory, generated: true });
-}
+  const dedup = deduplicateBacklog(db, projectId);
 
+  return NextResponse.json({
+    description,
+    memory: memory_update || currentMemory,
+    generated: true,
+    dedup,
+  });
+}

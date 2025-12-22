@@ -242,6 +242,7 @@ export default function ProjectDetailPage({ params }) {
       if (!response.ok) {
         throw new Error(payload?.error || "No se pudo recalcular.");
       }
+      await loadProject();
       if (payload?.description) {
         setProjectDescription(payload.description);
         setData((prev) => {
@@ -260,7 +261,12 @@ export default function ProjectDetailPage({ params }) {
       if (typeof payload?.memory === "string") {
         setProjectMemory(payload.memory);
       }
-      setRecalculateStatus(t("Contexto actualizado.", "Context updated."));
+      const dedupRemoved = payload?.dedup?.removed ? Number(payload.dedup.removed) : 0;
+      const suffix =
+        dedupRemoved > 0
+          ? ` · ${t("Duplicados eliminados:", "Duplicates removed:")} ${dedupRemoved}`
+          : "";
+      setRecalculateStatus(`${t("Contexto actualizado.", "Context updated.")}${suffix}`);
       window.setTimeout(() => setRecalculateStatus(""), 2400);
     } catch (err) {
       setRecalculateStatus(t("No se pudo recalcular.", "Recalculation failed."));

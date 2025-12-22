@@ -938,7 +938,8 @@ textarea:focus-visible {
   display: flex;
   flex-direction: column;
   gap: 10px;
-  z-index: 500;
+  z-index: 9999;
+  pointer-events: none;
 }
 
 .toast {
@@ -953,6 +954,7 @@ textarea:focus-visible {
   justify-content: space-between;
   gap: 10px;
   border: 1px solid rgba(148, 163, 184, 0.3);
+  pointer-events: auto;
 }
 
 .toast.success {

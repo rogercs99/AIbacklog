@@ -24,13 +24,35 @@ export default function TaskModal({
 
   const parseQa = (questions) => {
     const list = Array.isArray(questions) ? questions : [];
-    return list.map((entry) => {
-      const text = String(entry || "");
-      const parts = text.split(/\\s*\\|\\s*A[:=]\\s*/i);
-      const question = parts[0].replace(/^Q[:=]\\s*/i, "").trim();
-      const answer = parts[1] ? parts[1].trim() : "";
-      return { question: question || text, answer };
+    const mapped = list
+      .map((entry) => {
+        if (entry && typeof entry === "object" && !Array.isArray(entry)) {
+          const question = String(entry.question || entry.q || "")
+            .replace(/^Q[:=]\\s*/i, "")
+            .trim();
+          const answer = String(entry.answer || entry.a || "")
+            .replace(/^A[:=]\\s*/i, "")
+            .trim();
+          return { question, answer };
+        }
+        const text = String(entry || "");
+        const parts = text.split(/\\s*\\|\\s*A[:=]\\s*/i);
+        const question = parts[0].replace(/^Q[:=]\\s*/i, "").trim();
+        const answer = parts[1] ? parts[1].trim() : "";
+        return { question: question || text.trim(), answer };
+      })
+      .filter((qa) => qa.question || qa.answer);
+
+    const deduped = [];
+    const seen = new Set();
+    mapped.forEach((qa) => {
+      const key = (qa.question || "").toLowerCase();
+      if (!seen.has(key)) {
+        seen.add(key);
+        deduped.push(qa);
+      }
     });
+    return deduped;
   };
 
   const formatQaList = () =>

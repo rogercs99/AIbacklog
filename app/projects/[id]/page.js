@@ -2485,24 +2485,26 @@ export default function ProjectDetailPage({ params }) {
           </div>
         </Portal>
       ) : null}
-      <div className="toast-container" aria-live="polite">
-        {toasts.map((toast) => (
-          <div key={toast.id} className={`toast ${toast.type}`}>
-            <div className="toast-content">
-              {toast.type === "loading" ? <span className="spinner" aria-hidden="true" /> : null}
-              <span>{toast.message}</span>
+      <Portal>
+        <div className="toast-container" aria-live="polite">
+          {toasts.map((toast) => (
+            <div key={toast.id} className={`toast ${toast.type}`}>
+              <div className="toast-content">
+                {toast.type === "loading" ? <span className="spinner" aria-hidden="true" /> : null}
+                <span>{toast.message}</span>
+              </div>
+              <button
+                className="btn btn-ghost"
+                type="button"
+                aria-label={t("Cerrar notificación", "Close notification")}
+                onClick={() => removeToast(toast.id)}
+              >
+                ×
+              </button>
             </div>
-            <button
-              className="btn btn-ghost"
-              type="button"
-              aria-label={t("Cerrar notificación", "Close notification")}
-              onClick={() => removeToast(toast.id)}
-            >
-              ×
-            </button>
-          </div>
-        ))}
-      </div>
+          ))}
+        </div>
+      </Portal>
       <footer className="footer">{t("Req2Backlog AI · Proyecto", "Req2Backlog AI · Project")}</footer>
     </div>
   );

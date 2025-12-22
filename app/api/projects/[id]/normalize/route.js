@@ -13,9 +13,28 @@ function parseJson(value, fallback = []) {
   }
 }
 
-function normalizeTitle(value = "") {
+function normalizeTitle(value = "", type = "") {
   const trimmed = String(value || "").trim();
-  return trimmed.replace(/\s*\(\d+\)$/g, "").toLowerCase();
+  const lowerType = String(type || "").toLowerCase();
+  const stripped = trimmed
+    .replace(/^(us|u\.s\.?|user\s*story|historia|feature|fe|task|tarea|epic|épica|epica)[:.\-\s]+/i, "")
+    .replace(/\s*\(\d+\)$/g, "")
+    .trim();
+  if (!stripped) return trimmed.toLowerCase();
+  return stripped.toLowerCase();
+}
+
+function cleanDisplayTitle(value = "", type = "") {
+  const trimmed = String(value || "").trim();
+  const lowerType = String(type || "").toLowerCase();
+  const cleaned = trimmed
+    .replace(/^(us|u\.s\.?|user\s*story|historia|feature|fe|task|tarea|epic|épica|epica)[:.\-\s]+/i, "")
+    .replace(/\s*\(\d+\)$/g, "")
+    .trim();
+  if (!cleaned) {
+    return trimmed || lowerType || "Elemento";
+  }
+  return cleaned;
 }
 
 export async function POST(_request, { params }) {
@@ -46,7 +65,7 @@ export async function POST(_request, { params }) {
 
   const byParentAndTitle = new Map();
   items.forEach((item) => {
-    const key = `${item.parent_id || 0}|${normalizeTitle(item.title)}`;
+    const key = `${item.parent_id || 0}|${normalizeTitle(item.title, item.type)}`;
     if (!byParentAndTitle.has(key)) byParentAndTitle.set(key, []);
     byParentAndTitle.get(key).push(item);
   });
@@ -66,13 +85,15 @@ export async function POST(_request, { params }) {
       list.forEach((item, idx) => {
         if (idx === 0) return;
         const area = item.area || "general";
-        const base = item.title.replace(/\s*\(\d+\)$/g, "").trim();
+        const base = cleanDisplayTitle(item.title, item.type);
         item.title = `${base} · ${area.toUpperCase()} #${idx + 1}`;
         renamed += 1;
       });
     });
 
     items.forEach((item) => {
+      // Limpiar prefijos de tipo en todos los títulos
+      item.title = cleanDisplayTitle(item.title, item.type);
       if (String(item.type || "").toLowerCase() !== "task") {
         return update.run(
           item.title,

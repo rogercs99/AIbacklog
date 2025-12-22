@@ -1144,16 +1144,28 @@ export default function ProjectDetailPage({ params }) {
   const parseQaList = (item) => {
     if (!Array.isArray(item?.clarification_questions)) return [];
     return item.clarification_questions.map((raw) => {
+      if (raw && typeof raw === "object" && !Array.isArray(raw)) {
+        const question = String(raw.question || raw.q || "")
+          .replace(/^Q[:=]\s*/i, "")
+          .trim();
+        const answer = String(raw.answer || raw.a || "")
+          .replace(/^A[:=]\s*/i, "")
+          .trim();
+        return { question, answer };
+      }
       const text = String(raw || "");
       const parts = text.split(/\s*\|\s*A[:=]\s*/i);
       const question = parts[0].replace(/^Q[:=]\s*/i, "").trim();
       const answer = parts[1] ? parts[1].trim() : "";
-      return { question: question || text, answer };
+      return { question: question || text.trim(), answer };
     });
   };
 
   const needsInfo = (item) => {
     if (!item) return false;
+    if (Number(item.info_complete) === 1) {
+      return false;
+    }
     const qa = parseQaList(item);
     const pendingQa = qa.some((pair) => !pair.answer || !pair.answer.trim());
     const missingDesc = !item.description || String(item.description).trim().length < 20;
@@ -2349,57 +2361,68 @@ export default function ProjectDetailPage({ params }) {
         view={activeView}
       />
       <DocumentModal document={activeDocument} onClose={() => setActiveDocument(null)} />
-      {chatOpen ? <div className="side-panel-backdrop" onClick={() => setChatOpen(false)} /> : null}
-      <aside className={`side-panel ${chatOpen ? "open" : ""}`} aria-hidden={!chatOpen}>
-        <div className="side-panel-header">
-          <div>
-            <div className="badge">{t("IA", "AI")}</div>
-            <h3>{t("Chat de la US", "User story chat")}</h3>
-            <p className="helper">{chatItem ? chatItem.title : t("Selecciona una US", "Select a user story")}</p>
-          </div>
-          <button className="btn btn-ghost" type="button" onClick={() => setChatOpen(false)}>
-            {t("Cerrar", "Close")}
-          </button>
-        </div>
-        <div className="side-panel-body">
-          <div className="chat-panel">
-            {!chatItem ? (
-              <p className="helper">{t("Selecciona una tarea o US para iniciar el chat.", "Select a task or user story to start the chat.")}</p>
-            ) : chatMessages.length === 0 ? (
+      <Portal>
+        {chatOpen ? <div className="side-panel-backdrop" onClick={() => setChatOpen(false)} /> : null}
+        <aside className={`side-panel ${chatOpen ? "open" : ""}`} aria-hidden={!chatOpen}>
+          <div className="side-panel-header">
+            <div>
+              <div className="badge">{t("IA", "AI")}</div>
+              <h3>{t("Chat de la US", "User story chat")}</h3>
               <p className="helper">
-                {t(
-                  "Pregunta a la IA sobre esta US. Ej: alcance, dependencias o riesgos.",
-                  "Ask the AI about this user story: scope, dependencies, or risks.",
-                )}
+                {chatItem ? chatItem.title : t("Selecciona una US", "Select a user story")}
               </p>
-            ) : (
-              chatMessages.map((msg, index) => (
-                <div key={index} className={`chat-message ${msg.role}`}>
-                  <div className="chat-meta">{msg.role === "user" ? t("Tu", "You") : t("IA", "AI")}</div>
-                  <div>{msg.role === "assistant" ? <RichText text={msg.content} /> : msg.content}</div>
-                </div>
-              ))
-            )}
-            {chatLoading ? <p className="helper">{t("Pensando...", "Thinking...")}</p> : null}
-            {chatError ? <p className="notice">{chatError}</p> : null}
+            </div>
+            <button className="btn btn-ghost" type="button" onClick={() => setChatOpen(false)}>
+              {t("Cerrar", "Close")}
+            </button>
           </div>
-        </div>
-        <div className="side-panel-footer">
-          <textarea
-            value={chatInput}
-            onChange={(event) => setChatInput(event.target.value)}
-            placeholder={t("Escribe tu pregunta...", "Type your question...")}
-          />
-          <button
-            className="btn btn-primary btn-ai"
-            type="button"
-            onClick={handleChatSend}
-            disabled={chatLoading || !chatItem || !chatInput.trim()}
-          >
-            {chatLoading ? t("Enviando...", "Sending...") : t("Enviar", "Send")}
-          </button>
-        </div>
-      </aside>
+          <div className="side-panel-body">
+            <div className="chat-panel">
+              {!chatItem ? (
+                <p className="helper">
+                  {t(
+                    "Selecciona una tarea o US para iniciar el chat.",
+                    "Select a task or user story to start the chat.",
+                  )}
+                </p>
+              ) : chatMessages.length === 0 ? (
+                <p className="helper">
+                  {t(
+                    "Pregunta a la IA sobre esta US. Ej: alcance, dependencias o riesgos.",
+                    "Ask the AI about this user story: scope, dependencies, or risks.",
+                  )}
+                </p>
+              ) : (
+                chatMessages.map((msg, index) => (
+                  <div key={index} className={`chat-message ${msg.role}`}>
+                    <div className="chat-meta">
+                      {msg.role === "user" ? t("Tu", "You") : t("IA", "AI")}
+                    </div>
+                    <div>{msg.role === "assistant" ? <RichText text={msg.content} /> : msg.content}</div>
+                  </div>
+                ))
+              )}
+              {chatLoading ? <p className="helper">{t("Pensando...", "Thinking...")}</p> : null}
+              {chatError ? <p className="notice">{chatError}</p> : null}
+            </div>
+          </div>
+          <div className="side-panel-footer">
+            <textarea
+              value={chatInput}
+              onChange={(event) => setChatInput(event.target.value)}
+              placeholder={t("Escribe tu pregunta...", "Type your question...")}
+            />
+            <button
+              className="btn btn-primary btn-ai"
+              type="button"
+              onClick={handleChatSend}
+              disabled={chatLoading || !chatItem || !chatInput.trim()}
+            >
+              {chatLoading ? t("Enviando...", "Sending...") : t("Enviar", "Send")}
+            </button>
+          </div>
+        </aside>
+      </Portal>
       {treeOpen ? (
         <Portal>
           <div className="tree-overlay" onClick={() => setTreeOpen(false)}>

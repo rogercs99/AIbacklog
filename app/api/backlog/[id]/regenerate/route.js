@@ -2,9 +2,24 @@ import { NextResponse } from "next/server";
 import { callAI } from "@/lib/ai";
 import { buildLocalDescription } from "@/lib/local-basic-ai";
 import { getDb, getLatestDocument } from "@/lib/db";
+import { mergeQaLists, serializeQaList } from "@/lib/qa";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
+
+function parseJson(value, fallback = []) {
+  try {
+    return value ? JSON.parse(value) : fallback;
+  } catch (error) {
+    return fallback;
+  }
+}
+
+function appendHistory(existingHistory, entry, limit = 12) {
+  const history = Array.isArray(existingHistory) ? [...existingHistory] : [];
+  history.push(entry);
+  return history.slice(-limit);
+}
 
 export async function POST(request, { params }) {
   const id = Number(params?.id);
@@ -34,8 +49,12 @@ export async function POST(request, { params }) {
     .get(project.id);
   const projectMemory = (memoryRow?.memory || "").toString().trim();
 
-  let description = "";
-  let clarification_questions = [];
+  const existingQuestions = parseJson(item?.clarification_questions_json, []);
+  const existingHistory = parseJson(item?.description_history_json, []);
+  const now = new Date().toISOString();
+
+  let description = String(item.description || "").trim();
+  let clarification_questions = serializeQaList(existingQuestions);
 
   if (process.env.LOCAL_AI_MODE === "basic") {
     const detail = buildLocalDescription(
@@ -44,18 +63,47 @@ export async function POST(request, { params }) {
       item.source_snippet || contextSnippet,
       contextSnippet,
     );
-    description = detail.description || "";
-    clarification_questions = detail.clarification_questions || [];
+    if (detail.description) {
+      description = detail.description;
+    }
+    const mergedQa = mergeQaLists(clarification_questions, detail.clarification_questions || []);
+    clarification_questions = serializeQaList(mergedQa);
   } else {
     const system =
       "Eres un analista funcional senior. Devuelve solo JSON válido sin texto extra.";
-    const user = `Genera una descripcion clara para publico no tecnico y preguntas si faltan datos.\n\nINPUT:\n- titulo: ${item.title}\n- tipo: ${item.type}\n- area: ${item.area || "other"}\n- descripcion_actual: ${item.description || "N/A"}\n- snippet_fuente: ${item.source_snippet || contextSnippet}\n- memoria_proyecto: ${projectMemory || "N/A"}\n\nOUTPUT JSON:\n{ \"description\": \"...\", \"clarification_questions\": [\"...\"] }`;
+    const user = [
+      `Genera una descripcion clara para publico no tecnico manteniendo el contexto existente.`,
+      ``,
+      `INPUT:`,
+      `- titulo: ${item.title}`,
+      `- tipo: ${item.type}`,
+      `- area: ${item.area || "other"}`,
+      `- descripcion_actual: ${item.description || "N/A"}`,
+      `- preguntas_existentes (NO borrar respondidas):`,
+      ...(clarification_questions.length ? clarification_questions.map((q) => `  - ${q}`) : ["  - N/A"]),
+      `- snippet_fuente: ${item.source_snippet || contextSnippet || "N/A"}`,
+      `- memoria_proyecto: ${projectMemory || "N/A"}`,
+      ``,
+      `OUTPUT JSON:`,
+      `{ \"description\": \"...\", \"suggested_questions\": [\"...\"] }`,
+      ``,
+      `REGLAS:`,
+      `- NO elimines informacion previa de descripcion_actual: integrala.`,
+      `- suggested_questions solo debe incluir preguntas nuevas (sin duplicar preguntas_existentes).`,
+      `- No menciones modelos ni IA.`,
+    ].join("\n");
     try {
       const ai = await callAI({ system, user, maxTokens: 600 });
-      description = ai?.description || "";
-      clarification_questions = Array.isArray(ai?.clarification_questions)
-        ? ai.clarification_questions
-        : [];
+      if (typeof ai?.description === "string" && ai.description.trim().length >= 60 && !/^Q[:=]/i.test(ai.description.trim())) {
+        description = ai.description.trim();
+      }
+      const suggested = Array.isArray(ai?.suggested_questions)
+        ? ai.suggested_questions
+        : Array.isArray(ai?.clarification_questions)
+          ? ai.clarification_questions
+          : [];
+      const mergedQa = mergeQaLists(clarification_questions, suggested);
+      clarification_questions = serializeQaList(mergedQa);
     } catch (error) {
       const detail = buildLocalDescription(
         item.title,
@@ -63,15 +111,21 @@ export async function POST(request, { params }) {
         item.source_snippet || contextSnippet,
         contextSnippet,
       );
-      description = detail.description || item.description || "";
-      clarification_questions = detail.clarification_questions || [];
+      if (detail.description) {
+        description = detail.description;
+      }
+      const mergedQa = mergeQaLists(clarification_questions, detail.clarification_questions || []);
+      clarification_questions = serializeQaList(mergedQa);
     }
   }
 
-  const now = new Date().toISOString();
+  const nextHistory = appendHistory(
+    existingHistory.length ? existingHistory : [{ source: "ingest", text: item.description || "", at: item.updated_at || now }],
+    { source: "regen", text: description || item.description || "", at: now },
+  );
   db.prepare(
-    "UPDATE backlog_items SET description = ?, clarification_questions_json = ?, updated_at = ? WHERE id = ?",
-  ).run(description, JSON.stringify(clarification_questions), now, id);
+    "UPDATE backlog_items SET description = ?, clarification_questions_json = ?, description_history_json = ?, updated_at = ? WHERE id = ?",
+  ).run(description, JSON.stringify(clarification_questions), JSON.stringify(nextHistory), now, id);
 
   const updated = db.prepare("SELECT * FROM backlog_items WHERE id = ?").get(id);
 

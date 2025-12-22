@@ -7,9 +7,58 @@ import {
   getLatestDocument,
 } from "@/lib/db";
 import { callAI } from "@/lib/ai";
+import { extractAnsweredFacts, mergeQaLists, serializeQaList } from "@/lib/qa";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
+
+function parseJson(value, fallback = []) {
+  try {
+    return value ? JSON.parse(value) : fallback;
+  } catch (error) {
+    return fallback;
+  }
+}
+
+function appendHistory(existingHistory, entry, limit = 12) {
+  const history = Array.isArray(existingHistory) ? [...existingHistory] : [];
+  history.push(entry);
+  return history.slice(-limit);
+}
+
+function stripTypePrefix(value = "") {
+  return String(value || "")
+    .replace(
+      /^(us|u\.s\.?|user\s*story|historia|feature|fe|task|tarea|epic|épica|epica)[:.\-\s]+/i,
+      "",
+    )
+    .replace(/\s*\(\d+\)\s*$/g, "")
+    .trim();
+}
+
+function mergeFactsIntoDescription(description = "", facts = []) {
+  const clean = String(description || "").trim();
+  if (!facts.length) {
+    return clean;
+  }
+  const factLines = facts.map((fact) => `- ${fact}`);
+  const heading = "**Información confirmada**";
+
+  if (!clean) {
+    return [heading, ...factLines].join("\n");
+  }
+
+  if (clean.includes(heading)) {
+    const existingLines = new Set(clean.split("\n").map((line) => line.trim()));
+    const additions = factLines.filter((line) => !existingLines.has(line.trim()));
+    if (!additions.length) {
+      return clean;
+    }
+    return `${clean}\n${additions.join("\n")}`;
+  }
+
+  return `${clean}\n\n${heading}\n${factLines.join("\n")}`;
+}
 
 export async function PATCH(request, { params }) {
   const id = Number(params?.id);
@@ -17,10 +66,12 @@ export async function PATCH(request, { params }) {
     return NextResponse.json({ error: "ID invalido." }, { status: 400 });
   }
   const db = getDb();
-  const existing = db
-    .prepare("SELECT id, type, project_id FROM backlog_items WHERE id = ? LIMIT 1")
+  const before = db
+    .prepare(
+      "SELECT id, type, project_id, external_id, parent_id, epic_key, title, description, clarification_questions_json, description_history_json, updated_at FROM backlog_items WHERE id = ? LIMIT 1",
+    )
     .get(id);
-  if (!existing) {
+  if (!before) {
     return NextResponse.json({ error: "No existe el item." }, { status: 404 });
   }
   const body = await request.json();
@@ -30,7 +81,10 @@ export async function PATCH(request, { params }) {
   }
 
   const payload = { ...updates };
-  const typeLower = String(payload.type || existing.type || "").toLowerCase();
+  const typeLower = String(payload.type || before.type || "").toLowerCase();
+  if ("info_complete" in payload) {
+    payload.info_complete = payload.info_complete ? 1 : 0;
+  }
 
   if (payload.acceptance_criteria) {
     payload.acceptance_criteria_json = JSON.stringify(payload.acceptance_criteria);
@@ -71,7 +125,7 @@ export async function PATCH(request, { params }) {
         .prepare(
           "SELECT id, type, external_id, epic_key, parent_id FROM backlog_items WHERE id = ? AND project_id = ? LIMIT 1",
         )
-        .get(parentId, existing.project_id);
+        .get(parentId, before.project_id);
 
       const parentType = String(parent?.type || "").toLowerCase();
 
@@ -92,7 +146,7 @@ export async function PATCH(request, { params }) {
               .prepare(
                 "SELECT external_id FROM backlog_items WHERE id = ? AND project_id = ? LIMIT 1",
               )
-              .get(parent.parent_id, existing.project_id);
+              .get(parent.parent_id, before.project_id);
             payload.epic_key = epic?.external_id || null;
           }
         } else if (parent && parentType === "epic") {
@@ -109,12 +163,20 @@ export async function PATCH(request, { params }) {
 
   updateBacklogItem(id, payload);
 
-  const updated = db
-    .prepare("SELECT * FROM backlog_items WHERE id = ? LIMIT 1")
-    .get(id);
+  const updated = db.prepare("SELECT * FROM backlog_items WHERE id = ? LIMIT 1").get(id);
+  const now = new Date().toISOString();
+  const baseHistory = (() => {
+    const parsed = parseJson(updated?.description_history_json, []);
+    if (parsed.length) return parsed;
+    if (before?.description) {
+      return [{ source: "ingest", text: before.description, at: before.updated_at || now }];
+    }
+    return [];
+  })();
 
   // Regenerar descripción a partir de las respuestas y, si aplica, crear nuevos subitems.
-  const clarificationList = Array.isArray(updates?.clarification_questions)
+  const userProvidedQa = Array.isArray(updates?.clarification_questions);
+  const clarificationList = userProvidedQa
     ? updates.clarification_questions
     : (() => {
         try {
@@ -125,63 +187,143 @@ export async function PATCH(request, { params }) {
       })();
 
   let regeneratedDescription = updated?.description || "";
-  let regeneratedQuestions = clarificationList;
+  let regeneratedQuestions = serializeQaList(clarificationList);
   const newItems = [];
+  const beforeQuestions = serializeQaList(parseJson(before?.clarification_questions_json, []));
+  const qaChanged = userProvidedQa && JSON.stringify(beforeQuestions) !== JSON.stringify(regeneratedQuestions);
 
-  const latestDoc = getLatestDocument(existing.project_id);
+  const latestDoc = getLatestDocument(before.project_id);
   const contextSnippet = latestDoc?.text ? String(latestDoc.text).slice(0, 1200) : "";
 
-  const qaBlock = clarificationList
-    .map((entry, idx) => `#${idx + 1} ${entry}`)
-    .join("\n");
+  const qaBlock = regeneratedQuestions.map((entry, idx) => `#${idx + 1} ${entry}`).join("\n");
 
-  const system =
-    "Eres un analista funcional senior. Devuelve solo JSON válido. Usa las respuestas de aclaraciones para enriquecer la descripción (Markdown breve y clara) y, si surgen nuevas tareas/historias, propónlas como new_items.";
-  const user = [
-    `ITEM:`,
-    `- tipo: ${updated.type}`,
-    `- titulo: ${updated.title}`,
-    `- area: ${updated.area || "other"}`,
-    `- descripcion_actual: ${updated.description || "N/A"}`,
-    `- snippet_fuente: ${updated.source_snippet || contextSnippet || "N/A"}`,
-    `PREGUNTAS/RESPUESTAS:`,
-    qaBlock || "N/A",
-    `OUTPUT JSON:`,
-    `{"description":"... markdown ...","clarification_questions":["Q: ... | A: ..."],"new_items":[{"title":"...","type":"Task|Story","area":"frontend|backend|api|db|qa|devops|security|other","priority":"High|Medium|Low","description":"...","acceptance_criteria":["..."],"risks":["..."],"labels":["..."]}]}`,
-    `REGLAS:`,
-    `- Usa solo la información presente.`,
-    `- Si no hay nuevas acciones, deja new_items como [].`,
-    `- La descripción debe ser entendible para público no técnico (2-4 frases + bullets si ayuda).`,
-    `- No menciones modelos ni IA.`,
-  ].join("\n");
+  if (qaChanged) {
+    const system =
+      "Eres un analista funcional senior. Devuelve solo JSON válido. Usa las respuestas confirmadas para mejorar la descripción sin borrar información previa ni perder preguntas ya respondidas.";
+    const user = [
+      `ITEM:`,
+      `- tipo: ${updated.type}`,
+      `- titulo: ${updated.title}`,
+      `- area: ${updated.area || "other"}`,
+      `- descripcion_actual: ${updated.description || "N/A"}`,
+      `- snippet_fuente: ${updated.source_snippet || contextSnippet || "N/A"}`,
+      `PREGUNTAS/RESPUESTAS (mantener las respondidas):`,
+      qaBlock || "N/A",
+      `OUTPUT JSON:`,
+      `{"description":"... markdown ...","suggested_questions":["..."],"new_items":[{"title":"...","type":"Task|Story","area":"frontend|backend|api|db|qa|devops|security|other","priority":"High|Medium|Low","description":"...","acceptance_criteria":["..."],"risks":["..."],"labels":["..."]}]}`,
+      `REGLAS:`,
+      `- NO inventes. Si falta algo, proponlo como pregunta sugerida.`,
+      `- NO devuelvas preguntas ya presentes en PREGUNTAS/RESPUESTAS.`,
+      `- No borres información de la descripción actual: intégrala.`,
+      `- new_items solo si se deriva claramente del contexto y las respuestas.`,
+      `- No menciones modelos ni IA.`,
+    ].join("\n");
 
-  try {
-    const ai = await callAI({ system, user, maxTokens: 750, temperature: 0.2 });
-    if (ai?.description) {
-      regeneratedDescription = ai.description;
+    try {
+      const ai = await callAI({ system, user, maxTokens: 750, temperature: 0.2 });
+      if (typeof ai?.description === "string" && ai.description.trim().length >= 60 && !/^Q[:=]/i.test(ai.description.trim())) {
+        regeneratedDescription = ai.description.trim();
+      }
+      const suggested = Array.isArray(ai?.suggested_questions)
+        ? ai.suggested_questions
+        : Array.isArray(ai?.clarification_questions)
+          ? ai.clarification_questions
+          : [];
+      const mergedQa = mergeQaLists(regeneratedQuestions, suggested);
+      regeneratedQuestions = serializeQaList(mergedQa);
+      if (Array.isArray(ai?.new_items)) {
+        newItems.push(
+          ...ai.new_items
+            .filter((it) => it && it.title)
+            .slice(0, 10),
+        );
+      }
+    } catch (err) {
+      // fallback silencioso
     }
-    if (Array.isArray(ai?.clarification_questions)) {
-      regeneratedQuestions = ai.clarification_questions;
+
+    const nextHistory = appendHistory(baseHistory, {
+      source: "qa",
+      text: regeneratedDescription || updated?.description || "",
+      at: now,
+    });
+
+    updateBacklogItem(id, {
+      description: regeneratedDescription,
+      clarification_questions_json: JSON.stringify(regeneratedQuestions || []),
+      description_history_json: JSON.stringify(nextHistory),
+    });
+
+    // Propagar hechos confirmados a iniciativa/feature padre y a la memoria del proyecto
+    const facts = extractAnsweredFacts(regeneratedQuestions);
+    if (facts.length) {
+      const memoryRow = db
+        .prepare("SELECT memory FROM project_memory WHERE project_id = ? LIMIT 1")
+        .get(before.project_id);
+      const existingMemory = String(memoryRow?.memory || "").trim();
+      const lines = existingMemory ? existingMemory.split("\n") : [];
+      const heading = "HECHOS CONFIRMADOS:";
+      if (!lines.some((line) => line.trim().toUpperCase() === heading)) {
+        lines.push(heading);
+      }
+      facts.forEach((fact) => {
+        const line = `- ${fact}`;
+        if (!lines.includes(line)) {
+          lines.push(line);
+        }
+      });
+      const trimmed = lines.slice(-80).join("\n");
+      const existingRow = db
+        .prepare("SELECT project_id FROM project_memory WHERE project_id = ? LIMIT 1")
+        .get(before.project_id);
+      if (existingRow) {
+        db.prepare("UPDATE project_memory SET memory = ?, updated_at = ? WHERE project_id = ?").run(
+          trimmed,
+          now,
+          before.project_id,
+        );
+      } else {
+        db.prepare(
+          "INSERT INTO project_memory (project_id, memory, created_at, updated_at) VALUES (?, ?, ?, ?)",
+        ).run(before.project_id, trimmed, now, now);
+      }
+
+      const parentIds = [];
+      if (updated?.parent_id) {
+        parentIds.push(Number(updated.parent_id));
+      }
+      if (updated?.epic_key) {
+        const epic = db
+          .prepare("SELECT id FROM backlog_items WHERE project_id = ? AND external_id = ? LIMIT 1")
+          .get(before.project_id, updated.epic_key);
+        if (epic?.id) {
+          parentIds.push(Number(epic.id));
+        }
+      }
+      const uniqueParents = Array.from(new Set(parentIds)).filter(Boolean);
+      uniqueParents.forEach((pid) => {
+        const parentItem = db
+          .prepare("SELECT id, description, description_history_json, updated_at FROM backlog_items WHERE id = ? AND project_id = ?")
+          .get(pid, before.project_id);
+        if (!parentItem) return;
+        const parentHistory = parseJson(parentItem.description_history_json, []);
+        const mergedDesc = mergeFactsIntoDescription(parentItem.description || "", facts);
+        const nextParentHistory = appendHistory(parentHistory.length ? parentHistory : [{ source: "ingest", text: parentItem.description || "", at: parentItem.updated_at || now }], {
+          source: "qa-propagated",
+          text: mergedDesc,
+          at: now,
+        });
+        updateBacklogItem(pid, {
+          description: mergedDesc,
+          description_history_json: JSON.stringify(nextParentHistory),
+        });
+      });
     }
-    if (Array.isArray(ai?.new_items)) {
-      newItems.push(
-        ...ai.new_items
-          .filter((it) => it && it.title)
-          .slice(0, 10), // limite defensivo
-      );
-    }
-  } catch (err) {
-    // fallback silencioso
   }
-
-  updateBacklogItem(id, {
-    description: regeneratedDescription,
-    clarification_questions_json: JSON.stringify(regeneratedQuestions || []),
-  });
 
   // Crear nuevos sub-items si se propusieron
   if (newItems.length) {
-    let nextId = getNextExternalId(existing.project_id);
+    let nextId = getNextExternalId(before.project_id);
     let counter = Number(nextId.replace(/[^0-9]/g, "")) || 1;
     const nextExternalId = () => {
       const id = `T-${String(counter).padStart(3, "0")}`;
@@ -189,36 +331,37 @@ export async function PATCH(request, { params }) {
       return id;
     };
 
-    const existingType = String(existing.type || "").toLowerCase();
+    const existingType = String(before.type || "").toLowerCase();
 
     const resolveParent = (newTypeLower) => {
       if (newTypeLower === "story") {
         if (existingType === "epic") {
-          return { parent_id: existing.id, epic_key: existing.external_id };
+          return { parent_id: before.id, epic_key: before.external_id };
         }
-        return { parent_id: existing.parent_id || existing.id || null, epic_key: existing.epic_key || null };
+        return { parent_id: before.parent_id || before.id || null, epic_key: before.epic_key || null };
       }
       // task por defecto
       if (existingType === "story") {
-        return { parent_id: existing.id, epic_key: existing.epic_key || null };
+        return { parent_id: before.id, epic_key: before.epic_key || null };
       }
       if (existingType === "epic") {
-        return { parent_id: existing.id, epic_key: existing.external_id };
+        return { parent_id: before.id, epic_key: before.external_id };
       }
-      return { parent_id: existing.parent_id || existing.id || null, epic_key: existing.epic_key || null };
+      return { parent_id: before.parent_id || before.id || null, epic_key: before.epic_key || null };
     };
 
     const rows = newItems.map((item) => {
       const newTypeLower = String(item.type || "Task").toLowerCase();
       const parentInfo = resolveParent(newTypeLower);
+      const title = stripTypePrefix(item.title);
       return {
         external_id: nextExternalId(),
         type: newTypeLower === "story" ? "Story" : "Task",
         parent_id: parentInfo.parent_id,
         epic_key: parentInfo.epic_key,
-        title: item.title,
+        title: title || item.title,
         description: item.description || item.title,
-        area: item.area || existing.area || "other",
+        area: item.area || before.area || "other",
         priority: item.priority || "Medium",
         story_points: null,
         estimate_hours: null,
@@ -234,15 +377,19 @@ export async function PATCH(request, { params }) {
         source_snippet: updated.source_snippet || contextSnippet || "",
       };
     });
-    insertBacklogItems(existing.project_id, rows);
+    insertBacklogItems(before.project_id, rows);
   }
+
+  const finalItem = db.prepare("SELECT * FROM backlog_items WHERE id = ? LIMIT 1").get(id);
 
   return NextResponse.json({
     ok: true,
     item: {
-      ...updated,
-      description: regeneratedDescription,
-      clarification_questions: regeneratedQuestions,
+      ...finalItem,
+      description: userProvidedQa ? regeneratedDescription : finalItem?.description,
+      clarification_questions: userProvidedQa
+        ? regeneratedQuestions
+        : parseJson(finalItem?.clarification_questions_json, []),
     },
     new_items_created: newItems.length,
   });

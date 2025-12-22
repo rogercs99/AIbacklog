@@ -20,6 +20,8 @@ export default function TaskModal({
   const [qaEdit, setQaEdit] = useState({});
   const [regenLoading, setRegenLoading] = useState(false);
   const [regenStatus, setRegenStatus] = useState("");
+  const [moreQaLoading, setMoreQaLoading] = useState(false);
+  const [moreQaStatus, setMoreQaStatus] = useState("");
   const { t } = useLanguage();
 
   const parseQa = (questions) => {
@@ -28,17 +30,23 @@ export default function TaskModal({
       .map((entry) => {
         if (entry && typeof entry === "object" && !Array.isArray(entry)) {
           const question = String(entry.question || entry.q || "")
-            .replace(/^Q[:=]\\s*/i, "")
+            .replace(/^Q[:=]\s*/i, "")
             .trim();
           const answer = String(entry.answer || entry.a || "")
-            .replace(/^A[:=]\\s*/i, "")
+            .replace(/^A[:=]\s*/i, "")
             .trim();
           return { question, answer };
         }
         const text = String(entry || "");
-        const parts = text.split(/\\s*\\|\\s*A[:=]\\s*/i);
-        const question = parts[0].replace(/^Q[:=]\\s*/i, "").trim();
-        const answer = parts[1] ? parts[1].trim() : "";
+        const parts = text.split(/\s*\|\s*A[:=]\s*/i);
+        const question = parts[0].replace(/^Q[:=]\s*/i, "").trim();
+        let answer = parts[1] ? parts[1].trim() : "";
+        if (!answer && /\n\s*A[:=]/i.test(text)) {
+          const lines = text.split(/\n\s*A[:=]\s*/i);
+          if (lines.length >= 2) {
+            answer = String(lines.slice(1).join("\n")).trim();
+          }
+        }
         return { question: question || text.trim(), answer };
       })
       .filter((qa) => qa.question || qa.answer);
@@ -75,7 +83,8 @@ export default function TaskModal({
     setQaEdit(() => {
       const state = {};
       parsed.forEach((qa, idx) => {
-        state[idx] = !qa.answer; // default to editing when unanswered
+        const hasQuestion = Boolean(String(qa.question || "").trim());
+        state[idx] = !hasQuestion; // only force edit when question is empty
       });
       return state;
     });
@@ -92,6 +101,7 @@ export default function TaskModal({
   const clarificationQuestions = qaList;
   const itemType = String(draft.type || "").toLowerCase();
   const isBlocked = Boolean(draft.blocked_reason);
+  const infoComplete = Number(draft.info_complete) === 1;
 
   const viewContext = String(view || "").toLowerCase();
   const typeLabel = (() => {
@@ -150,6 +160,7 @@ export default function TaskModal({
               <p className="helper">
                 {draft.external_id} · {typeLabel}
                 {isBlocked ? ` · ${t("Bloqueada", "Blocked")}` : ""}
+                {infoComplete ? ` · ${t("Info completa", "Info complete")}` : ""}
               </p>
             </div>
             <div className="modal-header-actions">
@@ -160,6 +171,21 @@ export default function TaskModal({
                   onClick={() => onOpenChat(draft)}
                 >
                   {t("Preguntar a la IA", "Ask AI")}
+                </button>
+              ) : null}
+              {itemType !== "epic" ? (
+                <button
+                  className="btn btn-ghost"
+                  type="button"
+                  onClick={() => {
+                    const nextValue = infoComplete ? 0 : 1;
+                    setDraft((prev) => ({ ...prev, info_complete: nextValue }));
+                    onSave?.({ info_complete: nextValue, keepOpen: true });
+                  }}
+                >
+                  {infoComplete
+                    ? t("Marcar como requiere info", "Mark as needs info")
+                    : t("Marcar como completa", "Mark as complete")}
                 </button>
               ) : null}
               <button className="btn btn-ghost" type="button" onClick={handleRequestClose}>
@@ -355,8 +381,10 @@ export default function TaskModal({
               ) : (
                 <div className="stack">
                   {clarificationQuestions.map((qa, index) => {
-                    const isEditing =
-                      qaEdit[index] !== undefined ? qaEdit[index] : !qa.answer;
+                    const questionText = String(qa.question || "").trim();
+                    const answerText = String(qa.answer || "").trim();
+                    const isEditing = Boolean(qaEdit[index]);
+                    const showQuestionInput = isEditing || !questionText;
                     return (
                       <div key={index} className="card" style={{ padding: "10px" }}>
                         <div
@@ -370,23 +398,18 @@ export default function TaskModal({
                           <label className="helper" style={{ margin: 0 }}>
                             {t("Pregunta", "Question")} #{index + 1}
                           </label>
-                          {qa.answer && !isEditing ? (
+                          {questionText || answerText ? (
                             <button
                               className="btn btn-ghost"
                               type="button"
-                              onClick={() =>
-                                setQaEdit((prev) => ({
-                                  ...prev,
-                                  [index]: true,
-                                }))
-                              }
+                              onClick={() => setQaEdit((prev) => ({ ...prev, [index]: !prev[index] }))}
                               aria-label={t("Editar pregunta y respuesta", "Edit question and answer")}
                             >
                               ✏️
                             </button>
                           ) : null}
                         </div>
-                        {isEditing ? (
+                        {showQuestionInput ? (
                           <>
                             <label className="helper">{t("Pregunta", "Question")}</label>
                             <input
@@ -399,6 +422,23 @@ export default function TaskModal({
                               }}
                               placeholder={t("Escribe la pregunta", "Write the question")}
                             />
+                          </>
+                        ) : (
+                          <>
+                            <p style={{ marginTop: "4px", fontWeight: 600 }}>
+                              {questionText || t("Pregunta sin texto", "Question with no text")}
+                            </p>
+                          </>
+                        )}
+                        {answerText && !isEditing ? (
+                          <>
+                            <p className="helper">{t("Respondida", "Answered")}</p>
+                            <div className="card" style={{ background: "rgba(255,255,255,0.03)" }}>
+                              <p style={{ margin: 0 }}>{answerText}</p>
+                            </div>
+                          </>
+                        ) : (
+                          <>
                             <label className="helper">{t("Respuesta", "Answer")}</label>
                             <textarea
                               value={qa.answer || ""}
@@ -407,7 +447,10 @@ export default function TaskModal({
                                 next[index] = { ...qa, answer: event.target.value };
                                 setQaList(next);
                               }}
-                              placeholder={t("Escribe la respuesta para el cliente", "Write the answer for the client")}
+                              placeholder={t(
+                                "Escribe la respuesta para el cliente",
+                                "Write the answer for the client",
+                              )}
                             />
                             <div
                               style={{
@@ -421,6 +464,7 @@ export default function TaskModal({
                               <button
                                 className="btn btn-outline btn-ai"
                                 type="button"
+                                disabled={!String(qa.question || "").trim() || !String(qa.answer || "").trim()}
                                 onClick={() => {
                                   onSave?.({
                                     title: draft.title,
@@ -449,18 +493,6 @@ export default function TaskModal({
                               </button>
                             </div>
                           </>
-                        ) : (
-                          <>
-                            <p style={{ marginTop: "4px", fontWeight: 600 }}>
-                              {qa.question || t("Pregunta sin texto", "Question with no text")}
-                            </p>
-                            <p className="helper">
-                              {t("Respondida", "Answered")}
-                            </p>
-                            <div className="card" style={{ background: "rgba(255,255,255,0.03)" }}>
-                              <p style={{ margin: 0 }}>{qa.answer}</p>
-                            </div>
-                          </>
                         )}
                       </div>
                     );
@@ -481,6 +513,37 @@ export default function TaskModal({
               >
                 {t("Añadir pregunta/respuesta", "Add question/answer")}
               </button>
+              <button
+                className="btn btn-outline btn-ai"
+                type="button"
+                disabled={moreQaLoading || !item?.id || infoComplete}
+                onClick={async () => {
+                  if (!item?.id) return;
+                  setMoreQaLoading(true);
+                  setMoreQaStatus(t("Generando preguntas...", "Generating questions..."));
+                  try {
+                    const response = await fetch(`/api/backlog/${item.id}/questions`, {
+                      method: "POST",
+                    });
+                    const payload = await response.json();
+                    if (!response.ok) {
+                      throw new Error(payload?.error || "No se pudo generar.");
+                    }
+                    const merged = parseQa(payload?.clarification_questions || []);
+                    setQaList(merged);
+                    setMoreQaStatus(t("Preguntas añadidas.", "Questions added."));
+                  } catch (error) {
+                    setMoreQaStatus(t("No se pudieron generar.", "Could not generate."));
+                  } finally {
+                    setMoreQaLoading(false);
+                    window.setTimeout(() => setMoreQaStatus(""), 2200);
+                  }
+                }}
+                style={{ marginTop: "8px", marginLeft: "8px" }}
+              >
+                {moreQaLoading ? t("Generando...", "Generating...") : t("Generar más preguntas", "Generate more questions")}
+              </button>
+              {moreQaStatus ? <p className="helper">{moreQaStatus}</p> : null}
             </div>
           </div>
 

@@ -494,6 +494,8 @@ textarea:focus-visible {
 .rich-text {
   color: inherit;
   line-height: 1.6;
+  overflow-wrap: anywhere;
+  word-break: break-word;
 }
 
 .rich-text p {
@@ -1451,6 +1453,8 @@ label {
   border-radius: 14px;
   background: var(--surface-2);
   line-height: 1.5;
+  overflow-wrap: anywhere;
+  word-break: break-word;
 }
 
 .chat-message.user {

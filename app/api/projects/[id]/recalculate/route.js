@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { callAI } from "@/lib/ai";
 import { getDb } from "@/lib/db";
+import { parseQaList, serializeQaList } from "@/lib/qa";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -18,6 +19,153 @@ function snippet(text, limit = 520) {
 
 function safeString(value) {
   return typeof value === "string" ? value.trim() : "";
+}
+
+function parseJson(value, fallback = []) {
+  try {
+    return value ? JSON.parse(value) : fallback;
+  } catch (error) {
+    return fallback;
+  }
+}
+
+function extractConfirmedFacts(memory = "") {
+  const lines = String(memory || "").split("\n");
+  const idx = lines.findIndex((line) => line.trim().toUpperCase() === "HECHOS CONFIRMADOS:");
+  if (idx === -1) {
+    return new Map();
+  }
+  const facts = new Map();
+  for (let i = idx + 1; i < lines.length; i += 1) {
+    const line = lines[i].trim();
+    if (!line) continue;
+    const match = line.match(/^-\\s*(.+?)\\s*:\\s*(.+)\\s*$/);
+    if (!match) continue;
+    const question = String(match[1] || "").trim();
+    const answer = String(match[2] || "").trim();
+    if (!question || !answer) continue;
+    facts.set(question.toLowerCase(), { question, answer });
+  }
+  return facts;
+}
+
+function mergeProjectMemory(currentMemory = "", generatedMemory = "") {
+  const current = safeString(currentMemory);
+  const generated = safeString(generatedMemory);
+
+  if (!generated) {
+    return current;
+  }
+
+  const facts = new Map();
+  extractConfirmedFacts(current).forEach((value, key) => facts.set(key, value));
+  extractConfirmedFacts(generated).forEach((value, key) => facts.set(key, value));
+
+  if (facts.size === 0) {
+    return generated;
+  }
+
+  const factLines = Array.from(facts.values()).map((fact) => `- ${fact.question}: ${fact.answer}`);
+  const final = [generated, "", "HECHOS CONFIRMADOS:", ...factLines].join("\n").trim();
+  const limited = final.split("\n").slice(-120).join("\n").trim();
+  return limited;
+}
+
+function mergeFactsIntoDescription(description = "", facts = []) {
+  const clean = String(description || "").trim();
+  const factLines = (Array.isArray(facts) ? facts : [])
+    .map((fact) => String(fact || "").trim())
+    .filter(Boolean)
+    .map((fact) => `- ${fact}`);
+  if (!factLines.length) {
+    return clean;
+  }
+  const heading = "**Información confirmada**";
+  if (!clean) {
+    return [heading, ...factLines].join("\n");
+  }
+  if (clean.includes(heading)) {
+    const existing = new Set(clean.split("\n").map((line) => line.trim()));
+    const additions = factLines.filter((line) => !existing.has(line.trim()));
+    if (!additions.length) {
+      return clean;
+    }
+    return `${clean}\n${additions.join("\n")}`;
+  }
+  return `${clean}\n\n${heading}\n${factLines.join("\n")}`;
+}
+
+function appendHistory(existingHistory, entry, limit = 12) {
+  const history = Array.isArray(existingHistory) ? [...existingHistory] : [];
+  history.push(entry);
+  return history.slice(-limit);
+}
+
+function applyConfirmedFactsToBacklog(db, projectId, memory) {
+  const facts = extractConfirmedFacts(memory);
+  if (!facts.size) {
+    return { filled: 0, updated_descriptions: 0 };
+  }
+  const rows = db
+    .prepare(
+      "SELECT id, description, description_history_json, updated_at, clarification_questions_json FROM backlog_items WHERE project_id = ?",
+    )
+    .all(projectId);
+
+  const update = db.prepare(
+    "UPDATE backlog_items SET clarification_questions_json = ?, description = ?, description_history_json = ?, updated_at = ? WHERE id = ?",
+  );
+
+  let filled = 0;
+  let updatedDescriptions = 0;
+  const now = new Date().toISOString();
+
+  const tx = db.transaction(() => {
+    rows.forEach((row) => {
+      const list = parseQaList(parseJson(row.clarification_questions_json, []));
+      if (!list.length) {
+        return;
+      }
+      const newlyAnsweredFacts = [];
+      let changed = false;
+      list.forEach((qa) => {
+        if (qa.answer) {
+          return;
+        }
+        const fact = facts.get(String(qa.question || "").trim().toLowerCase());
+        if (!fact?.answer) {
+          return;
+        }
+        qa.answer = fact.answer;
+        changed = true;
+        filled += 1;
+        newlyAnsweredFacts.push(`${qa.question}: ${fact.answer}`);
+      });
+      if (!changed) {
+        return;
+      }
+      const nextQuestions = serializeQaList(list);
+      const nextDescription = mergeFactsIntoDescription(row.description || "", newlyAnsweredFacts);
+      const prevHistory = parseJson(row.description_history_json, []);
+      const nextHistory = appendHistory(
+        prevHistory.length ? prevHistory : [{ source: "ingest", text: row.description || "", at: row.updated_at || now }],
+        { source: "qa-propagated", text: nextDescription, at: now },
+      );
+      if (nextDescription !== String(row.description || "").trim()) {
+        updatedDescriptions += 1;
+      }
+      update.run(
+        JSON.stringify(nextQuestions),
+        nextDescription,
+        JSON.stringify(nextHistory),
+        now,
+        row.id,
+      );
+    });
+  });
+  tx();
+
+  return { filled, updated_descriptions: updatedDescriptions };
 }
 
 function deduplicateBacklog(db, projectId) {
@@ -158,6 +306,7 @@ export async function POST(request, { params }) {
     const fallback = buildLocalFallback({ project, latestDoc, backlog });
     const description = fallback.description;
     const memory_update = fallback.memory_update;
+    const mergedMemory = mergeProjectMemory(currentMemory, memory_update);
     db.prepare("UPDATE projects SET description = ? WHERE id = ?").run(
       JSON.stringify(description),
       projectId,
@@ -168,17 +317,24 @@ export async function POST(request, { params }) {
       .get(projectId);
     if (existing) {
       db.prepare("UPDATE project_memory SET memory = ?, updated_at = ? WHERE project_id = ?").run(
-        memory_update,
+        mergedMemory,
         now,
         projectId,
       );
     } else {
       db.prepare(
         "INSERT INTO project_memory (project_id, memory, created_at, updated_at) VALUES (?, ?, ?, ?)",
-      ).run(projectId, memory_update, now, now);
+      ).run(projectId, mergedMemory, now, now);
     }
     const dedup = deduplicateBacklog(db, projectId);
-    return NextResponse.json({ description, memory: memory_update, generated: false, dedup });
+    const applied = applyConfirmedFactsToBacklog(db, projectId, mergedMemory);
+    return NextResponse.json({
+      description,
+      memory: mergedMemory,
+      generated: false,
+      dedup,
+      qa_autofill: applied,
+    });
   }
 
   const description = {
@@ -186,6 +342,7 @@ export async function POST(request, { params }) {
     description_en: safeString(aiJson?.description_en),
   };
   const memory_update = safeString(aiJson?.memory_update);
+  const mergedMemory = mergeProjectMemory(currentMemory, memory_update);
 
   if (!description.description_es && !description.description_en) {
     return NextResponse.json(
@@ -199,30 +356,32 @@ export async function POST(request, { params }) {
     projectId,
   );
 
-  if (memory_update) {
+  if (mergedMemory) {
     const now = new Date().toISOString();
     const existing = db
       .prepare("SELECT project_id FROM project_memory WHERE project_id = ?")
       .get(projectId);
     if (existing) {
       db.prepare("UPDATE project_memory SET memory = ?, updated_at = ? WHERE project_id = ?").run(
-        memory_update,
+        mergedMemory,
         now,
         projectId,
       );
     } else {
       db.prepare(
         "INSERT INTO project_memory (project_id, memory, created_at, updated_at) VALUES (?, ?, ?, ?)",
-      ).run(projectId, memory_update, now, now);
+      ).run(projectId, mergedMemory, now, now);
     }
   }
 
   const dedup = deduplicateBacklog(db, projectId);
+  const applied = applyConfirmedFactsToBacklog(db, projectId, mergedMemory || currentMemory);
 
   return NextResponse.json({
     description,
-    memory: memory_update || currentMemory,
+    memory: mergedMemory || currentMemory,
     generated: true,
     dedup,
+    qa_autofill: applied,
   });
 }

@@ -17,6 +17,7 @@ export default function TaskModal({
   const [closing, setClosing] = useState(false);
   const [editingDescription, setEditingDescription] = useState(false);
   const [qaList, setQaList] = useState([]);
+  const [qaEdit, setQaEdit] = useState({});
   const [regenLoading, setRegenLoading] = useState(false);
   const [regenStatus, setRegenStatus] = useState("");
   const { t } = useLanguage();
@@ -48,6 +49,7 @@ export default function TaskModal({
     setClosing(false);
     setEditingDescription(false);
     setQaList(parseQa(item?.clarification_questions));
+    setQaEdit({});
   }, [item]);
 
   if (!item || !draft) {
@@ -323,69 +325,116 @@ export default function TaskModal({
                 <p className="helper">{t("Sin preguntas pendientes.", "No pending questions.")}</p>
               ) : (
                 <div className="stack">
-                  {clarificationQuestions.map((qa, index) => (
-                    <div key={index} className="card" style={{ padding: "10px" }}>
-                      <div style={{ display: "flex", justifyContent: "space-between", gap: "8px", alignItems: "center" }}>
-                        <label className="helper" style={{ margin: 0 }}>
-                          {t("Pregunta", "Question")} #{index + 1}
-                        </label>
-                        <button
-                          className="btn btn-ghost"
-                          type="button"
-                          onClick={() => {
-                            const next = [...clarificationQuestions];
-                            const updated = window.prompt(t("Editar pregunta", "Edit question"), qa.question) || qa.question;
-                            next[index] = { ...qa, question: updated };
-                            setQaList(next);
+                  {clarificationQuestions.map((qa, index) => {
+                    const isEditing = qaEdit[index] || !qa.answer;
+                    return (
+                      <div key={index} className="card" style={{ padding: "10px" }}>
+                        <div
+                          style={{
+                            display: "flex",
+                            justifyContent: "space-between",
+                            gap: "8px",
+                            alignItems: "center",
                           }}
-                          aria-label={t("Editar pregunta", "Edit question")}
                         >
-                          ✏️
-                        </button>
+                          <label className="helper" style={{ margin: 0 }}>
+                            {t("Pregunta", "Question")} #{index + 1}
+                          </label>
+                          {qa.answer && !isEditing ? (
+                            <button
+                              className="btn btn-ghost"
+                              type="button"
+                              onClick={() =>
+                                setQaEdit((prev) => ({
+                                  ...prev,
+                                  [index]: true,
+                                }))
+                              }
+                              aria-label={t("Editar pregunta y respuesta", "Edit question and answer")}
+                            >
+                              ✏️
+                            </button>
+                          ) : null}
+                        </div>
+                        {isEditing ? (
+                          <>
+                            <label className="helper">{t("Pregunta", "Question")}</label>
+                            <input
+                              className="input"
+                              value={qa.question || ""}
+                              onChange={(event) => {
+                                const next = [...clarificationQuestions];
+                                next[index] = { ...qa, question: event.target.value };
+                                setQaList(next);
+                              }}
+                              placeholder={t("Escribe la pregunta", "Write the question")}
+                            />
+                            <label className="helper">{t("Respuesta", "Answer")}</label>
+                            <textarea
+                              value={qa.answer || ""}
+                              onChange={(event) => {
+                                const next = [...clarificationQuestions];
+                                next[index] = { ...qa, answer: event.target.value };
+                                setQaList(next);
+                              }}
+                              placeholder={t("Escribe la respuesta para el cliente", "Write the answer for the client")}
+                            />
+                            <div
+                              style={{
+                                display: "flex",
+                                gap: "8px",
+                                justifyContent: "space-between",
+                                alignItems: "center",
+                                flexWrap: "wrap",
+                              }}
+                            >
+                              <button
+                                className="btn btn-outline btn-ai"
+                                type="button"
+                                onClick={() => {
+                                  onSave?.({
+                                    title: draft.title,
+                                    status: draft.status,
+                                    priority: draft.priority,
+                                    area: draft.area,
+                                    description: draft.description,
+                                    blocked_reason: draft.blocked_reason || "",
+                                    clarification_questions: formatQaList(),
+                                    keepOpen: true,
+                                  });
+                                  setQaEdit((prev) => ({ ...prev, [index]: false }));
+                                }}
+                              >
+                                {t("Enviar respuesta", "Submit answer")}
+                              </button>
+                              <button
+                                className="btn btn-ghost"
+                                type="button"
+                                onClick={() => {
+                                  const next = clarificationQuestions.filter((_, idx) => idx !== index);
+                                  setQaList(next);
+                                }}
+                              >
+                                {t("Eliminar", "Delete")}
+                              </button>
+                            </div>
+                          </>
+                        ) : (
+                          <>
+                            <p style={{ marginTop: "4px", fontWeight: 600 }}>
+                              {qa.question || t("Pregunta sin texto", "Question with no text")}
+                            </p>
+                            <p className="helper">
+                              {t("Respondida", "Answered")}
+                            </p>
+                            <div className="card" style={{ background: "rgba(255,255,255,0.03)" }}>
+                              <p style={{ margin: 0 }}>{qa.answer}</p>
+                            </div>
+                          </>
+                        )}
                       </div>
-                      <p style={{ marginTop: "4px", fontWeight: 600 }}>{qa.question || t("Pregunta sin texto", "Question with no text")}</p>
-                      <label className="helper">{t("Respuesta", "Answer")}</label>
-                      <textarea
-                        value={qa.answer || ""}
-                        onChange={(event) => {
-                          const next = [...clarificationQuestions];
-                          next[index] = { ...qa, answer: event.target.value };
-                          setQaList(next);
-                        }}
-                        placeholder={t("Escribe la respuesta para el cliente", "Write the answer for the client")}
-                      />
-                      <div style={{ display: "flex", gap: "8px", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap" }}>
-                        <button
-                          className="btn btn-outline btn-ai"
-                          type="button"
-                          onClick={() => {
-                            onSave?.({
-                              title: draft.title,
-                              status: draft.status,
-                              priority: draft.priority,
-                              area: draft.area,
-                              description: draft.description,
-                              blocked_reason: draft.blocked_reason || "",
-                              clarification_questions: formatQaList(),
-                              keepOpen: true,
-                            });
-                          }}
-                        >
-                          {t("Enviar respuesta", "Submit answer")}
-                        </button>
-                        <button
-                          className="btn btn-ghost"
-                          type="button"
-                          onClick={() => {
-                            const next = clarificationQuestions.filter((_, idx) => idx !== index);
-                            setQaList(next);
-                          }}
-                        >
-                          {t("Eliminar", "Delete")}
-                        </button>
-                      </div>
-                    </div>
-                  ))}
+                    );
+                  })}
                 </div>
               )}
               <button

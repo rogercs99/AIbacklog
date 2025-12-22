@@ -1,0 +1,12 @@
+node_modules/
+.next/
+data/*.db
+data/ollama-models/
+bin/
+models/
+dev.log
+dev.pid
+ollama.log
+ollama.pid
+.env.local
+.venv/

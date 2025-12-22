@@ -1,0 +1,573 @@
+<!doctype html>
+<html lang="es">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>DeltaScope AI</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700&family=Sora:wght@500;600;700&display=swap"
+      rel="stylesheet"
+    />
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    <div class="scroll-progress" aria-hidden="true"></div>
+
+    <div class="backdrop" aria-hidden="true">
+      <span class="orb orb-one"></span>
+      <span class="orb orb-two"></span>
+      <span class="orb orb-three"></span>
+      <span class="grid"></span>
+    </div>
+
+    <header class="site-header">
+      <div class="logo">
+        <span class="logo-icon"></span>
+        <div class="logo-text">
+          <span class="logo-mark">DeltaScope</span>
+          <span class="logo-sub">AI</span>
+        </div>
+        <span class="logo-tag" data-i18n="logoTag">Change Intelligence</span>
+      </div>
+      <nav class="site-nav">
+        <a href="#story" data-i18n="navStory">Cómo funciona</a>
+        <a href="#video" data-i18n="navVideo">Video</a>
+        <a href="#demo" data-i18n="navDemo">Demo</a>
+        <a href="#impacto" data-i18n="navImpact">Impacto</a>
+        <a href="#export" data-i18n="navExports">Exportables</a>
+      </nav>
+      <div class="header-actions">
+        <div class="lang-toggle" role="group" data-i18n-aria="langToggle">
+          <button class="lang-button" type="button" data-lang="es">ES</button>
+          <button class="lang-button" type="button" data-lang="en">EN</button>
+        </div>
+        <div class="header-buttons">
+          <button class="ghost" id="loadSampleTop" type="button" data-i18n="loadDemo">
+            Cargar demo
+          </button>
+          <button class="primary" id="compareTop" type="button" data-i18n="compareNow">
+            Comparar ahora
+          </button>
+        </div>
+      </div>
+    </header>
+
+    <main class="page">
+      <section class="hero">
+        <div class="hero-copy reveal">
+          <div class="pill" data-i18n="heroPill">Inspirado en NTT DATA</div>
+          <h1 data-i18n="heroTitle">
+            DeltaScope AI convierte cambios de documentos en un plan accionable en minutos.
+          </h1>
+          <p class="hero-lead" data-i18n="heroLead">
+            Sube una versión base y una nueva. Te dice qué cambió y qué hacer después, sin
+            tecnicismos. Úsalo cuando recibes una versión nueva de requisitos, un contrato, un
+            alcance o un plan y necesitas alinear al equipo rápido.
+          </p>
+          <div class="hero-steps">
+            <div class="step-card">
+              <span class="step-number">1</span>
+              <div>
+                <p class="step-title" data-i18n="stepOneTitle">Carga la versión base</p>
+                <p class="step-desc" data-i18n="stepOneDesc">
+                  Arrastra un PDF, DOCX o TXT con el baseline aprobado.
+                </p>
+              </div>
+            </div>
+            <div class="step-card">
+              <span class="step-number">2</span>
+              <div>
+                <p class="step-title" data-i18n="stepTwoTitle">Sube la nueva versión</p>
+                <p class="step-desc" data-i18n="stepTwoDesc">
+                  DeltaScope identifica cambios estructurales y numéricos.
+                </p>
+              </div>
+            </div>
+            <div class="step-card">
+              <span class="step-number">3</span>
+              <div>
+                <p class="step-title" data-i18n="stepThreeTitle">Revisa impacto</p>
+                <p class="step-desc" data-i18n="stepThreeDesc">
+                  Tienes lista de cambios, impacto y plan de acción exportable.
+                </p>
+              </div>
+            </div>
+          </div>
+          <div class="hero-actions">
+            <button class="primary" id="loadSample" data-i18n="loadInstant">
+              Ver demo instantánea
+            </button>
+            <button class="ghost" id="clearAll" type="button" data-i18n="clearData">
+              Limpiar datos
+            </button>
+          </div>
+          <div class="hero-status">
+            <span class="status-pill" id="backendStatus" data-i18n="backendUnknown">
+              Backend sin estado
+            </span>
+          </div>
+          <div class="hero-metrics">
+            <div class="metric">
+              <span class="metric-value" id="statTotal">0</span>
+              <span class="metric-label" data-i18n="metricTotal">cambios detectados</span>
+            </div>
+            <div class="metric">
+              <span class="metric-value" id="statCritical">0</span>
+              <span class="metric-label" data-i18n="metricCritical">cambios críticos</span>
+            </div>
+            <div class="metric">
+              <span class="metric-value" id="statSchedule">0</span>
+              <span class="metric-label" data-i18n="metricSchedule">impactos en plazos</span>
+            </div>
+            <div class="metric">
+              <span class="metric-value" id="statCompliance">0</span>
+              <span class="metric-label" data-i18n="metricCompliance">riesgos compliance</span>
+            </div>
+          </div>
+        </div>
+        <div class="hero-card reveal" id="impacto">
+          <div class="hero-card-header">
+            <h2 data-i18n="impactPanelTitle">Panel de impacto</h2>
+            <span class="badge badge-accent" id="impactSummary" data-i18n="impactSummaryEmpty">
+              Sin análisis
+            </span>
+          </div>
+          <div class="impact-grid" id="impactGrid">
+            <div class="impact-item">
+              <span class="impact-title" data-i18n="impactScope">Scope</span>
+              <span class="impact-value" id="impactScope">0</span>
+            </div>
+            <div class="impact-item">
+              <span class="impact-title" data-i18n="impactSchedule">Plazos</span>
+              <span class="impact-value" id="impactSchedule">0</span>
+            </div>
+            <div class="impact-item">
+              <span class="impact-title" data-i18n="impactCost">Coste</span>
+              <span class="impact-value" id="impactCost">0</span>
+            </div>
+            <div class="impact-item">
+              <span class="impact-title" data-i18n="impactRisk">Riesgos</span>
+              <span class="impact-value" id="impactRisk">0</span>
+            </div>
+            <div class="impact-item">
+              <span class="impact-title" data-i18n="impactCompliance">Compliance</span>
+              <span class="impact-value" id="impactCompliance">0</span>
+            </div>
+            <div class="impact-item">
+              <span class="impact-title" data-i18n="impactTesting">Testing</span>
+              <span class="impact-value" id="impactTesting">0</span>
+            </div>
+          </div>
+          <div class="impact-actions" id="actionPlan">
+            <h3 data-i18n="impactPlanTitle">Plan de acción sugerido</h3>
+            <ul class="action-list" id="actionList">
+              <li data-i18n="impactPlanEmpty">Sube documentos para ver acciones.</li>
+            </ul>
+          </div>
+        </div>
+      </section>
+
+      <section class="story" id="story">
+        <div class="section-header reveal">
+          <div>
+            <h2 data-i18n="storyTitle">Así funciona el comparador inteligente</h2>
+            <p data-i18n="storySubtitle">
+              Cada bloque activa una herramienta real en pantalla para que el jurado lo entienda
+              en segundos.
+            </p>
+          </div>
+        </div>
+        <div class="story-grid">
+          <div class="story-steps">
+            <article class="story-step reveal" data-tool="upload">
+              <span class="step-index">01</span>
+              <h3 data-i18n="storyStepUploadTitle">Entrada de versiones</h3>
+              <p data-i18n="storyStepUploadBody">
+                Unifica baseline y nueva versión en un solo flujo. Todo listo para analizar.
+              </p>
+            </article>
+            <article class="story-step reveal" data-tool="diff">
+              <span class="step-index">02</span>
+              <h3 data-i18n="storyStepDiffTitle">Diff inteligente</h3>
+              <p data-i18n="storyStepDiffBody">
+                Detecta cambios reales, estructurales y numéricos. No más comparación manual.
+              </p>
+            </article>
+            <article class="story-step reveal" data-tool="impact">
+              <span class="step-index">03</span>
+              <h3 data-i18n="storyStepImpactTitle">Impacto accionable</h3>
+              <p data-i18n="storyStepImpactBody">
+                Clasifica por área y severidad. El impacto aparece listo para decisión.
+              </p>
+            </article>
+            <article class="story-step reveal" data-tool="export">
+              <span class="step-index">04</span>
+              <h3 data-i18n="storyStepExportTitle">Comunicacion y trazabilidad</h3>
+              <p data-i18n="storyStepExportBody">
+                Genera plan de acción, change log y comunicados en un clic.
+              </p>
+            </article>
+          </div>
+
+          <div class="story-visual">
+            <div class="tool-stack">
+              <div class="tool-card is-active" data-tool="upload">
+                <div class="tool-screen">
+                  <div class="tool-top">
+                    <div>
+                      <p class="tool-kicker" data-i18n="toolUploadKicker">Workspace</p>
+                      <h4 data-i18n="toolUploadTitle">Carga de versiones</h4>
+                    </div>
+                    <span class="tool-badge" data-i18n="toolUploadBadge">Entrada segura</span>
+                  </div>
+                  <div class="tool-columns">
+                    <div class="tool-drop">
+                      <span data-i18n="toolUploadBaseline">Baseline</span>
+                      <div class="tool-placeholder"></div>
+                      <p class="tool-hint" data-i18n="toolUploadHint">Arrastra archivos</p>
+                    </div>
+                    <div class="tool-drop">
+                      <span data-i18n="toolUploadRevised">Nueva versión</span>
+                      <div class="tool-placeholder"></div>
+                      <p class="tool-hint" data-i18n="toolUploadHint">Arrastra archivos</p>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <div class="tool-card" data-tool="diff">
+                <div class="tool-screen">
+                  <div class="tool-top">
+                    <div>
+                      <p class="tool-kicker" data-i18n="toolDiffKicker">Diff inteligente</p>
+                      <h4 data-i18n="toolDiffTitle">Mapa de cambios</h4>
+                    </div>
+                    <span class="tool-badge" data-i18n="toolDiffBadge">Precision de línea</span>
+                  </div>
+                  <div class="tool-summary">
+                    <span class="tool-summary-value">12</span>
+                    <span data-i18n="toolDiffSummary">cambios detectados</span>
+                  </div>
+                  <div class="tool-list">
+                    <div class="tool-row">
+                      <span class="tool-tag tag-low" data-i18n="toolDiffAdded">Agregado</span>
+                      <span class="tool-row-text" data-i18n="toolDiffRowOne">
+                        Dashboard de riesgos operativos
+                      </span>
+                    </div>
+                    <div class="tool-row">
+                      <span class="tool-tag tag-medium" data-i18n="toolDiffModified">
+                        Modificado
+                      </span>
+                      <span class="tool-row-text" data-i18n="toolDiffRowTwo">
+                        SLA disponibilidad 99.9%
+                      </span>
+                    </div>
+                    <div class="tool-row">
+                      <span class="tool-tag tag-high" data-i18n="toolDiffRemoved">Eliminado</span>
+                      <span class="tool-row-text" data-i18n="toolDiffRowThree">
+                        Ventana de despliegue 2 horas
+                      </span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <div class="tool-card" data-tool="impact">
+                <div class="tool-screen">
+                  <div class="tool-top">
+                    <div>
+                      <p class="tool-kicker" data-i18n="toolImpactKicker">Impacto</p>
+                      <h4 data-i18n="toolImpactTitle">Panel de impacto</h4>
+                    </div>
+                    <span class="tool-badge" data-i18n="toolImpactBadge">Matriz IA</span>
+                  </div>
+                  <div class="tool-metrics">
+                    <div class="tool-metric">
+                      <span data-i18n="toolImpactScope">Scope</span>
+                      <strong>3</strong>
+                    </div>
+                    <div class="tool-metric">
+                      <span data-i18n="toolImpactSchedule">Plazos</span>
+                      <strong>2</strong>
+                    </div>
+                    <div class="tool-metric">
+                      <span data-i18n="toolImpactCost">Coste</span>
+                      <strong>1</strong>
+                    </div>
+                    <div class="tool-metric">
+                      <span data-i18n="toolImpactRisk">Riesgos</span>
+                      <strong>2</strong>
+                    </div>
+                    <div class="tool-metric">
+                      <span data-i18n="toolImpactCompliance">Compliance</span>
+                      <strong>1</strong>
+                    </div>
+                  </div>
+                  <div class="tool-note" data-i18n="toolImpactNote">
+                    2 cambios críticos requieren decisión ejecutiva
+                  </div>
+                </div>
+              </div>
+
+              <div class="tool-card" data-tool="export">
+                <div class="tool-screen">
+                  <div class="tool-top">
+                    <div>
+                      <p class="tool-kicker" data-i18n="toolExportKicker">Salida</p>
+                      <h4 data-i18n="toolExportTitle">Pack de comunicaciones</h4>
+                    </div>
+                    <span class="tool-badge" data-i18n="toolExportBadge">Listo para enviar</span>
+                  </div>
+                  <div class="tool-export-list">
+                    <div class="tool-export-item">
+                      <span class="tool-dot"></span>
+                      <span data-i18n="toolExportLog">Change log</span>
+                    </div>
+                    <div class="tool-export-item">
+                      <span class="tool-dot"></span>
+                      <span data-i18n="toolExportImpact">Impact assessment</span>
+                    </div>
+                    <div class="tool-export-item">
+                      <span class="tool-dot"></span>
+                      <span data-i18n="toolExportEmail">Email stakeholders</span>
+                    </div>
+                    <div class="tool-export-item">
+                      <span class="tool-dot"></span>
+                      <span data-i18n="toolExportAgenda">Agenda reunión</span>
+                    </div>
+                  </div>
+                  <div class="tool-footer" data-i18n="toolExportNote">Descarga en 1 clic</div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section class="video-section" id="video">
+        <div class="section-header reveal">
+          <div>
+            <h2 data-i18n="videoTitle">Video explicativo</h2>
+            <p data-i18n="videoSubtitle">
+              Entiende en menos de dos minutos qué es y cómo se usa.
+            </p>
+          </div>
+          <span class="video-pill" data-i18n="videoDuration">1:26 min</span>
+        </div>
+        <div class="video-card reveal">
+          <video
+            class="video-frame"
+            controls
+            preload="metadata"
+            poster="media/deltascope_overview.jpg"
+          >
+            <source src="media/deltascope_overview.mp4" type="video/mp4" />
+            <p data-i18n="videoFallback">Tu navegador no soporta video HTML5.</p>
+          </video>
+          <div class="video-info">
+            <span class="video-caption" data-i18n="videoCaption">
+              Resumen visual del flujo DeltaScope AI.
+            </span>
+            <button class="secondary" type="button" data-video-action="replay" data-i18n="videoReplay">
+              Reproducir de nuevo
+            </button>
+          </div>
+        </div>
+      </section>
+
+      <section class="upload" id="demo">
+        <div class="section-header reveal">
+          <div>
+            <h2 data-i18n="uploadTitle">Sube tus versiones</h2>
+            <p data-i18n="uploadSubtitle">
+              PDF, DOCX o TXT. También puedes pegar texto directo para una demo rápida.
+            </p>
+          </div>
+          <div class="status" id="statusMessage" role="status"></div>
+        </div>
+        <div class="upload-grid">
+          <div class="upload-card reveal" data-target="baseline">
+            <div class="upload-title">
+              <div>
+                <span class="step-pill" data-i18n="stepOneLabel">Paso 1</span>
+                <h3 data-i18n="baselineTitle">Documento A</h3>
+              </div>
+              <span class="badge badge-soft" data-i18n="baselineBadge">Baseline</span>
+            </div>
+            <div class="drop-zone" data-target="baseline">
+              <input id="fileBaseline" type="file" accept=".pdf,.docx,.txt,.md" />
+              <div class="drop-content">
+                <p class="drop-title" data-i18n="dropTitle">Arrastra tu archivo aquí</p>
+                <p class="drop-meta" id="fileNameBaseline" data-i18n="fileEmpty">
+                  Sin archivo seleccionado
+                </p>
+                <button class="secondary" type="button" data-action="select-baseline" data-i18n="selectFile">
+                  Seleccionar archivo
+                </button>
+              </div>
+            </div>
+            <label class="text-label" for="textBaseline" data-i18n="pasteLabel">O pega texto</label>
+            <textarea
+              id="textBaseline"
+              data-i18n-placeholder="baselinePlaceholder"
+              placeholder="Pega aquí la versión base para comparar"
+              rows="8"
+            ></textarea>
+          </div>
+
+          <div class="upload-card reveal" data-target="revised">
+            <div class="upload-title">
+              <div>
+                <span class="step-pill" data-i18n="stepTwoLabel">Paso 2</span>
+                <h3 data-i18n="revisedTitle">Documento B</h3>
+              </div>
+              <span class="badge badge-soft" data-i18n="revisedBadge">Nueva versión</span>
+            </div>
+            <div class="drop-zone" data-target="revised">
+              <input id="fileRevised" type="file" accept=".pdf,.docx,.txt,.md" />
+              <div class="drop-content">
+                <p class="drop-title" data-i18n="dropTitle">Arrastra tu archivo aquí</p>
+                <p class="drop-meta" id="fileNameRevised" data-i18n="fileEmpty">
+                  Sin archivo seleccionado
+                </p>
+                <button class="secondary" type="button" data-action="select-revised" data-i18n="selectFile">
+                  Seleccionar archivo
+                </button>
+              </div>
+            </div>
+            <label class="text-label" for="textRevised" data-i18n="pasteLabel">O pega texto</label>
+            <textarea
+              id="textRevised"
+              data-i18n-placeholder="revisedPlaceholder"
+              placeholder="Pega aquí la versión nueva para comparar"
+              rows="8"
+            ></textarea>
+          </div>
+        </div>
+        <div class="compare-actions reveal">
+          <button class="primary" id="compareButton" type="button" data-i18n="compareButton">
+            Comparar
+          </button>
+          <button class="ghost" id="swapButton" type="button" data-i18n="swapButton">
+            Intercambiar versiones
+          </button>
+          <div class="compare-meta">
+            <span id="compareHint" data-i18n="compareHintNeed">
+              Listo para analizar cuando ambos textos tengan contenido.
+            </span>
+          </div>
+        </div>
+      </section>
+
+      <section class="results" id="export">
+        <div class="section-header reveal">
+          <div>
+            <h2 data-i18n="resultsTitle">Resultados y trazabilidad</h2>
+            <p data-i18n="resultsSubtitle">
+              Filtra cambios, valida impacto y exporta para el equipo.
+            </p>
+          </div>
+          <div class="export-actions">
+            <button class="secondary" id="exportLog" type="button" data-i18n="exportLog">
+              Exportar change log
+            </button>
+            <button class="secondary" id="exportImpact" type="button" data-i18n="exportImpact">
+              Exportar impacto
+            </button>
+            <button class="secondary" id="exportEmail" type="button" data-i18n="exportEmail">
+              Email stakeholders
+            </button>
+            <button class="secondary" id="exportAgenda" type="button" data-i18n="exportAgenda">
+              Agenda reunión
+            </button>
+          </div>
+        </div>
+
+        <div class="filters reveal">
+          <label class="filter">
+            <span data-i18n="filtersArea">Área</span>
+            <select id="filterArea">
+              <option value="all" data-i18n="filterAll">Todas</option>
+              <option value="scope" data-i18n="filterScope">Scope</option>
+              <option value="schedule" data-i18n="filterSchedule">Plazos</option>
+              <option value="cost" data-i18n="filterCost">Coste</option>
+              <option value="risk" data-i18n="filterRisk">Riesgo</option>
+              <option value="compliance" data-i18n="filterCompliance">Compliance</option>
+              <option value="testing" data-i18n="filterTesting">Testing</option>
+              <option value="general" data-i18n="filterGeneral">General</option>
+            </select>
+          </label>
+          <label class="filter">
+            <span data-i18n="filtersSeverity">Severidad</span>
+            <select id="filterSeverity">
+              <option value="all" data-i18n="filterAll">Todas</option>
+              <option value="high" data-i18n="filterHigh">Alta</option>
+              <option value="medium" data-i18n="filterMedium">Media</option>
+              <option value="low" data-i18n="filterLow">Baja</option>
+            </select>
+          </label>
+          <label class="filter">
+            <span data-i18n="filtersStatus">Estado</span>
+            <select id="filterStatus">
+              <option value="all" data-i18n="filterAll">Todos</option>
+              <option value="pending" data-i18n="filterPending">Pendiente</option>
+              <option value="accepted" data-i18n="filterAccepted">Aceptado</option>
+              <option value="rejected" data-i18n="filterRejected">Rechazado</option>
+              <option value="clarify" data-i18n="filterClarify">Requiere aclaración</option>
+            </select>
+          </label>
+        </div>
+
+        <div class="results-grid">
+          <div class="changes-panel reveal">
+            <div class="panel-header">
+              <h3 data-i18n="changesListTitle">Lista de cambios</h3>
+              <span class="badge badge-soft" id="changesCount" data-i18n="changesCount">
+                0 cambios
+              </span>
+            </div>
+            <div class="changes-list" id="changesList">
+              <div class="empty-state" data-i18n="changesEmpty">
+                Aún no hay cambios detectados.
+              </div>
+            </div>
+          </div>
+          <div class="detail-panel reveal" id="detailPanel">
+            <div class="panel-header">
+              <h3 data-i18n="detailTitle">Detalle del cambio</h3>
+              <span class="badge badge-soft" id="detailBadge" data-i18n="detailEmptyBadge">
+                Selecciona un cambio
+              </span>
+            </div>
+            <div class="detail-body" id="detailBody">
+              <div class="empty-state" data-i18n="detailEmpty">
+                Selecciona un cambio para ver detalle.
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+    </main>
+
+    <footer class="site-footer">
+      <p data-i18n="footerNote">
+        DeltaScope AI MVP - Análisis local con diff inteligente + heurísticas de impacto.
+      </p>
+    </footer>
+
+    <div class="loading" id="loadingOverlay" aria-hidden="true">
+      <div class="loading-card">
+        <div class="spinner"></div>
+        <p data-i18n="loadingText">Analizando cambios y generando impacto...</p>
+      </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/pdfjs-dist@3.11.174/build/pdf.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/mammoth@1.6.0/mammoth.browser.min.js"></script>
+    <script src="analysis.js"></script>
+    <script src="app.js"></script>
+  </body>
+</html>

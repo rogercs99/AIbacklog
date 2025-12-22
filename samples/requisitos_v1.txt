@@ -1,0 +1,15 @@
+1. Alcance
+- Login con SSO para usuarios internos.
+- Panel de reportes semanal.
+- Exportación de datos a CSV.
+
+2. Plazos
+- Go-live: 30/09/2024.
+- Ventana de despliegue: 2 horas.
+
+3. Seguridad
+- MFA opcional para administradores.
+- Auditoría de accesos mensual.
+
+4. Soporte
+- SLA respuesta: 8 horas.

@@ -1,0 +1,14 @@
+1. Objetivo
+- Implementar portal de clientes con registro y recuperación de contraseña.
+
+2. Alcance técnico
+- Hosting en Azure West Europe.
+- Base de datos PostgreSQL 14.
+- API REST para integrar con CRM.
+
+3. Compliance
+- Cumplimiento ISO 27001.
+- Retención de logs 6 meses.
+
+4. Dependencias
+- Acceso a entorno de pruebas del cliente (pendiente).

@@ -1,0 +1,38 @@
+1. Alcance
+- Gestion de catalogo de peliculas con ficha, genero, duracion, rating, idioma y formato (DVD, Blu-ray, digital).
+- Compras a proveedores: orden de compra, recepcion, devoluciones y control de costes.
+- Ventas a clientes: ticket, factura, descuentos y cupones.
+- Control de inventario por almacen con stock minimo y alertas.
+
+2. Roles y permisos
+- Administrador, Compras, Ventas, Almacen, Finanzas.
+- Auditoria de cambios en precios y stock.
+
+3. Proceso de compra
+- Alta de proveedores con condiciones de pago, moneda y plazos.
+- Flujo: solicitud -> aprobacion -> orden de compra -> recepcion -> factura proveedor -> pago.
+- Entrega parcial permitida, con recepcion por linea.
+
+4. Proceso de venta
+- Carrito, reserva de stock y confirmacion de venta.
+- Metodos de pago: efectivo, tarjeta, transferencia.
+- Facturacion con IVA y numeracion legal.
+- Devoluciones dentro de 7 dias con motivo.
+
+5. Reportes
+- Margen por pelicula y por proveedor.
+- Rotacion de catalogo y top ventas.
+- Compras por proveedor y por periodo.
+
+6. Integraciones
+- Exportacion a CSV para contabilidad.
+- API para sincronizar catalogo.
+
+7. Requisitos no funcionales
+- Web responsive, tiempo de carga < 2 segundos.
+- Backup diario de base de datos.
+- Seguridad: roles, logs de acceso, MFA opcional.
+
+8. Datos y cumplimiento
+- Retencion de datos 5 anos.
+- Cumplimiento de politica de privacidad interna.

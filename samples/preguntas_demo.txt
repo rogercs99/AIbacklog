@@ -1,0 +1,5 @@
+Preguntas sugeridas para /ask:
+- ¿Cuál es la fecha de go-live?
+- ¿El MFA es obligatorio u opcional?
+- ¿Qué ventanas de despliegue se mencionan?
+- ¿Qué cumplimiento de compliance se exige?

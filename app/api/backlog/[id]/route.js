@@ -1,5 +1,12 @@
 import { NextResponse } from "next/server";
-import { getDb, updateBacklogItem } from "@/lib/db";
+import {
+  getDb,
+  updateBacklogItem,
+  getNextExternalId,
+  insertBacklogItems,
+  getLatestDocument,
+} from "@/lib/db";
+import { callAI } from "@/lib/ai";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -102,7 +109,143 @@ export async function PATCH(request, { params }) {
 
   updateBacklogItem(id, payload);
 
-  return NextResponse.json({ ok: true });
+  const updated = db
+    .prepare("SELECT * FROM backlog_items WHERE id = ? LIMIT 1")
+    .get(id);
+
+  // Regenerar descripción a partir de las respuestas y, si aplica, crear nuevos subitems.
+  const clarificationList = Array.isArray(updates?.clarification_questions)
+    ? updates.clarification_questions
+    : (() => {
+        try {
+          return JSON.parse(updated?.clarification_questions_json || "[]");
+        } catch (err) {
+          return [];
+        }
+      })();
+
+  let regeneratedDescription = updated?.description || "";
+  let regeneratedQuestions = clarificationList;
+  const newItems = [];
+
+  const latestDoc = getLatestDocument(existing.project_id);
+  const contextSnippet = latestDoc?.text ? String(latestDoc.text).slice(0, 1200) : "";
+
+  const qaBlock = clarificationList
+    .map((entry, idx) => `#${idx + 1} ${entry}`)
+    .join("\n");
+
+  const system =
+    "Eres un analista funcional senior. Devuelve solo JSON válido. Usa las respuestas de aclaraciones para enriquecer la descripción (Markdown breve y clara) y, si surgen nuevas tareas/historias, propónlas como new_items.";
+  const user = [
+    `ITEM:`,
+    `- tipo: ${updated.type}`,
+    `- titulo: ${updated.title}`,
+    `- area: ${updated.area || "other"}`,
+    `- descripcion_actual: ${updated.description || "N/A"}`,
+    `- snippet_fuente: ${updated.source_snippet || contextSnippet || "N/A"}`,
+    `PREGUNTAS/RESPUESTAS:`,
+    qaBlock || "N/A",
+    `OUTPUT JSON:`,
+    `{"description":"... markdown ...","clarification_questions":["Q: ... | A: ..."],"new_items":[{"title":"...","type":"Task|Story","area":"frontend|backend|api|db|qa|devops|security|other","priority":"High|Medium|Low","description":"...","acceptance_criteria":["..."],"risks":["..."],"labels":["..."]}]}`,
+    `REGLAS:`,
+    `- Usa solo la información presente.`,
+    `- Si no hay nuevas acciones, deja new_items como [].`,
+    `- La descripción debe ser entendible para público no técnico (2-4 frases + bullets si ayuda).`,
+    `- No menciones modelos ni IA.`,
+  ].join("\n");
+
+  try {
+    const ai = await callAI({ system, user, maxTokens: 750, temperature: 0.2 });
+    if (ai?.description) {
+      regeneratedDescription = ai.description;
+    }
+    if (Array.isArray(ai?.clarification_questions)) {
+      regeneratedQuestions = ai.clarification_questions;
+    }
+    if (Array.isArray(ai?.new_items)) {
+      newItems.push(
+        ...ai.new_items
+          .filter((it) => it && it.title)
+          .slice(0, 10), // limite defensivo
+      );
+    }
+  } catch (err) {
+    // fallback silencioso
+  }
+
+  updateBacklogItem(id, {
+    description: regeneratedDescription,
+    clarification_questions_json: JSON.stringify(regeneratedQuestions || []),
+  });
+
+  // Crear nuevos sub-items si se propusieron
+  if (newItems.length) {
+    let nextId = getNextExternalId(existing.project_id);
+    let counter = Number(nextId.replace(/[^0-9]/g, "")) || 1;
+    const nextExternalId = () => {
+      const id = `T-${String(counter).padStart(3, "0")}`;
+      counter += 1;
+      return id;
+    };
+
+    const existingType = String(existing.type || "").toLowerCase();
+
+    const resolveParent = (newTypeLower) => {
+      if (newTypeLower === "story") {
+        if (existingType === "epic") {
+          return { parent_id: existing.id, epic_key: existing.external_id };
+        }
+        return { parent_id: existing.parent_id || existing.id || null, epic_key: existing.epic_key || null };
+      }
+      // task por defecto
+      if (existingType === "story") {
+        return { parent_id: existing.id, epic_key: existing.epic_key || null };
+      }
+      if (existingType === "epic") {
+        return { parent_id: existing.id, epic_key: existing.external_id };
+      }
+      return { parent_id: existing.parent_id || existing.id || null, epic_key: existing.epic_key || null };
+    };
+
+    const rows = newItems.map((item) => {
+      const newTypeLower = String(item.type || "Task").toLowerCase();
+      const parentInfo = resolveParent(newTypeLower);
+      return {
+        external_id: nextExternalId(),
+        type: newTypeLower === "story" ? "Story" : "Task",
+        parent_id: parentInfo.parent_id,
+        epic_key: parentInfo.epic_key,
+        title: item.title,
+        description: item.description || item.title,
+        area: item.area || existing.area || "other",
+        priority: item.priority || "Medium",
+        story_points: null,
+        estimate_hours: null,
+        status: "todo",
+        acceptance_criteria: Array.isArray(item.acceptance_criteria)
+          ? item.acceptance_criteria
+          : [],
+        dependencies: [],
+        risks: Array.isArray(item.risks) ? item.risks : [],
+        labels: Array.isArray(item.labels) ? item.labels : [],
+        clarification_questions: [],
+        source_chunk_id: updated.source_chunk_id || null,
+        source_snippet: updated.source_snippet || contextSnippet || "",
+      };
+    });
+    insertBacklogItems(existing.project_id, rows);
+  }
+
+  return NextResponse.json({
+    ok: true,
+    item: {
+      ...updated,
+      description: regeneratedDescription,
+      clarification_questions: regeneratedQuestions,
+    },
+    new_items_created: newItems.length,
+  });
 }
 
 export async function DELETE(request, { params }) {

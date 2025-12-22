@@ -17,6 +17,8 @@ export default function TaskModal({
   const [closing, setClosing] = useState(false);
   const [editingDescription, setEditingDescription] = useState(false);
   const [qaList, setQaList] = useState([]);
+  const [regenLoading, setRegenLoading] = useState(false);
+  const [regenStatus, setRegenStatus] = useState("");
   const { t } = useLanguage();
 
   const parseQa = (questions) => {

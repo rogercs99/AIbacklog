@@ -10,3 +10,4 @@ ollama.log
 ollama.pid
 .env.local
 .venv/
+test-results/

@@ -70,8 +70,15 @@ export default function TaskModal({
     setDraft(item);
     setClosing(false);
     setEditingDescription(false);
-    setQaList(parseQa(item?.clarification_questions));
-    setQaEdit({});
+    const parsed = parseQa(item?.clarification_questions);
+    setQaList(parsed);
+    setQaEdit(() => {
+      const state = {};
+      parsed.forEach((qa, idx) => {
+        state[idx] = !qa.answer; // default to editing when unanswered
+      });
+      return state;
+    });
   }, [item]);
 
   if (!item || !draft) {
@@ -348,7 +355,8 @@ export default function TaskModal({
               ) : (
                 <div className="stack">
                   {clarificationQuestions.map((qa, index) => {
-                    const isEditing = qaEdit[index] || !qa.answer;
+                    const isEditing =
+                      qaEdit[index] !== undefined ? qaEdit[index] : !qa.answer;
                     return (
                       <div key={index} className="card" style={{ padding: "10px" }}>
                         <div
@@ -462,7 +470,13 @@ export default function TaskModal({
               <button
                 className="btn btn-outline"
                 type="button"
-                onClick={() => setQaList((prev) => [...prev, { question: "", answer: "" }])}
+                onClick={() =>
+                  setQaList((prev) => {
+                    const next = [...prev, { question: "", answer: "" }];
+                    setQaEdit((edit) => ({ ...edit, [next.length - 1]: true }));
+                    return next;
+                  })
+                }
                 style={{ marginTop: "8px" }}
               >
                 {t("Añadir pregunta/respuesta", "Add question/answer")}

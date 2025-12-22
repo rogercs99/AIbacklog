@@ -65,6 +65,8 @@ export default function ProjectDetailPage({ params }) {
   const [treeExpanded, setTreeExpanded] = useState(new Set(["root"]));
   const [unassignedModalOpen, setUnassignedModalOpen] = useState(false);
   const [unassignedUserStories, setUnassignedUserStories] = useState([]);
+  const [toasts, setToasts] = useState([]);
+  const toastIdRef = useRef(1);
 
   const parseProjectDescription = (value) => {
     if (!value) {
@@ -92,8 +94,25 @@ export default function ProjectDetailPage({ params }) {
     return date.toLocaleString(lang === "en" ? "en-US" : "es-ES");
   };
 
-  const loadProject = async () => {
-    setLoading(true);
+  const addToast = (message, { type = "info", duration = 2800 } = {}) => {
+    const id = toastIdRef.current++;
+    setToasts((prev) => [...prev, { id, message, type }]);
+    if (duration && duration > 0) {
+      window.setTimeout(() => {
+        setToasts((prev) => prev.filter((toast) => toast.id !== id));
+      }, duration);
+    }
+    return id;
+  };
+
+  const removeToast = (id) => {
+    setToasts((prev) => prev.filter((toast) => toast.id !== id));
+  };
+
+  const loadProject = async ({ silent = false } = {}) => {
+    if (!silent) {
+      setLoading(true);
+    }
     setError("");
     setActionError("");
     try {
@@ -106,10 +125,14 @@ export default function ProjectDetailPage({ params }) {
       setProjectName(detail.project?.name || "");
       setProjectDescription(parseProjectDescription(detail.project?.description));
       projectDescriptionRequestedRef.current = false;
+      return detail;
     } catch (err) {
       setError(t("No se pudo cargar el proyecto.", "Could not load the project."));
+      return null;
     } finally {
-      setLoading(false);
+      if (!silent) {
+        setLoading(false);
+      }
     }
   };
 
@@ -234,15 +257,19 @@ export default function ProjectDetailPage({ params }) {
   }, [projectChatMessages, projectChatLoading, projectChatFetching]);
 
   const handleRecalculateProject = async () => {
-    setRecalculateStatus(t("Recalculando contexto...", "Recalculating context..."));
+    const toastId = addToast(t("Recalculando contexto...", "Recalculating context..."), {
+      type: "loading",
+      duration: 0,
+    });
     setRecalculateLoading(true);
+    setRecalculateStatus("");
     try {
       const response = await fetch(`/api/projects/${projectId}/recalculate`, { method: "POST" });
       const payload = await response.json();
       if (!response.ok) {
         throw new Error(payload?.error || "No se pudo recalcular.");
       }
-      await loadProject();
+      await loadProject({ silent: true });
       if (payload?.description) {
         setProjectDescription(payload.description);
         setData((prev) => {
@@ -266,11 +293,14 @@ export default function ProjectDetailPage({ params }) {
         dedupRemoved > 0
           ? ` · ${t("Duplicados eliminados:", "Duplicates removed:")} ${dedupRemoved}`
           : "";
-      setRecalculateStatus(`${t("Contexto actualizado.", "Context updated.")}${suffix}`);
-      window.setTimeout(() => setRecalculateStatus(""), 2400);
+      addToast(`${t("Contexto actualizado.", "Context updated.")}${suffix}`, { type: "success" });
     } catch (err) {
-      setRecalculateStatus(t("No se pudo recalcular.", "Recalculation failed."));
+      addToast(t("No se pudo recalcular.", "Recalculation failed."), {
+        type: "error",
+        duration: 3600,
+      });
     } finally {
+      removeToast(toastId);
       setRecalculateLoading(false);
     }
   };
@@ -718,24 +748,47 @@ export default function ProjectDetailPage({ params }) {
     if (!selectedItem) {
       return;
     }
+    const { keepOpen, ...payload } = updates || {};
     setActionError("");
     setRecalculateStatus("");
     try {
       const response = await fetch(`/api/backlog/${selectedItem.id}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ updates }),
+        body: JSON.stringify({ updates: payload }),
       });
       if (!response.ok) {
         throw new Error(t("No se pudo actualizar", "Could not update"));
       }
-      setSelectedItem(null);
-      await loadProject();
-      // Recalcular contexto en segundo plano
-      setRecalculateStatus(t("Recalculando contexto con las nuevas respuestas...", "Recalculating context with the new answers..."));
-      fetch(`/api/projects/${projectId}/recalculate`, { method: "POST" }).finally(() => {
-        setRecalculateStatus("");
-      });
+      const detail = await loadProject({ silent: Boolean(keepOpen) });
+      if (keepOpen) {
+        const refreshed =
+          detail?.tasks?.find((task) => task.id === selectedItem.id) || selectedItem;
+        setSelectedItem(refreshed);
+      } else {
+        setSelectedItem(null);
+      }
+      const toastId = addToast(
+        t("Recalculando contexto con las nuevas respuestas...", "Recalculating context with the new answers..."),
+        { type: "loading", duration: 0 },
+      );
+      fetch(`/api/projects/${projectId}/recalculate`, { method: "POST" })
+        .then((res) => res.json())
+        .then((payload) => {
+          const dedupRemoved = payload?.dedup?.removed ? Number(payload.dedup.removed) : 0;
+          const suffix =
+            dedupRemoved > 0
+              ? ` · ${t("Duplicados eliminados:", "Duplicates removed:")} ${dedupRemoved}`
+              : "";
+          addToast(`${t("Contexto actualizado.", "Context updated.")}${suffix}`, { type: "success" });
+        })
+        .catch(() => {
+          addToast(
+            t("No se pudo recalcular con las nuevas respuestas.", "Could not recalc with the new answers."),
+            { type: "error", duration: 3600 },
+          );
+        })
+        .finally(() => removeToast(toastId));
     } catch (err) {
       setActionError(t("No se pudo actualizar la tarea.", "Could not update the task."));
     }
@@ -2432,6 +2485,24 @@ export default function ProjectDetailPage({ params }) {
           </div>
         </Portal>
       ) : null}
+      <div className="toast-container" aria-live="polite">
+        {toasts.map((toast) => (
+          <div key={toast.id} className={`toast ${toast.type}`}>
+            <div className="toast-content">
+              {toast.type === "loading" ? <span className="spinner" aria-hidden="true" /> : null}
+              <span>{toast.message}</span>
+            </div>
+            <button
+              className="btn btn-ghost"
+              type="button"
+              aria-label={t("Cerrar notificación", "Close notification")}
+              onClick={() => removeToast(toast.id)}
+            >
+              ×
+            </button>
+          </div>
+        ))}
+      </div>
       <footer className="footer">{t("Req2Backlog AI · Proyecto", "Req2Backlog AI · Project")}</footer>
     </div>
   );

@@ -32,6 +32,17 @@ export default function TaskModal({
     });
   };
 
+  const formatQaList = () =>
+    qaList
+      .map((qa) => {
+        const q = String(qa.question || "").trim();
+        const a = String(qa.answer || "").trim();
+        if (!q && !a) return null;
+        if (!a) return `Q: ${q}`;
+        return `Q: ${q} | A: ${a}`;
+      })
+      .filter(Boolean);
+
   useEffect(() => {
     setDraft(item);
     setClosing(false);
@@ -343,7 +354,25 @@ export default function TaskModal({
                         }}
                         placeholder={t("Escribe la respuesta para el cliente", "Write the answer for the client")}
                       />
-                      <div style={{ display: "flex", gap: "8px", justifyContent: "flex-end" }}>
+                      <div style={{ display: "flex", gap: "8px", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap" }}>
+                        <button
+                          className="btn btn-outline btn-ai"
+                          type="button"
+                          onClick={() => {
+                            onSave?.({
+                              title: draft.title,
+                              status: draft.status,
+                              priority: draft.priority,
+                              area: draft.area,
+                              description: draft.description,
+                              blocked_reason: draft.blocked_reason || "",
+                              clarification_questions: formatQaList(),
+                              keepOpen: true,
+                            });
+                          }}
+                        >
+                          {t("Enviar respuesta", "Submit answer")}
+                        </button>
                         <button
                           className="btn btn-ghost"
                           type="button"
@@ -447,15 +476,7 @@ export default function TaskModal({
                   area: draft.area,
                   description: draft.description,
                   blocked_reason: draft.blocked_reason || "",
-                  clarification_questions: qaList
-                    .map((qa) => {
-                      const q = String(qa.question || "").trim();
-                      const a = String(qa.answer || "").trim();
-                      if (!q && !a) return null;
-                      if (!a) return `Q: ${q}`;
-                      return `Q: ${q} | A: ${a}`;
-                    })
-                    .filter(Boolean),
+                  clarification_questions: formatQaList(),
                 })
               }
             >

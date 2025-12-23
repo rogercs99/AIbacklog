@@ -376,6 +376,41 @@ export default function TaskModal({
                   "Edit the question (pencil) and type the answer below. They are saved in the project.",
                 )}
               </p>
+              <div style={{ display: "flex", gap: "8px", flexWrap: "wrap", alignItems: "center", marginBottom: "8px" }}>
+                <button
+                  className="btn btn-outline btn-ai"
+                  type="button"
+                  onClick={() => {
+                    onSave?.({
+                      title: draft.title,
+                      status: draft.status,
+                      priority: draft.priority,
+                      area: draft.area,
+                      description: draft.description,
+                      blocked_reason: draft.blocked_reason || "",
+                      clarification_questions: formatQaList(),
+                      info_complete: infoComplete ? 1 : 0,
+                      keepOpen: true,
+                    });
+                  }}
+                >
+                  {t("Guardar todas las respuestas", "Save all answers")}
+                </button>
+                {!infoComplete ? (
+                  <button
+                    className="btn btn-ghost"
+                    type="button"
+                    onClick={() => {
+                      setDraft((prev) => ({ ...prev, info_complete: 1 }));
+                      onSave?.({ info_complete: 1, keepOpen: true });
+                    }}
+                  >
+                    {t("Marcar como informada", "Mark as informed")}
+                  </button>
+                ) : (
+                  <span className="badge">{t("Info completa", "Info complete")}</span>
+                )}
+              </div>
               {clarificationQuestions.length === 0 ? (
                 <p className="helper">{t("Sin preguntas pendientes.", "No pending questions.")}</p>
               ) : (
@@ -386,7 +421,7 @@ export default function TaskModal({
                     const isEditing = qaEdit[index] !== undefined ? qaEdit[index] : !answerText;
                     const showQuestionInput = isEditing || !questionText;
                     return (
-                      <div key={index} className="card" style={{ padding: "10px" }}>
+                      <div key={index} className="card qa-card" style={{ padding: "10px" }}>
                         <div
                           style={{
                             display: "flex",

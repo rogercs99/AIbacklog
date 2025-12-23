@@ -60,6 +60,29 @@ function mergeFactsIntoDescription(description = "", facts = []) {
   return `${clean}\n\n${heading}\n${factLines.join("\n")}`;
 }
 
+function normalizeQuestionText(text = "") {
+  return String(text || "")
+    .toLowerCase()
+    .normalize("NFKD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/[^a-z0-9¿?áéíóúüñ\\s]/gi, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+function isSimilarQuestion(a, b) {
+  const na = normalizeQuestionText(a);
+  const nb = normalizeQuestionText(b);
+  if (!na || !nb) return false;
+  if (na === nb) return true;
+  if (na.includes(nb) || nb.includes(na)) return true;
+  const setA = new Set(na.split(" "));
+  const setB = new Set(nb.split(" "));
+  const intersection = [...setA].filter((w) => setB.has(w));
+  const score = intersection.length / Math.max(setA.size, setB.size, 1);
+  return score >= 0.6;
+}
+
 function propagateAnswersToSiblings(db, projectId, sourceItemId, qaList, now) {
   const answered = parseQaList(qaList).filter((qa) => qa.answer);
   if (!answered.length) return { touched: 0, updated_descriptions: 0 };
@@ -84,9 +107,7 @@ function propagateAnswersToSiblings(db, projectId, sourceItemId, qaList, now) {
       const appliedFacts = [];
       list.forEach((qa) => {
         if (qa.answer) return;
-        const match = answered.find(
-          (fact) => fact.question.toLowerCase() === String(qa.question || "").trim().toLowerCase(),
-        );
+        const match = answered.find((fact) => isSimilarQuestion(fact.question, qa.question));
         if (match) {
           qa.answer = match.answer;
           changed = true;

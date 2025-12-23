@@ -21,6 +21,29 @@ function safeString(value) {
   return typeof value === "string" ? value.trim() : "";
 }
 
+function normalizeQuestionText(text = "") {
+  return String(text || "")
+    .toLowerCase()
+    .normalize("NFKD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/[^a-z0-9¿?áéíóúüñ\\s]/gi, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+function isSimilarQuestion(a, b) {
+  const na = normalizeQuestionText(a);
+  const nb = normalizeQuestionText(b);
+  if (!na || !nb) return false;
+  if (na === nb) return true;
+  if (na.includes(nb) || nb.includes(na)) return true;
+  const setA = new Set(na.split(" "));
+  const setB = new Set(nb.split(" "));
+  const intersection = [...setA].filter((w) => setB.has(w));
+  const score = intersection.length / Math.max(setA.size, setB.size, 1);
+  return score >= 0.6;
+}
+
 function parseJson(value, fallback = []) {
   try {
     return value ? JSON.parse(value) : fallback;
@@ -99,6 +122,149 @@ function appendHistory(existingHistory, entry, limit = 12) {
   const history = Array.isArray(existingHistory) ? [...existingHistory] : [];
   history.push(entry);
   return history.slice(-limit);
+}
+
+async function dedupeQuestionsAcrossProject(db, projectId) {
+  const rows = db
+    .prepare(
+      "SELECT id, type, parent_id, epic_key, title, description, description_history_json, updated_at, clarification_questions_json FROM backlog_items WHERE project_id = ?",
+    )
+    .all(projectId);
+
+  const specificity = (type) => {
+    const t = String(type || "").toLowerCase();
+    if (t === "task") return 3;
+    if (t === "story") return 2;
+    if (t === "epic") return 1;
+    return 0;
+  };
+
+  const items = rows.map((row) => ({
+    ...row,
+    qa: parseQaList(row.clarification_questions_json || []),
+  }));
+
+  const groups = new Map();
+  items.forEach((item) => {
+    item.qa.forEach((qa, idx) => {
+      const key = normalizeQuestionText(qa.question);
+      if (!key) return;
+      if (!groups.has(key)) groups.set(key, []);
+      groups.get(key).push({ item, qaIndex: idx });
+    });
+  });
+
+  const applyGroups = (groupList) => {
+    groupList.forEach((entries) => {
+      if (!entries || entries.length <= 1) return;
+      const winner = entries
+        .slice()
+        .sort((a, b) => specificity(b.item.type) - specificity(a.item.type))[0];
+      const winningQa = winner.item.qa[winner.qaIndex];
+      entries.forEach((entry) => {
+        if (entry === winner) return;
+        const qa = entry.item.qa[entry.qaIndex];
+        if (!winningQa.answer && qa.answer) {
+          winningQa.answer = qa.answer;
+        }
+        entry.item.qa.splice(entry.qaIndex, 1);
+      });
+    });
+  };
+
+  applyGroups([...groups.values()]);
+
+  // AI grouping
+  const flatQuestions = [];
+  items.forEach((item) => {
+    item.qa.forEach((qa, idx) => {
+      flatQuestions.push({
+        id: `${item.id}-${idx}`,
+        question: qa.question,
+        type: item.type,
+        title: item.title,
+      });
+    });
+  });
+
+  if (flatQuestions.length > 1 && flatQuestions.length <= 40) {
+    const prompt = [
+      "Agrupa preguntas equivalentes (mismo significado). Devuelve JSON: { \"groups\": [[\"id1\",\"id2\"], ...] }",
+      "Usa solo ids provistos. No inventes preguntas.",
+      "Preguntas:",
+      JSON.stringify(
+        flatQuestions.map((q) => ({
+          id: q.id,
+          question: q.question,
+          item_type: q.type,
+          item_title: q.title,
+        })),
+        null,
+        2,
+      ),
+    ].join("\n");
+
+    try {
+      const ai = await callAI({
+        system: "Eres un analista que agrupa preguntas duplicadas. Solo responde JSON válido.",
+        user: prompt,
+        maxTokens: 400,
+        temperature: 0.1,
+      });
+      if (ai?.groups && Array.isArray(ai.groups)) {
+        const entryMap = new Map();
+        items.forEach((item) => {
+          item.qa.forEach((qa, idx) => entryMap.set(`${item.id}-${idx}`, { item, qaIndex: idx }));
+        });
+        const aiGroups = ai.groups
+          .map((grp) => (Array.isArray(grp) ? grp.map((id) => entryMap.get(String(id))).filter(Boolean) : []))
+          .filter((grp) => grp.length > 1);
+        applyGroups(aiGroups);
+      }
+    } catch (error) {
+      // silencioso
+    }
+  }
+
+  // Persist
+  const update = db.prepare(
+    "UPDATE backlog_items SET clarification_questions_json = ?, description = ?, description_history_json = ?, updated_at = ? WHERE id = ?",
+  );
+  const now = new Date().toISOString();
+  let updated = 0;
+  items.forEach((item) => {
+    const original = rows.find((r) => r.id === item.id);
+    if (!original) return;
+    const nextQuestions = serializeQaList(item.qa);
+    const prevQa = parseQaList(original.clarification_questions_json || []);
+    const answersAdded =
+      item.qa.filter((qa) => qa.answer).length > prevQa.filter((qa) => qa.answer).length;
+    let nextDescription = item.description || original.description || "";
+    if (answersAdded) {
+      const facts = item.qa.filter((qa) => qa.answer).map((qa) => `${qa.question}: ${qa.answer}`);
+      nextDescription = mergeFactsIntoDescription(nextDescription, facts);
+    }
+    const prevHistory = parseJson(original.description_history_json, []);
+    const nextHistory = appendHistory(
+      prevHistory.length ? prevHistory : [{ source: "ingest", text: original.description || "", at: original.updated_at || now }],
+      { source: "qa-dedupe", text: nextDescription, at: now },
+    );
+    if (
+      JSON.stringify(nextQuestions) !== JSON.stringify(prevQa.map((qa) => qa.question ? `Q: ${qa.question}${qa.answer ? ` | A: ${qa.answer}` : ""}` : "")) ||
+      nextDescription !== (original.description || "")
+    ) {
+      updated += 1;
+      update.run(
+        JSON.stringify(nextQuestions),
+        nextDescription,
+        JSON.stringify(nextHistory),
+        now,
+        item.id,
+      );
+    }
+  });
+
+  return { updated };
 }
 
 function applyConfirmedFactsToBacklog(db, projectId, memory) {
@@ -376,6 +542,7 @@ export async function POST(request, { params }) {
 
   const dedup = deduplicateBacklog(db, projectId);
   const applied = applyConfirmedFactsToBacklog(db, projectId, mergedMemory || currentMemory);
+  const qaDedupe = await dedupeQuestionsAcrossProject(db, projectId);
 
   return NextResponse.json({
     description,
@@ -383,5 +550,6 @@ export async function POST(request, { params }) {
     generated: true,
     dedup,
     qa_autofill: applied,
+    qa_dedupe: qaDedupe,
   });
 }

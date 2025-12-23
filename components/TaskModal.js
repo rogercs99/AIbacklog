@@ -83,8 +83,8 @@ export default function TaskModal({
     setQaEdit(() => {
       const state = {};
       parsed.forEach((qa, idx) => {
-        const hasQuestion = Boolean(String(qa.question || "").trim());
-        state[idx] = !hasQuestion; // only force edit when question is empty
+        const hasAnswer = Boolean(String(qa.answer || "").trim());
+        state[idx] = !hasAnswer; // editar por defecto si está sin responder
       });
       return state;
     });
@@ -383,7 +383,7 @@ export default function TaskModal({
                   {clarificationQuestions.map((qa, index) => {
                     const questionText = String(qa.question || "").trim();
                     const answerText = String(qa.answer || "").trim();
-                    const isEditing = Boolean(qaEdit[index]);
+                    const isEditing = qaEdit[index] !== undefined ? qaEdit[index] : !answerText;
                     const showQuestionInput = isEditing || !questionText;
                     return (
                       <div key={index} className="card" style={{ padding: "10px" }}>
@@ -422,23 +422,6 @@ export default function TaskModal({
                               }}
                               placeholder={t("Escribe la pregunta", "Write the question")}
                             />
-                          </>
-                        ) : (
-                          <>
-                            <p style={{ marginTop: "4px", fontWeight: 600 }}>
-                              {questionText || t("Pregunta sin texto", "Question with no text")}
-                            </p>
-                          </>
-                        )}
-                        {answerText && !isEditing ? (
-                          <>
-                            <p className="helper">{t("Respondida", "Answered")}</p>
-                            <div className="card" style={{ background: "rgba(255,255,255,0.03)" }}>
-                              <p style={{ margin: 0 }}>{answerText}</p>
-                            </div>
-                          </>
-                        ) : (
-                          <>
                             <label className="helper">{t("Respuesta", "Answer")}</label>
                             <textarea
                               value={qa.answer || ""}
@@ -492,6 +475,36 @@ export default function TaskModal({
                                 {t("Eliminar", "Delete")}
                               </button>
                             </div>
+                          </>
+                        ) : (
+                          <>
+                            <p style={{ marginTop: "4px", fontWeight: 600 }}>
+                              {questionText || t("Pregunta sin texto", "Question with no text")}
+                            </p>
+                            {answerText ? (
+                              <>
+                                <p className="helper">{t("Respondida", "Answered")}</p>
+                                <div className="card" style={{ background: "rgba(255,255,255,0.03)" }}>
+                                  <p style={{ margin: 0 }}>{answerText}</p>
+                                </div>
+                              </>
+                            ) : (
+                              <p className="helper">{t("Pendiente de respuesta", "Pending answer")}</p>
+                            )}
+                            <div style={{ display: "flex", gap: "8px", marginTop: "6px" }}>
+                              <button
+                                className="btn btn-outline btn-ai"
+                                type="button"
+                                onClick={() => setQaEdit((prev) => ({ ...prev, [index]: true }))}
+                              >
+                                {t("Responder/editar", "Answer/edit")}
+                              </button>
+                            </div>
+                          </>
+                        )}
+                        {answerText && !isEditing ? null : (
+                          <>
+                            {/* Botones ya incluidos en la rama de edición */}
                           </>
                         )}
                       </div>

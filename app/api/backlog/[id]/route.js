@@ -7,7 +7,7 @@ import {
   getLatestDocument,
 } from "@/lib/db";
 import { callAI } from "@/lib/ai";
-import { extractAnsweredFacts, mergeQaLists, serializeQaList } from "@/lib/qa";
+import { extractAnsweredFacts, mergeQaLists, parseQaList, serializeQaList } from "@/lib/qa";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -58,6 +58,59 @@ function mergeFactsIntoDescription(description = "", facts = []) {
   }
 
   return `${clean}\n\n${heading}\n${factLines.join("\n")}`;
+}
+
+function propagateAnswersToSiblings(db, projectId, sourceItemId, qaList, now) {
+  const answered = parseQaList(qaList).filter((qa) => qa.answer);
+  if (!answered.length) return { touched: 0, updated_descriptions: 0 };
+
+  const rows = db
+    .prepare(
+      "SELECT id, description, description_history_json, updated_at, clarification_questions_json FROM backlog_items WHERE project_id = ? AND id != ?",
+    )
+    .all(projectId, sourceItemId);
+
+  const update = db.prepare(
+    "UPDATE backlog_items SET clarification_questions_json = ?, description = ?, description_history_json = ?, updated_at = ? WHERE id = ?",
+  );
+
+  let touched = 0;
+  let updatedDescriptions = 0;
+
+  const tx = db.transaction(() => {
+    rows.forEach((row) => {
+      const list = parseQaList(row.clarification_questions_json || []);
+      let changed = false;
+      const appliedFacts = [];
+      list.forEach((qa) => {
+        if (qa.answer) return;
+        const match = answered.find(
+          (fact) => fact.question.toLowerCase() === String(qa.question || "").trim().toLowerCase(),
+        );
+        if (match) {
+          qa.answer = match.answer;
+          changed = true;
+          appliedFacts.push(`${qa.question}: ${match.answer}`);
+        }
+      });
+      if (!changed) return;
+      const nextQuestions = serializeQaList(list);
+      const nextDescription = mergeFactsIntoDescription(row.description || "", appliedFacts);
+      const prevHistory = parseJson(row.description_history_json, []);
+      const nextHistory = appendHistory(
+        prevHistory.length ? prevHistory : [{ source: "ingest", text: row.description || "", at: row.updated_at || now }],
+        { source: "qa-propagated-sibling", text: nextDescription, at: now },
+      );
+      if (nextDescription !== String(row.description || "").trim()) {
+        updatedDescriptions += 1;
+      }
+      update.run(JSON.stringify(nextQuestions), nextDescription, JSON.stringify(nextHistory), now, row.id);
+      touched += 1;
+    });
+  });
+  tx();
+
+  return { touched, updated_descriptions: updatedDescriptions };
 }
 
 export async function PATCH(request, { params }) {
@@ -318,6 +371,28 @@ export async function PATCH(request, { params }) {
           description_history_json: JSON.stringify(nextParentHistory),
         });
       });
+    }
+
+    // Propagar respuestas a otros items con la misma pregunta (misma redacción)
+    propagateAnswersToSiblings(db, before.project_id, id, regeneratedQuestions, now);
+  }
+
+  // Si no hubo cambios en QA, aseguramos guardar las respuestas actuales y reflejar hechos en la descripción.
+  if (!qaChanged) {
+    const facts = extractAnsweredFacts(regeneratedQuestions);
+    const mergedDesc = mergeFactsIntoDescription(regeneratedDescription || updated?.description || "", facts);
+    const nextHistory = appendHistory(baseHistory, {
+      source: "qa",
+      text: mergedDesc || updated?.description || "",
+      at: now,
+    });
+    updateBacklogItem(id, {
+      description: mergedDesc,
+      clarification_questions_json: JSON.stringify(regeneratedQuestions || []),
+      description_history_json: JSON.stringify(nextHistory),
+    });
+    if (facts.length) {
+      propagateAnswersToSiblings(db, before.project_id, id, regeneratedQuestions, now);
     }
   }
 

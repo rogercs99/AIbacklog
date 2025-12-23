@@ -63,7 +63,7 @@ export default function ProjectDetailPage({ params }) {
   });
   const [treeOpen, setTreeOpen] = useState(false);
   const [treeExpanded, setTreeExpanded] = useState(new Set(["root"]));
-  const [unassignedModalOpen, setUnassignedModalOpen] = useState(false);
+  const [showUnassignedInline, setShowUnassignedInline] = useState(false);
   const [unassignedUserStories, setUnassignedUserStories] = useState([]);
   const [toasts, setToasts] = useState([]);
   const toastIdRef = useRef(1);
@@ -471,6 +471,14 @@ export default function ProjectDetailPage({ params }) {
     allStories.forEach((story) => map.set(story.id, story));
     return map;
   }, [allStories]);
+  const allStoryOptions = useMemo(() => {
+    return allStories
+      .map((story) => ({
+        id: story.id,
+        label: `${story.external_id || ""} · ${story.title}`,
+      }))
+      .sort((a, b) => a.label.localeCompare(b.label));
+  }, [allStories]);
   const orphanUserStories = useMemo(() => {
     return tasks.filter((task) => {
       const typeLower = String(task.type || "").toLowerCase();
@@ -495,9 +503,7 @@ export default function ProjectDetailPage({ params }) {
 
   useEffect(() => {
     setUnassignedUserStories(orphanUserStories);
-    if (orphanUserStories.length > 0) {
-      setUnassignedModalOpen(true);
-    }
+    // No auto-modal: solo avisamos y el usuario abre la sección cuando quiera.
   }, [orphanUserStories]);
 
   const epicGroups = useMemo(() => {
@@ -1495,9 +1501,11 @@ export default function ProjectDetailPage({ params }) {
             <button
               className="btn btn-ghost"
               type="button"
-              onClick={() => setUnassignedModalOpen(true)}
+              onClick={() => setShowUnassignedInline((prev) => !prev)}
             >
-              {t("Revisar ahora", "Review now")}
+              {showUnassignedInline
+                ? t("Ocultar", "Hide")
+                : t("Revisar ahora", "Review now")}
             </button>
           </div>
         ) : null}
@@ -2449,64 +2457,51 @@ export default function ProjectDetailPage({ params }) {
           </div>
         </Portal>
       ) : null}
-      {unassignedModalOpen ? (
-        <Portal>
-          <div className="tree-overlay" onClick={() => setUnassignedModalOpen(false)}>
-            <div className="tree-panel" onClick={(e) => e.stopPropagation()}>
-              <div className="tree-panel-header">
-                <div>
-                  <div className="badge danger">{t("US sin feature", "US without feature")}</div>
-                  <h3>{t("Reasigna las US pendientes", "Reassign pending US")}</h3>
-                  <p className="helper">
-                    {t(
-                      "Selecciona la feature a la que debe pertenecer cada US. Si no existe, crea una nueva feature y vuelve a intentar.",
-                      "Select the feature each US should belong to. If it does not exist, create a feature and try again.",
-                    )}
-                  </p>
-                </div>
-                <button className="btn btn-ghost" type="button" onClick={() => setUnassignedModalOpen(false)}>
-                  {t("Cerrar", "Close")}
-                </button>
-              </div>
-              <div className="tree-panel-body">
-                {unassignedUserStories.length === 0 ? (
-                  <p className="helper">{t("No hay US pendientes.", "No pending US.")}</p>
-                ) : (
-                  <div className="stack">
-                    {unassignedUserStories.map((us) => (
-                      <div key={us.id} className="card">
-                        <div style={{ display: "flex", justifyContent: "space-between", gap: "10px", alignItems: "center" }}>
-                          <div>
-                            <div className="badge danger">{us.external_id}</div>
-                            <h4>{us.title}</h4>
-                            <p className="helper">{us.description || t("Sin descripción", "No description")}</p>
-                          </div>
-                          <div style={{ minWidth: "240px" }}>
-                            <label className="helper">{t("Asignar a feature", "Assign to feature")}</label>
-                            <select
-                              className="input"
-                              value=""
-                              onChange={(event) =>
-                                handleReassignOrphan(us.id, event.target.value)
-                              }
-                            >
-                              <option value="">{t("Elige una feature", "Choose a feature")}</option>
-                              {allStories.map((story) => (
-                                <option key={story.id} value={story.id}>
-                                  {story.external_id} · {story.title}
-                                </option>
-                              ))}
-                            </select>
-                          </div>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
+      {showUnassignedInline && unassignedUserStories.length > 0 ? (
+        <div className="card" style={{ margin: "16px 0" }}>
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: "12px", flexWrap: "wrap" }}>
+            <div>
+              <div className="badge danger">{t("US sin feature", "US without feature")}</div>
+              <p className="helper" style={{ margin: 0 }}>
+                {t(
+                  "Reasigna cada US a una feature. No se abre modal, se actualiza en línea.",
+                  "Reassign each US to a feature. Inline update without modal.",
                 )}
-              </div>
+              </p>
             </div>
+            <button className="btn btn-ghost" type="button" onClick={() => setShowUnassignedInline(false)}>
+              {t("Cerrar sección", "Close section")}
+            </button>
           </div>
-        </Portal>
+          <div className="stack" style={{ marginTop: "10px" }}>
+            {unassignedUserStories.map((us) => (
+              <div key={us.id} className="card">
+                <div style={{ display: "flex", justifyContent: "space-between", gap: "10px", alignItems: "center", flexWrap: "wrap" }}>
+                  <div style={{ minWidth: "240px" }}>
+                    <div className="badge danger">{us.external_id}</div>
+                    <h4>{us.title}</h4>
+                    <p className="helper">{us.description || t("Sin descripción", "No description")}</p>
+                  </div>
+                  <div style={{ minWidth: "260px", flex: 1 }}>
+                    <label className="helper">{t("Asignar a feature", "Assign to feature")}</label>
+                    <select
+                      className="input"
+                      defaultValue=""
+                      onChange={(event) => handleReassignOrphan(us.id, event.target.value)}
+                    >
+                      <option value="">{t("Elige una feature", "Choose a feature")}</option>
+                      {allStoryOptions.map((story) => (
+                        <option key={story.id} value={story.id}>
+                          {story.label}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
       ) : null}
       <Portal>
         <div className="toast-container" aria-live="polite">

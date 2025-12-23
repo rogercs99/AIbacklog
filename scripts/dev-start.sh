@@ -8,14 +8,18 @@ if [ ! -d "node_modules" ]; then
   npm install
 fi
 
+# Parar instancia previa si sigue viva
 if [ -f "dev.pid" ]; then
   PID="$(cat dev.pid || true)"
   if [ -n "${PID}" ] && kill -0 "${PID}" 2>/dev/null; then
-    echo "Dev server ya está corriendo (PID=${PID})."
-    exit 0
+    kill "${PID}" || true
   fi
   rm -f dev.pid
 fi
+
+# Limpia artefactos para evitar errores de webpack-runtime (./xyz.js missing)
+rm -rf .next
+rm -f dev.log
 
 nohup npm run dev > dev.log 2>&1 & echo $! > dev.pid
 

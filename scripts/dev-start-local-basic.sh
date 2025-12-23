@@ -16,6 +16,10 @@ if [ -f "dev.pid" ]; then
   rm -f dev.pid
 fi
 
+# Limpia artefactos para evitar errores de webpack-runtime (./xyz.js missing)
+rm -rf .next
+rm -f dev.log
+
 echo "Iniciando en modo LOCAL_AI_MODE=basic (sin llamadas externas)..."
 
 LOCAL_AI_MODE=basic \

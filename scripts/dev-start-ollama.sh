@@ -18,6 +18,10 @@ if [ -f "dev.pid" ]; then
   rm -f dev.pid
 fi
 
+# Limpia artefactos para evitar errores de webpack-runtime (./xyz.js missing)
+rm -rf .next
+rm -f dev.log
+
 echo "Iniciando app contra Ollama (modelo: $MODEL)"
 echo "Asegúrate de tener Ollama corriendo y el modelo descargado:"
 echo "  scripts/start-ollama.sh"

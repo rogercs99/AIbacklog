@@ -89,13 +89,17 @@ export async function POST(request, { params }) {
       ``,
       `REGLAS:`,
       `- NO elimines informacion previa de descripcion_actual: integrala.`,
+      `- Usa Markdown bien estructurado: titulos (##), listas y tablas si aportan claridad.`,
+      `- Incluye sección "**Información confirmada**" con bullets si hay respuestas.`,
       `- suggested_questions solo debe incluir preguntas nuevas (sin duplicar preguntas_existentes).`,
       `- No menciones modelos ni IA.`,
     ].join("\n");
     try {
       const ai = await callAI({ system, user, maxTokens: 600 });
       if (typeof ai?.description === "string" && ai.description.trim().length >= 60 && !/^Q[:=]/i.test(ai.description.trim())) {
-        description = ai.description.trim();
+        const facts = extractAnsweredFacts(clarification_questions);
+        const merged = mergeFactsIntoDescription(ai.description.trim(), facts);
+        description = merged || ai.description.trim();
       }
       const suggested = Array.isArray(ai?.suggested_questions)
         ? ai.suggested_questions

@@ -766,12 +766,17 @@ export default function ProjectDetailPage({ params }) {
       if (!response.ok) {
         throw new Error(t("No se pudo actualizar", "Could not update"));
       }
-      const detail = await loadProject({ silent: Boolean(keepOpen) });
       if (keepOpen) {
-        const refreshed =
-          detail?.tasks?.find((task) => task.id === selectedItem.id) || selectedItem;
-        setSelectedItem(refreshed);
+        // Mantener el modal sin recargar toda la página para no perder el texto en edición
+        setSelectedItem((prev) => ({
+          ...prev,
+          ...payload,
+          clarification_questions: payload.clarification_questions || prev?.clarification_questions,
+        }));
+        // Refrescar datos en background sin tocar el estado del modal
+        loadProject({ silent: true });
       } else {
+        await loadProject();
         setSelectedItem(null);
       }
       const toastId = addToast(

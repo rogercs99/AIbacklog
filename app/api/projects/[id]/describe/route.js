@@ -88,9 +88,9 @@ export async function GET(request, { params }) {
   });
 
   const system =
-    "Eres un consultor de negocio y producto. Tu objetivo es explicar un proyecto de manera formal, clara y sin tecnicismos.";
+    "Eres un consultor de negocio y producto. Tu objetivo es explicar un proyecto de manera formal, clara y sin tecnicismos. Usa Markdown bien estructurado: títulos (##), listas y tablas cuando ayuden.";
 
-  const user = `Genera una descripción ejecutiva de este proyecto para que alguien no técnico entienda de qué va y qué se está construyendo.\n\nREGLAS:\n- No inventes funcionalidades que no estén respaldadas por el contexto.\n- Evita jerga técnica.\n- Usa Markdown: 1-2 párrafos + lista de bullets (3-6) para el alcance + lista de (3-6) preguntas a cliente.\n- Devuelve SOLO JSON válido (sin texto extra, sin \`\`\`).\n\nOUTPUT JSON:\n{\n  \"description_es\": \"...\",\n  \"description_en\": \"...\"\n}\n\nCONTEXTO:\n- Nombre del proyecto: ${project.name}\n- Memoria/Contexto guardado: ${memoryRow?.memory ? snippet(memoryRow.memory, 520) : "N/A"}\n- Último documento (${latestDoc?.version || "N/A"}): ${latestDoc?.text ? snippet(latestDoc.text, 520) : "N/A"}\n- Backlog (muestra):\n${backlogLines.length ? backlogLines.join("\n") : "- N/A"}\n\nRecuerda: sin tecnicismos, tono corporativo, y que se entienda rápido.`;
+  const user = `Genera una descripción ejecutiva de este proyecto para que alguien no técnico entienda de qué va y qué se está construyendo.\n\nREGLAS:\n- No inventes funcionalidades que no estén respaldadas por el contexto.\n- Evita jerga técnica.\n- Usa Markdown: 1-2 párrafos + secciones con títulos (##) + lista de bullets (3-6) para el alcance + lista de (3-6) preguntas a cliente.\n- Si ayuda, incluye una tabla simple (2-3 columnas) con entregables o riesgos.\n- Devuelve SOLO JSON válido (sin texto extra, sin \`\`\`).\n\nOUTPUT JSON:\n{\n  \"description_es\": \"...\",\n  \"description_en\": \"...\"\n}\n\nCONTEXTO:\n- Nombre del proyecto: ${project.name}\n- Memoria/Contexto guardado: ${memoryRow?.memory ? snippet(memoryRow.memory, 520) : "N/A"}\n- Último documento (${latestDoc?.version || "N/A"}): ${latestDoc?.text ? snippet(latestDoc.text, 520) : "N/A"}\n- Backlog (muestra):\n${backlogLines.length ? backlogLines.join("\n") : "- N/A"}\n\nRecuerda: sin tecnicismos, tono corporativo, y que se entienda rápido.`;
 
   let result;
   try {
@@ -121,4 +121,3 @@ export async function GET(request, { params }) {
 
   return NextResponse.json({ description, generated: true });
 }
-

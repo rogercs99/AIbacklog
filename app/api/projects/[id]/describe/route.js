@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { callAI } from "@/lib/ai";
 import { getDb } from "@/lib/db";
+import { parseQaList, serializeQaList } from "@/lib/qa";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -37,6 +38,54 @@ function normalizeMarkdown(text) {
     .trim();
 }
 
+function buildLocalDescription({ project, memory, latestDoc, backlog, answeredFacts }) {
+  const factsSection = answeredFacts.length
+    ? [
+        "## Información confirmada",
+        "",
+        ...answeredFacts.map((fact) => `- ${fact}`),
+      ]
+    : [];
+
+  const backlogTable = backlog.length
+    ? [
+        "| ID | Tipo | Título | Estado | Prioridad | Área |",
+        "| --- | --- | --- | --- | --- | --- |",
+        ...backlog
+          .slice(0, 12)
+          .map(
+            (item) =>
+              `| ${item.external_id || "-"} | ${item.type || "-"} | ${snippet(item.title || "", 60)} | ${item.status || "-"} | ${item.priority || "-"} | ${item.area || "-"} |`,
+          ),
+      ]
+    : [];
+
+  const description_es = [
+    `## Resumen del proyecto`,
+    ``,
+    `Este proyecto organiza requerimientos en subproyectos y tareas trazables.`,
+    ``,
+    `- Memoria: ${memory ? snippet(memory, 260) : "sin memoria guardada"}`,
+    latestDoc?.text ? `- Último documento (${latestDoc.version || "v?"}): ${snippet(latestDoc.text, 260)}` : "- No hay documentos",
+    `- Backlog cargado: ${backlog.length} elementos`,
+    ``,
+    "## Alcance y organización",
+    "",
+    "- Backlog estructurado en iniciativas/funcionalidades y US técnicas.",
+    "- Preguntas pendientes se guardan como QA por cada elemento.",
+    "- Exportación lista para Jira/Rally vía CSV.",
+    "",
+    ...factsSection,
+    factsSection.length ? "" : "",
+    backlogTable.length ? "## Vista rápida de backlog" : "",
+    ...backlogTable,
+  ]
+    .filter(Boolean)
+    .join("\n");
+
+  return { description_es, description_en: "" };
+}
+
 export async function GET(request, { params }) {
   const projectId = Number(params?.id);
   if (!projectId) {
@@ -68,7 +117,7 @@ export async function GET(request, { params }) {
   const backlog = db
     .prepare(
       `
-        SELECT external_id, type, title, area, priority, status
+        SELECT external_id, type, title, area, priority, status, clarification_questions_json
         FROM backlog_items
         WHERE project_id = ?
         ORDER BY id ASC
@@ -76,6 +125,13 @@ export async function GET(request, { params }) {
       `,
     )
     .all(projectId);
+
+  const answeredFacts = backlog
+    .flatMap((item) =>
+      parseQaList(item.clarification_questions_json || []).filter((qa) => qa.answer).map((qa) => `${qa.question}: ${qa.answer}`),
+    )
+    .filter(Boolean)
+    .slice(0, 20);
 
   const backlogLines = backlog.map((item) => {
     const id = item.external_id || "";
@@ -96,10 +152,18 @@ export async function GET(request, { params }) {
   try {
     result = await callAI({ system, user, maxTokens: 900, temperature: 0.2 });
   } catch (error) {
-    return NextResponse.json(
-      { error: error.message || "No se pudo generar la descripción." },
-      { status: 500 },
+    const fallback = buildLocalDescription({
+      project,
+      memory: memoryRow?.memory || "",
+      latestDoc,
+      backlog,
+      answeredFacts,
+    });
+    db.prepare("UPDATE projects SET description = ? WHERE id = ?").run(
+      JSON.stringify(fallback),
+      projectId,
     );
+    return NextResponse.json({ description: fallback, generated: false, fallback: true });
   }
 
   const description = {
@@ -108,10 +172,18 @@ export async function GET(request, { params }) {
   };
 
   if (!description.description_es && !description.description_en) {
-    return NextResponse.json(
-      { error: "La IA no devolvió una descripción." },
-      { status: 500 },
+    const fallback = buildLocalDescription({
+      project,
+      memory: memoryRow?.memory || "",
+      latestDoc,
+      backlog,
+      answeredFacts,
+    });
+    db.prepare("UPDATE projects SET description = ? WHERE id = ?").run(
+      JSON.stringify(fallback),
+      projectId,
     );
+    return NextResponse.json({ description: fallback, generated: false, fallback: true });
   }
 
   db.prepare("UPDATE projects SET description = ? WHERE id = ?").run(

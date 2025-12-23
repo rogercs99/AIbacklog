@@ -64,7 +64,8 @@ export async function POST(request, { params }) {
       contextSnippet,
     );
     if (detail.description) {
-      description = detail.description;
+      const facts = extractAnsweredFacts(clarification_questions);
+      description = mergeFactsIntoDescription(detail.description, facts);
     }
     const mergedQa = mergeQaLists(clarification_questions, detail.clarification_questions || []);
     clarification_questions = serializeQaList(mergedQa);

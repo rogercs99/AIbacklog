@@ -3,7 +3,6 @@ import {
   getDb,
   updateBacklogItem,
   getNextExternalId,
-  insertBacklogItems,
   getLatestDocument,
 } from "@/lib/db";
 import { callAI } from "@/lib/ai";
@@ -417,63 +416,13 @@ export async function PATCH(request, { params }) {
     }
   }
 
-  // Crear nuevos sub-items si se propusieron
+  // Guardar sugerencias de nuevos sub-items para revisión en UI (no se insertan automáticamente)
   if (newItems.length) {
-    let nextId = getNextExternalId(before.project_id);
-    let counter = Number(nextId.replace(/[^0-9]/g, "")) || 1;
-    const nextExternalId = () => {
-      const id = `T-${String(counter).padStart(3, "0")}`;
-      counter += 1;
-      return id;
-    };
-
-    const existingType = String(before.type || "").toLowerCase();
-
-    const resolveParent = (newTypeLower) => {
-      if (newTypeLower === "story") {
-        if (existingType === "epic") {
-          return { parent_id: before.id, epic_key: before.external_id };
-        }
-        return { parent_id: before.parent_id || before.id || null, epic_key: before.epic_key || null };
-      }
-      // task por defecto
-      if (existingType === "story") {
-        return { parent_id: before.id, epic_key: before.epic_key || null };
-      }
-      if (existingType === "epic") {
-        return { parent_id: before.id, epic_key: before.external_id };
-      }
-      return { parent_id: before.parent_id || before.id || null, epic_key: before.epic_key || null };
-    };
-
-    const rows = newItems.map((item) => {
-      const newTypeLower = String(item.type || "Task").toLowerCase();
-      const parentInfo = resolveParent(newTypeLower);
-      const title = stripTypePrefix(item.title);
-      return {
-        external_id: nextExternalId(),
-        type: newTypeLower === "story" ? "Story" : "Task",
-        parent_id: parentInfo.parent_id,
-        epic_key: parentInfo.epic_key,
-        title: title || item.title,
-        description: item.description || item.title,
-        area: item.area || before.area || "other",
-        priority: item.priority || "Medium",
-        story_points: null,
-        estimate_hours: null,
-        status: "todo",
-        acceptance_criteria: Array.isArray(item.acceptance_criteria)
-          ? item.acceptance_criteria
-          : [],
-        dependencies: [],
-        risks: Array.isArray(item.risks) ? item.risks : [],
-        labels: Array.isArray(item.labels) ? item.labels : [],
-        clarification_questions: [],
-        source_chunk_id: updated.source_chunk_id || null,
-        source_snippet: updated.source_snippet || contextSnippet || "",
-      };
-    });
-    insertBacklogItems(before.project_id, rows);
+    const nowIso = new Date().toISOString();
+    db.prepare("DELETE FROM suggested_items WHERE project_id = ?").run(before.project_id);
+    db.prepare(
+      "INSERT INTO suggested_items (project_id, source_item_id, items_json, created_at) VALUES (?, ?, ?, ?)",
+    ).run(before.project_id, before.id, JSON.stringify(newItems), nowIso);
   }
 
   const finalItem = db.prepare("SELECT * FROM backlog_items WHERE id = ? LIMIT 1").get(id);
@@ -487,7 +436,7 @@ export async function PATCH(request, { params }) {
         ? regeneratedQuestions
         : parseJson(finalItem?.clarification_questions_json, []),
     },
-    new_items_created: newItems.length,
+    suggested_items: newItems.length,
   });
 }
 

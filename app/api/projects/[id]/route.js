@@ -49,6 +49,12 @@ export async function GET(request, { params }) {
     clarification_questions: parseJsonField(item.clarification_questions_json),
   }));
 
+  const suggestionsRow = db
+    .prepare(
+      "SELECT items_json, source_item_id, created_at FROM suggested_items WHERE project_id = ? ORDER BY id DESC LIMIT 1",
+    )
+    .get(projectId);
+
   const epics = backlog.filter((item) => (item.type || "").toLowerCase() === "epic");
   let subprojects = epics.map((epic) => {
     const directChildren = backlog.filter((item) => item.parent_id === epic.id);
@@ -101,6 +107,7 @@ export async function GET(request, { params }) {
     epics,
     subprojects,
     tasks,
+    suggestions: suggestionsRow ? parseJsonField(suggestionsRow.items_json, []) : [],
     stats: {
       documents: documentsWithInsights.length,
       backlog: backlog.length,

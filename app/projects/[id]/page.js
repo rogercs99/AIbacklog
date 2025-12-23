@@ -65,6 +65,9 @@ export default function ProjectDetailPage({ params }) {
   const [treeExpanded, setTreeExpanded] = useState(new Set(["root"]));
   const [showUnassignedInline, setShowUnassignedInline] = useState(false);
   const [unassignedUserStories, setUnassignedUserStories] = useState([]);
+  const [suggestions, setSuggestions] = useState([]);
+  const [suggestionsOpen, setSuggestionsOpen] = useState(false);
+  const [suggestionAssignments, setSuggestionAssignments] = useState(new Map());
   const [toasts, setToasts] = useState([]);
   const toastIdRef = useRef(1);
 
@@ -125,6 +128,13 @@ export default function ProjectDetailPage({ params }) {
       setProjectName(detail.project?.name || "");
       setProjectDescription(parseProjectDescription(detail.project?.description));
       projectDescriptionRequestedRef.current = false;
+      if (Array.isArray(detail.suggestions) && detail.suggestions.length) {
+        setSuggestions(detail.suggestions);
+        setSuggestionsOpen(true);
+      } else {
+        setSuggestions([]);
+        setSuggestionsOpen(false);
+      }
       return detail;
     } catch (err) {
       setError(t("No se pudo cargar el proyecto.", "Could not load the project."));
@@ -791,7 +801,23 @@ export default function ProjectDetailPage({ params }) {
             dedupRemoved > 0
               ? ` · ${t("Duplicados eliminados:", "Duplicates removed:")} ${dedupRemoved}`
               : "";
+          if (Array.isArray(payload?.qa_dedupe?.updated) && payload.qa_dedupe.updated > 0) {
+            addToast(
+              `${t("Preguntas deduplicadas:", "Questions deduped:")} ${payload.qa_dedupe.updated}`,
+              { type: "info" },
+            );
+          }
+          if (payload?.qa_autofill?.filled) {
+            addToast(
+              `${t("Respuestas propagadas:", "Answers propagated:")} ${payload.qa_autofill.filled}`,
+              { type: "success" },
+            );
+          }
           addToast(`${t("Contexto actualizado.", "Context updated.")}${suffix}`, { type: "success" });
+          if (Array.isArray(payload?.suggestions) && payload.suggestions.length) {
+            setSuggestions(payload.suggestions);
+            setSuggestionsOpen(true);
+          }
         })
         .catch(() => {
           addToast(
@@ -870,6 +896,50 @@ export default function ProjectDetailPage({ params }) {
       setProjectChatError(t("No se pudo responder con la IA.", "AI could not respond."));
     } finally {
       setProjectChatLoading(false);
+    }
+  };
+
+  const handleApplySuggestions = async () => {
+    if (!suggestions.length) {
+      setSuggestionsOpen(false);
+      return;
+    }
+    const items = suggestions.map((sug, idx) => {
+      const assign = suggestionAssignments.get(idx) || {};
+      return {
+        ...sug,
+        parent_id: assign.parent_id || null,
+        epic_key: assign.epic_key || null,
+      };
+    });
+    try {
+      const response = await fetch(`/api/projects/${projectId}/suggestions`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ items }),
+      });
+      if (!response.ok) {
+        throw new Error("No se pudo aplicar");
+      }
+      await loadProject();
+      setSuggestions([]);
+      setSuggestionsOpen(false);
+      addToast(t("Sugerencias creadas.", "Suggestions created."), { type: "success" });
+    } catch (err) {
+      addToast(t("No se pudieron crear las sugerencias.", "Could not create suggestions."), {
+        type: "error",
+        duration: 3600,
+      });
+    }
+  };
+
+  const handleDiscardSuggestions = async () => {
+    try {
+      await fetch(`/api/projects/${projectId}/suggestions`, { method: "DELETE" });
+      setSuggestions([]);
+      setSuggestionsOpen(false);
+    } catch (err) {
+      // ignore
     }
   };
 
@@ -2507,6 +2577,154 @@ export default function ProjectDetailPage({ params }) {
             ))}
           </div>
         </div>
+      ) : null}
+      {suggestionsOpen && suggestions.length ? (
+        <Portal>
+          <div className="modal-backdrop" onClick={() => setSuggestionsOpen(false)} role="dialog" aria-modal="true">
+            <div className="modal" onClick={(e) => e.stopPropagation()}>
+              <div className="modal-header">
+                <div>
+                  <h3>{t("Sugerencias de nuevas FE/US", "Suggested new FE/US")}</h3>
+                  <p className="helper">
+                    {t(
+                      "Arrastra o asigna cada sugerencia a su padre. Puedes descartarlas.",
+                      "Drag or assign each suggestion to its parent. You can discard them.",
+                    )}
+                  </p>
+                </div>
+                <button className="btn btn-ghost" type="button" onClick={() => setSuggestionsOpen(false)}>
+                  {t("Cerrar", "Close")}
+                </button>
+              </div>
+              <div className="modal-detail callout">
+                <div>
+                  <strong>{t("Arrastra a Feature o Subproyecto", "Drag to Feature or Subproject")}</strong>
+                  <p className="helper">
+                    {t(
+                      "Suelta sobre una Feature (para US) o sobre un Subproyecto (para Feature). También puedes elegir en el selector.",
+                      "Drop over a Feature (for US) or a Subproject (for Feature). You can also use the selector.",
+                    )}
+                  </p>
+                </div>
+                <div style={{ display: "flex", gap: "10px", flexWrap: "wrap" }}>
+                  {epicGroups.map((group) => (
+                    <div
+                      key={`suggest-epic-${group.epic?.id}`}
+                      className="card"
+                      style={{ minWidth: "240px" }}
+                      onDragOver={(e) => e.preventDefault()}
+                      onDrop={(e) => {
+                        e.preventDefault();
+                        const id = e.dataTransfer.getData("suggest-id");
+                        const idx = Number(id);
+                        const type = String(suggestions[idx]?.type || "").toLowerCase();
+                        if (type === "story") {
+                          setSuggestionAssignments((prev) => {
+                            const next = new Map(prev);
+                            next.set(idx, { parent_id: group.epic?.id || null, epic_key: group.epic?.external_id || null });
+                            return next;
+                          });
+                        }
+                      }}
+                    >
+                      <strong>{group.epic?.title}</strong>
+                      <p className="helper">{group.epic?.external_id}</p>
+                      <div className="helper">{t("Suelta aquí para Feature", "Drop here for Feature")}</div>
+                      {group.stories.map((story) => (
+                        <div
+                          key={`suggest-story-${story.id}`}
+                          className="card"
+                          style={{ marginTop: "6px" }}
+                          onDragOver={(e) => e.preventDefault()}
+                          onDrop={(e) => {
+                            e.preventDefault();
+                            const id = e.dataTransfer.getData("suggest-id");
+                            const idx = Number(id);
+                            const type = String(suggestions[idx]?.type || "").toLowerCase();
+                            if (type === "task") {
+                              setSuggestionAssignments((prev) => {
+                                const next = new Map(prev);
+                                next.set(idx, { parent_id: story.id, epic_key: story.epic_key || group.epic?.external_id || null });
+                                return next;
+                              });
+                            }
+                          }}
+                        >
+                          <div className="helper">{story.external_id}</div>
+                          <div>{story.title}</div>
+                          <div className="helper">{t("Suelta aquí para US", "Drop here for US")}</div>
+                        </div>
+                      ))}
+                    </div>
+                  ))}
+                </div>
+              </div>
+              <div className="stack" style={{ maxHeight: "55vh", overflow: "auto" }}>
+                {suggestions.map((sug, idx) => {
+                  const assign = suggestionAssignments.get(idx) || {};
+                  return (
+                    <div
+                      key={`suggest-${idx}`}
+                      className="card qa-card"
+                      draggable
+                      onDragStart={(e) => e.dataTransfer.setData("suggest-id", String(idx))}
+                    >
+                      <div style={{ display: "flex", justifyContent: "space-between", gap: "8px", flexWrap: "wrap" }}>
+                        <div>
+                          <div className="badge">{sug.type || "Task"}</div>
+                          <h4>{sug.title}</h4>
+                          <p className="helper">{sug.area || "other"} · {sug.priority || "Medium"}</p>
+                        </div>
+                        <div style={{ minWidth: "240px" }}>
+                          <label className="helper">{t("Asignar padre", "Assign parent")}</label>
+                          <select
+                            className="input"
+                            value={assign.parent_id || ""}
+                            onChange={(e) => {
+                              const parentId = Number(e.target.value) || "";
+                              const story = allStories.find((st) => st.id === parentId);
+                              const epic = data?.epics?.find((ep) => ep.id === parentId);
+                              setSuggestionAssignments((prev) => {
+                                const next = new Map(prev);
+                                next.set(idx, {
+                                  parent_id: parentId || null,
+                                  epic_key: story?.epic_key || epic?.external_id || null,
+                                });
+                                return next;
+                              });
+                            }}
+                          >
+                            <option value="">{t("Sin asignar", "Unassigned")}</option>
+                            {sug.type?.toLowerCase() === "story"
+                              ? (data?.epics || []).map((epic) => (
+                                  <option key={`epic-opt-${epic.id}`} value={epic.id}>
+                                    {t("Subproyecto", "Subproject")} · {epic.external_id} · {epic.title}
+                                  </option>
+                                ))
+                              : allStories.map((story) => (
+                                  <option key={`story-opt-${story.id}`} value={story.id}>
+                                    {t("Feature", "Feature")} · {story.external_id} · {story.title}
+                                  </option>
+                                ))}
+                          </select>
+                        </div>
+                      </div>
+                      <p className="helper">{sug.description || t("Sin descripción", "No description")}</p>
+                    </div>
+                  );
+                })}
+              </div>
+              <div className="modal-actions">
+                <button className="btn btn-primary" type="button" onClick={handleApplySuggestions}>
+                  {t("Crear sugerencias", "Create suggestions")}
+                </button>
+                <button className="btn btn-outline" type="button" onClick={handleDiscardSuggestions}>
+                  {t("Descartar", "Discard")}
+                </button>
+              </div>
+            </div>
+          </div>
+        </Portal>
       ) : null}
       <Portal>
         <div className="toast-container" aria-live="polite">

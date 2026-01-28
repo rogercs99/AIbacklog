@@ -1,0 +1,176 @@
+[
+  {
+    "id": "f0a1b2c3.d4e5f6",
+    "type": "tab",
+    "label": "Axet Flow AI Gateway",
+    "disabled": false,
+    "info": "HTTP gateway for AI requests (chat/json)"
+  },
+  {
+    "id": "a1a2a3a4.a5a6a7",
+    "type": "http in",
+    "z": "f0a1b2c3.d4e5f6",
+    "name": "AxetFlow AI",
+    "url": "/axetflow/ai",
+    "method": "post",
+    "upload": false,
+    "swaggerDoc": "",
+    "x": 120,
+    "y": 80,
+    "wires": [
+      ["b1b2b3b4.b5b6b7"]
+    ]
+  },
+  {
+    "id": "b1b2b3b4.b5b6b7",
+    "type": "json",
+    "z": "f0a1b2c3.d4e5f6",
+    "name": "Parse JSON",
+    "property": "payload",
+    "action": "obj",
+    "pretty": false,
+    "x": 300,
+    "y": 80,
+    "wires": [
+      ["c1c2c3c4.c5c6c7"]
+    ]
+  },
+  {
+    "id": "c1c2c3c4.c5c6c7",
+    "type": "function",
+    "z": "f0a1b2c3.d4e5f6",
+    "name": "Auth + Normalize",
+    "func": "const expectedKey = env.get('AXET_FLOW_API_KEY');\nconst auth = msg?.req?.headers?.authorization || '';\n\nif (expectedKey && auth !== `Bearer ${expectedKey}`) {\n  msg.statusCode = 401;\n  msg.payload = { error: 'Unauthorized' };\n  return [null, msg];\n}\n\nconst payload = msg.payload && typeof msg.payload === 'object' ? msg.payload : {};\nconst modeRaw = String(payload.mode || 'chat').toLowerCase();\n\npayload.mode = modeRaw === 'json' ? 'json' : 'chat';\npayload.system = payload.system || '';\npayload.user = payload.user || '';\npayload.messages = Array.isArray(payload.messages) ? payload.messages : [];\n\nmsg.payload = payload;\nreturn [msg, null];",
+    "outputs": 2,
+    "noerr": 0,
+    "initialize": "",
+    "finalize": "",
+    "x": 520,
+    "y": 80,
+    "wires": [
+      ["d1d2d3d4.d5d6d7"],
+      ["h1h2h3h4.h5h6h7"]
+    ]
+  },
+  {
+    "id": "d1d2d3d4.d5d6d7",
+    "type": "switch",
+    "z": "f0a1b2c3.d4e5f6",
+    "name": "Route by mode",
+    "property": "payload.mode",
+    "propertyType": "msg",
+    "rules": [
+      { "t": "eq", "v": "json", "vt": "str" },
+      { "t": "eq", "v": "chat", "vt": "str" },
+      { "t": "else" }
+    ],
+    "checkall": "true",
+    "repair": false,
+    "outputs": 3,
+    "x": 720,
+    "y": 80,
+    "wires": [
+      ["e1e2e3e4.e5e6e7"],
+      ["f1f2f3f4.f5f6f7"],
+      ["g1g2g3g4.g5g6g7"]
+    ]
+  },
+  {
+    "id": "e1e2e3e4.e5e6e7",
+    "type": "function",
+    "z": "f0a1b2c3.d4e5f6",
+    "name": "Call LLM (JSON)",
+    "func": "const axios = require('axios');\n\nconst baseUrl = env.get('AI_BASE_URL') || env.get('LOCAL_AI_URL') || 'https://api.groq.com/openai/v1';\nconst model = env.get('AI_MODEL') || env.get('LOCAL_AI_MODEL') || 'llama-3.1-8b-instant';\nconst apiKey = env.get('AI_API_KEY') || env.get('OPENAI_API_KEY') || '';\nconst allowNoKey = Boolean(env.get('LOCAL_AI_URL') || env.get('AI_ALLOW_NO_KEY'));\n\nif (!apiKey && !allowNoKey) {\n  throw new Error('AI_API_KEY is required');\n}\n\nconst maxTokensRaw = Number(msg.payload.max_tokens ?? env.get('AI_MAX_TOKENS'));\nconst maxTokens = Number.isFinite(maxTokensRaw) && maxTokensRaw > 0 ? maxTokensRaw : 800;\nconst temperatureRaw = Number(msg.payload.temperature ?? env.get('AI_TEMPERATURE'));\nconst temperature = Number.isFinite(temperatureRaw) && temperatureRaw >= 0 ? temperatureRaw : 0.2;\n\nconst system = String(msg.payload.system || '');\nconst user = String(msg.payload.user || '');\n\nconst messages = system\n  ? [{ role: 'system', content: system }, { role: 'user', content: user }]\n  : [{ role: 'user', content: user }];\n\nconst headers = { 'Content-Type': 'application/json' };\nif (apiKey) {\n  headers.Authorization = `Bearer ${apiKey}`;\n}\n\nfunction extractJson(text) {\n  if (!text) return null;\n  const raw = String(text).trim();\n  if (!raw) return null;\n\n  try {\n    return JSON.parse(raw);\n  } catch (error) {}\n\n  const codeFenceRegex = /```(?:json)?\\s*([\\s\\S]*?)```/gi;\n  for (const match of raw.matchAll(codeFenceRegex)) {\n    const snippet = String(match?.[1] || '').trim();\n    if (!snippet) continue;\n    try {\n      return JSON.parse(snippet);\n    } catch (error) {}\n  }\n\n  const firstObj = raw.indexOf('{');\n  const firstArr = raw.indexOf('[');\n  let start = -1;\n  let open = '';\n  let close = '';\n  if (firstObj !== -1 && (firstArr === -1 || firstObj < firstArr)) {\n    start = firstObj;\n    open = '{';\n    close = '}';\n  } else if (firstArr !== -1) {\n    start = firstArr;\n    open = '[';\n    close = ']';\n  } else {\n    return null;\n  }\n\n  let depth = 0;\n  let inString = false;\n  let escaped = false;\n  for (let i = start; i < raw.length; i += 1) {\n    const ch = raw[i];\n    if (escaped) {\n      escaped = false;\n      continue;\n    }\n    if (ch === '\\\\') {\n      escaped = true;\n      continue;\n    }\n    if (ch === '\"') {\n      inString = !inString;\n      continue;\n    }\n    if (inString) {\n      continue;\n    }\n    if (ch === open) {\n      depth += 1;\n    } else if (ch === close) {\n      depth -= 1;\n      if (depth === 0) {\n        const snippet = raw.slice(start, i + 1);\n        try {\n          return JSON.parse(snippet);\n        } catch (error) {\n          return null;\n        }\n      }\n    }\n  }\n\n  return null;\n}\n\nconst payload = {\n  model,\n  temperature,\n  max_tokens: maxTokens,\n  messages,\n  response_format: { type: 'json_object' },\n};\n\nlet response;\ntry {\n  response = await axios.post(`${baseUrl.replace(/\\/+$/, '')}/chat/completions`, payload, { headers });\n} catch (error) {\n  const message = JSON.stringify(error?.response?.data || {}) || error.message || '';\n  if (error?.response?.status === 400 && String(message).toLowerCase().includes('response_format')) {\n    const fallback = { ...payload };\n    delete fallback.response_format;\n    response = await axios.post(`${baseUrl.replace(/\\/+$/, '')}/chat/completions`, fallback, { headers });\n  } else {\n    throw error;\n  }\n}\n\nconst content = response?.data?.choices?.[0]?.message?.content || '';\nlet parsed = null;\ntry {\n  parsed = JSON.parse(content);\n} catch (error) {\n  parsed = extractJson(content);\n}\n\nif (!parsed) {\n  throw new Error('AI response was not valid JSON');\n}\n\nmsg.payload = { result: parsed, raw: content };\nreturn msg;",
+    "outputs": 1,
+    "noerr": 0,
+    "initialize": "",
+    "finalize": "",
+    "x": 970,
+    "y": 40,
+    "wires": [
+      ["h1h2h3h4.h5h6h7"]
+    ]
+  },
+  {
+    "id": "f1f2f3f4.f5f6f7",
+    "type": "function",
+    "z": "f0a1b2c3.d4e5f6",
+    "name": "Call LLM (Chat)",
+    "func": "const axios = require('axios');\n\nconst baseUrl = env.get('AI_BASE_URL') || env.get('LOCAL_AI_URL') || 'https://api.groq.com/openai/v1';\nconst model = env.get('AI_MODEL') || env.get('LOCAL_AI_MODEL') || 'llama-3.1-8b-instant';\nconst apiKey = env.get('AI_API_KEY') || env.get('OPENAI_API_KEY') || '';\nconst allowNoKey = Boolean(env.get('LOCAL_AI_URL') || env.get('AI_ALLOW_NO_KEY'));\n\nif (!apiKey && !allowNoKey) {\n  throw new Error('AI_API_KEY is required');\n}\n\nconst maxTokensRaw = Number(msg.payload.max_tokens ?? env.get('AI_MAX_TOKENS'));\nconst maxTokens = Number.isFinite(maxTokensRaw) && maxTokensRaw > 0 ? maxTokensRaw : 800;\nconst temperatureRaw = Number(msg.payload.temperature ?? env.get('AI_TEMPERATURE'));\nconst temperature = Number.isFinite(temperatureRaw) && temperatureRaw >= 0 ? temperatureRaw : 0.4;\n\nconst system = String(msg.payload.system || '');\nconst safeMessages = Array.isArray(msg.payload.messages) ? msg.payload.messages : [];\nconst chatMessages = system\n  ? [{ role: 'system', content: system }, ...safeMessages]\n  : safeMessages.length ? safeMessages : [{ role: 'user', content: String(msg.payload.user || '') }];\n\nconst headers = { 'Content-Type': 'application/json' };\nif (apiKey) {\n  headers.Authorization = `Bearer ${apiKey}`;\n}\n\nconst payload = {\n  model,\n  temperature,\n  max_tokens: maxTokens,\n  messages: chatMessages,\n};\n\nconst response = await axios.post(`${baseUrl.replace(/\\/+$/, '')}/chat/completions`, payload, { headers });\nconst content = response?.data?.choices?.[0]?.message?.content || '';\n\nmsg.payload = { answer: content };\nreturn msg;",
+    "outputs": 1,
+    "noerr": 0,
+    "initialize": "",
+    "finalize": "",
+    "x": 970,
+    "y": 120,
+    "wires": [
+      ["h1h2h3h4.h5h6h7"]
+    ]
+  },
+  {
+    "id": "g1g2g3g4.g5g6g7",
+    "type": "function",
+    "z": "f0a1b2c3.d4e5f6",
+    "name": "Bad Request",
+    "func": "msg.statusCode = 400;\nmsg.payload = { error: 'Invalid mode. Use mode=chat or mode=json.' };\nreturn msg;",
+    "outputs": 1,
+    "noerr": 0,
+    "initialize": "",
+    "finalize": "",
+    "x": 960,
+    "y": 200,
+    "wires": [
+      ["h1h2h3h4.h5h6h7"]
+    ]
+  },
+  {
+    "id": "h1h2h3h4.h5h6h7",
+    "type": "http response",
+    "z": "f0a1b2c3.d4e5f6",
+    "name": "HTTP Response",
+    "statusCode": "",
+    "headers": {},
+    "x": 1220,
+    "y": 120,
+    "wires": []
+  },
+  {
+    "id": "i1i2i3i4.i5i6i7",
+    "type": "catch",
+    "z": "f0a1b2c3.d4e5f6",
+    "name": "Catch Errors",
+    "scope": null,
+    "uncaught": false,
+    "x": 300,
+    "y": 200,
+    "wires": [
+      ["j1j2j3j4.j5j6j7"]
+    ]
+  },
+  {
+    "id": "j1j2j3j4.j5j6j7",
+    "type": "function",
+    "z": "f0a1b2c3.d4e5f6",
+    "name": "Format Error",
+    "func": "const status = msg?.error?.status || msg?.error?.statusCode || 500;\nconst message = msg?.error?.message || 'Unexpected error';\nmsg.statusCode = status;\nmsg.payload = { error: message };\nreturn msg;",
+    "outputs": 1,
+    "noerr": 0,
+    "initialize": "",
+    "finalize": "",
+    "x": 520,
+    "y": 200,
+    "wires": [
+      ["h1h2h3h4.h5h6h7"]
+    ]
+  },
+  {
+    "id": "k1k2k3k4.k5k6k7",
+    "type": "comment",
+    "z": "f0a1b2c3.d4e5f6",
+    "name": "POST /axetflow/ai accepts { mode: 'chat'|'json', system, user, messages, max_tokens, temperature }",
+    "info": "Set env vars: AI_BASE_URL, AI_MODEL, AI_API_KEY. Optional: AXET_FLOW_API_KEY for inbound auth.",
+    "x": 370,
+    "y": 20,
+    "wires": []
+  }
+]

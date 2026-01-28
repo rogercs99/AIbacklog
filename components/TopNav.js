@@ -17,7 +17,6 @@ export default function TopNav() {
       { href: "/plan", label: t("Plan", "Plan") },
       { href: "/projects", label: t("Mis proyectos", "My projects") },
       { href: "/chat", label: t("Chat IA", "AI chat") },
-      { href: "/lab", label: t("Laboratorio", "Lab") },
     ],
     [t],
   );

@@ -62,9 +62,8 @@ describe("Project description route", () => {
   });
 
   it("generates and stores description when missing", async () => {
-    process.env.AI_PROVIDER = "gemini";
-    process.env.GEMINI_API_KEY = "test-key";
-    process.env.GEMINI_MODEL = "gemini-2.5-flash";
+    process.env.AI_PROVIDER = "axet";
+    process.env.AXET_FLOW_JSON_URL = "http://localhost:46228/axetflow/ai";
 
     const db = getDb();
     const now = new Date().toISOString();
@@ -86,19 +85,10 @@ describe("Project description route", () => {
 
     const fetchMock = vi.fn(async () => ({
       ok: true,
-      json: async () => ({
-        candidates: [
-          {
-            content: {
-              parts: [
-                {
-                  text: "{\"description_es\":\"Descripcion ES\",\"description_en\":\"Description EN\"}",
-                },
-              ],
-            },
-          },
-        ],
-      }),
+      text: async () =>
+        JSON.stringify({
+          result: { description_es: "Descripcion ES", description_en: "Description EN" },
+        }),
     }));
     vi.stubGlobal("fetch", fetchMock);
 

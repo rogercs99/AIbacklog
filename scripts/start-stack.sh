@@ -2,7 +2,7 @@
 set -euo pipefail
 
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
-AXET_DESKTOP_BIN="/home/deck/Desktop/AXET/axetflows-desktop-deb-prod/aXet.flows-Desktop"
+AXET_DESKTOP_BIN="${AXET_DESKTOP_BIN:-$HOME/Desktop/AXET/axetflows-desktop-deb-prod/aXet.flows-Desktop}"
 AXET_DESKTOP_URL="https://localhost:65430/api/app/desktop/internal-config"
 
 cd "$ROOT_DIR"

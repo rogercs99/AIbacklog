@@ -13,7 +13,7 @@ const resetEnv = () => {
   Object.assign(process.env, originalEnv);
 };
 
-describe("Gemini provider", () => {
+describe("Axet Flow provider", () => {
   beforeEach(() => {
     resetEnv();
   });
@@ -23,16 +23,13 @@ describe("Gemini provider", () => {
     vi.unstubAllGlobals();
   });
 
-  it("callAI uses Gemini when AI_PROVIDER=gemini", async () => {
-    process.env.AI_PROVIDER = "gemini";
-    process.env.GEMINI_API_KEY = "test-key";
-    process.env.GEMINI_MODEL = "gemini-1.5-flash";
+  it("callAI uses Axet Flow when AI_PROVIDER=axet", async () => {
+    process.env.AI_PROVIDER = "axet";
+    process.env.AXET_FLOW_JSON_URL = "http://localhost:46228/axetflow/ai";
 
     const fetchMock = vi.fn(async () => ({
       ok: true,
-      json: async () => ({
-        candidates: [{ content: { parts: [{ text: "{\"ok\":true}" }] } }],
-      }),
+      text: async () => JSON.stringify({ result: { ok: true } }),
     }));
     vi.stubGlobal("fetch", fetchMock);
 
@@ -46,26 +43,22 @@ describe("Gemini provider", () => {
     expect(result.ok).toBe(true);
     expect(fetchMock).toHaveBeenCalled();
     const url = fetchMock.mock.calls[0][0];
-    expect(String(url)).toContain("generativelanguage.googleapis.com");
-    expect(String(url)).toContain(":generateContent");
+    expect(String(url)).toContain("/axetflow/ai");
 
     const init = fetchMock.mock.calls[0][1];
     const body = JSON.parse(init.body);
-    expect(body.contents[0].parts[0].text).toContain("SYSTEM:");
-    expect(body.contents[0].parts[0].text).toContain("USER:");
-    expect(body.generationConfig.responseMimeType).toBe("application/json");
+    expect(body.mode).toBe("json");
+    expect(body.system).toContain("System prompt");
+    expect(body.user).toContain("User prompt");
   });
 
-  it("callChat uses Gemini when AI_PROVIDER=gemini", async () => {
-    process.env.AI_PROVIDER = "gemini";
-    process.env.GEMINI_API_KEY = "test-key";
-    process.env.GEMINI_MODEL = "gemini-1.5-flash";
+  it("callChat uses Axet Flow when AI_PROVIDER=axet", async () => {
+    process.env.AI_PROVIDER = "axet";
+    process.env.AXET_FLOW_CHAT_URL = "http://localhost:46228/axetflow/ai";
 
     const fetchMock = vi.fn(async () => ({
       ok: true,
-      json: async () => ({
-        candidates: [{ content: { parts: [{ text: "Hola" }] } }],
-      }),
+      text: async () => JSON.stringify({ answer: "Hola" }),
     }));
     vi.stubGlobal("fetch", fetchMock);
 

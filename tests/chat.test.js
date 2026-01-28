@@ -22,18 +22,13 @@ describe("callChat", () => {
     vi.unstubAllGlobals();
   });
 
-  it("returns answer from OpenAI-compatible API", async () => {
-    process.env.LOCAL_AI_URL = "http://localhost:1234/v1";
-    process.env.LOCAL_AI_MODEL = "test-model";
-    process.env.AI_ALLOW_NO_KEY = "1";
-
-    const fakeResponse = {
-      choices: [{ message: { content: "Hola" } }],
-    };
+  it("returns answer from Axet Flow", async () => {
+    process.env.AI_PROVIDER = "axet";
+    process.env.AXET_FLOW_CHAT_URL = "http://localhost:46228/axetflow/ai";
 
     const fetchMock = vi.fn(async () => ({
       ok: true,
-      json: async () => fakeResponse,
+      text: async () => JSON.stringify({ answer: "Hola" }),
     }));
     vi.stubGlobal("fetch", fetchMock);
 

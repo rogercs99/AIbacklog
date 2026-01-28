@@ -134,11 +134,9 @@ export async function POST(request) {
   ].join("\n");
 
   const hasProvider = Boolean(
-    process.env.AI_API_KEY ||
-      process.env.OPENAI_API_KEY ||
-      process.env.GEMINI_API_KEY ||
-      process.env.LOCAL_AI_URL ||
-      process.env.AI_BASE_URL,
+    process.env.AXET_FLOW_URL ||
+      process.env.AXET_FLOW_JSON_URL ||
+      process.env.AXET_FLOW_CHAT_URL,
   );
 
   if (process.env.LOCAL_AI_MODE === "basic" && !hasProvider) {
@@ -158,4 +156,3 @@ export async function POST(request) {
     );
   }
 }
-

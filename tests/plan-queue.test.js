@@ -32,9 +32,8 @@ describe("Plan jobs queue", () => {
   beforeEach(() => {
     resetEnv();
     process.env.SQLITE_PATH = ":memory:";
-    process.env.AI_PROVIDER = "gemini";
-    process.env.GEMINI_API_KEY = "test-key";
-    process.env.GEMINI_MODEL = "gemini-2.5-flash";
+    process.env.AI_PROVIDER = "axet";
+    process.env.AXET_FLOW_JSON_URL = "http://localhost:46228/axetflow/ai";
     clearDb();
   });
 
@@ -79,15 +78,7 @@ describe("Plan jobs queue", () => {
 
     const fetchMock = vi.fn(async () => ({
       ok: true,
-      json: async () => ({
-        candidates: [
-          {
-            content: {
-              parts: [{ text: JSON.stringify(aiPayload) }],
-            },
-          },
-        ],
-      }),
+      text: async () => JSON.stringify({ result: aiPayload }),
     }));
     vi.stubGlobal("fetch", fetchMock);
 

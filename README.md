@@ -5,7 +5,7 @@ MVP para convertir requerimientos en backlog ejecutable con trazabilidad, Q&A y 
 ## Requisitos
 
 - Node 18+
-- Una API key (Gemini u OpenAI-compatible) o un modelo local.
+- aXet Flows Desktop instalado y con sesión iniciada.
 
 ## Cómo correr
 
@@ -18,62 +18,19 @@ Luego abre `http://localhost:3000`.
 
 ## Variables de entorno (IA)
 
-Configura una API key de un modelo gratuito (Groq es una opción rápida):
+Configura la app para usar el gateway de aXet Flows:
 
 ```bash
-export AI_API_KEY="tu_api_key"
-export AI_BASE_URL="https://api.groq.com/openai/v1"
-export AI_MODEL="llama-3.1-8b-instant"
+export AI_PROVIDER="axet"
+export AXET_FLOW_URL="http://localhost:46228/axetflow/ai"
+export AXET_FLOW_JSON_URL="http://localhost:46228/axetflow/ai"
+export AXET_FLOW_CHAT_URL="http://localhost:46228/axetflow/ai"
 ```
 
-### Modelo local en Steam Deck (sin API key)
-
-Para testear sin depender de un servicio externo, usa un modelo muy básico con `llama.cpp`.
-Recomendado: **Qwen2.5 0.5B Instruct** en GGUF (ligero para CPU).
-
-1) Instala `llama.cpp` (o usa un binario precompilado).
-2) Descarga el GGUF, por ejemplo `qwen2.5-0.5b-instruct-q4_k_m.gguf`.
-3) Levanta el servidor local:
+Opcional (si proteges el gateway):
 
 ```bash
-./llama-server -m /ruta/al/modelo.gguf --host 0.0.0.0 --port 8080
-```
-
-4) Arranca la app apuntando al modelo local:
-
-```bash
-export LOCAL_AI_URL="http://localhost:8080/v1"
-export LOCAL_AI_MODEL="qwen2.5-0.5b-instruct"
-export AI_ALLOW_NO_KEY=1
-npm run dev
-```
-
-La app usará el modelo local si `LOCAL_AI_URL` está definido; si no, usará el proveedor externo.
-
-### Modo local básico (sin servidor externo)
-
-Si solo quieres probar el flujo sin instalar modelos, activa el modo local básico:
-
-```bash
-export LOCAL_AI_MODE=\"basic\"
-npm run dev
-```
-
-Este modo genera JSON con reglas simples para `/plan`, `/ask` y `/reconcile`.
-
-Si quieres usar OpenAI o ChatGPT Business:
-
-```bash
-export AI_API_KEY="tu_api_key"
-export AI_BASE_URL="https://api.openai.com/v1"
-export AI_MODEL="gpt-4o-mini"
-```
-
-Opcionales:
-
-```bash
-export OPENAI_ORG="org_..."
-export OPENAI_PROJECT="proj_..."
+export AXET_FLOW_API_KEY="tu_token"
 ```
 
 ## Flujo rápido
@@ -93,4 +50,3 @@ SQLite local en `data/req2backlog.db` (configurable con `SQLITE_PATH`).
 - `scripts/dev-start.sh` / `scripts/dev-stop.sh`: arranca/parar el dev server en segundo plano.
 - `scripts/reset-db.sh [--restart]`: borra la base de datos local.
 - `scripts/chat-local.js --chat`: chat por terminal contra `/api/chat`.
-- `scripts/dev-start-ollama.sh [modelo]`: arranca la app usando Ollama (`LOCAL_AI_URL`).

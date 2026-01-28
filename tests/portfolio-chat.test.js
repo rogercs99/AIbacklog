@@ -32,9 +32,8 @@ describe("Portfolio chat", () => {
   beforeEach(() => {
     resetEnv();
     process.env.SQLITE_PATH = ":memory:";
-    process.env.AI_PROVIDER = "gemini";
-    process.env.GEMINI_API_KEY = "test-key";
-    process.env.GEMINI_MODEL = "gemini-2.5-flash";
+    process.env.AI_PROVIDER = "axet";
+    process.env.AXET_FLOW_CHAT_URL = "http://localhost:46228/axetflow/ai";
     clearDb();
   });
 
@@ -86,9 +85,7 @@ describe("Portfolio chat", () => {
 
     const fetchMock = vi.fn(async () => ({
       ok: true,
-      json: async () => ({
-        candidates: [{ content: { parts: [{ text: "Encontré la tarea en el proyecto Pelis." }] } }],
-      }),
+      text: async () => JSON.stringify({ answer: "Encontré la tarea en el proyecto Pelis." }),
     }));
     vi.stubGlobal("fetch", fetchMock);
 
@@ -109,9 +106,9 @@ describe("Portfolio chat", () => {
     expect(fetchMock).toHaveBeenCalled();
     const init = fetchMock.mock.calls[0][1];
     const body = JSON.parse(init.body);
-    const prompt = body.contents?.[0]?.parts?.[0]?.text || "";
-    expect(prompt).toContain("Pelis");
-    expect(prompt).toContain("Crear películas");
+    expect(body.mode).toBe("chat");
+    const combined = JSON.stringify(body.messages || []);
+    expect(combined).toContain("Pelis");
+    expect(combined).toContain("Crear películas");
   });
 });
-

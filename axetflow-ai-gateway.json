@@ -18,7 +18,9 @@
     "x": 120,
     "y": 80,
     "wires": [
-      ["b1b2b3b4.b5b6b7"]
+      [
+        "b1b2b3b4.b5b6b7"
+      ]
     ]
   },
   {
@@ -32,7 +34,9 @@
     "x": 300,
     "y": 80,
     "wires": [
-      ["c1c2c3c4.c5c6c7"]
+      [
+        "c1c2c3c4.c5c6c7"
+      ]
     ]
   },
   {
@@ -48,8 +52,12 @@
     "x": 520,
     "y": 80,
     "wires": [
-      ["d1d2d3d4.d5d6d7"],
-      ["h1h2h3h4.h5h6h7"]
+      [
+        "d1d2d3d4.d5d6d7"
+      ],
+      [
+        "h1h2h3h4.h5h6h7"
+      ]
     ]
   },
   {
@@ -60,9 +68,19 @@
     "property": "payload.mode",
     "propertyType": "msg",
     "rules": [
-      { "t": "eq", "v": "json", "vt": "str" },
-      { "t": "eq", "v": "chat", "vt": "str" },
-      { "t": "else" }
+      {
+        "t": "eq",
+        "v": "json",
+        "vt": "str"
+      },
+      {
+        "t": "eq",
+        "v": "chat",
+        "vt": "str"
+      },
+      {
+        "t": "else"
+      }
     ],
     "checkall": "true",
     "repair": false,
@@ -70,9 +88,15 @@
     "x": 720,
     "y": 80,
     "wires": [
-      ["e1e2e3e4.e5e6e7"],
-      ["f1f2f3f4.f5f6f7"],
-      ["g1g2g3g4.g5g6g7"]
+      [
+        "e1e2e3e4.e5e6e7"
+      ],
+      [
+        "f1f2f3f4.f5f6f7"
+      ],
+      [
+        "g1g2g3g4.g5g6g7"
+      ]
     ]
   },
   {
@@ -80,7 +104,7 @@
     "type": "function",
     "z": "f0a1b2c3.d4e5f6",
     "name": "Call LLM (JSON)",
-    "func": "const axios = require('axios');\n\nconst baseUrl = env.get('AI_BASE_URL') || env.get('LOCAL_AI_URL') || 'https://api.groq.com/openai/v1';\nconst model = env.get('AI_MODEL') || env.get('LOCAL_AI_MODEL') || 'llama-3.1-8b-instant';\nconst apiKey = env.get('AI_API_KEY') || env.get('OPENAI_API_KEY') || '';\nconst allowNoKey = Boolean(env.get('LOCAL_AI_URL') || env.get('AI_ALLOW_NO_KEY'));\n\nif (!apiKey && !allowNoKey) {\n  throw new Error('AI_API_KEY is required');\n}\n\nconst maxTokensRaw = Number(msg.payload.max_tokens ?? env.get('AI_MAX_TOKENS'));\nconst maxTokens = Number.isFinite(maxTokensRaw) && maxTokensRaw > 0 ? maxTokensRaw : 800;\nconst temperatureRaw = Number(msg.payload.temperature ?? env.get('AI_TEMPERATURE'));\nconst temperature = Number.isFinite(temperatureRaw) && temperatureRaw >= 0 ? temperatureRaw : 0.2;\n\nconst system = String(msg.payload.system || '');\nconst user = String(msg.payload.user || '');\n\nconst messages = system\n  ? [{ role: 'system', content: system }, { role: 'user', content: user }]\n  : [{ role: 'user', content: user }];\n\nconst headers = { 'Content-Type': 'application/json' };\nif (apiKey) {\n  headers.Authorization = `Bearer ${apiKey}`;\n}\n\nfunction extractJson(text) {\n  if (!text) return null;\n  const raw = String(text).trim();\n  if (!raw) return null;\n\n  try {\n    return JSON.parse(raw);\n  } catch (error) {}\n\n  const codeFenceRegex = /```(?:json)?\\s*([\\s\\S]*?)```/gi;\n  for (const match of raw.matchAll(codeFenceRegex)) {\n    const snippet = String(match?.[1] || '').trim();\n    if (!snippet) continue;\n    try {\n      return JSON.parse(snippet);\n    } catch (error) {}\n  }\n\n  const firstObj = raw.indexOf('{');\n  const firstArr = raw.indexOf('[');\n  let start = -1;\n  let open = '';\n  let close = '';\n  if (firstObj !== -1 && (firstArr === -1 || firstObj < firstArr)) {\n    start = firstObj;\n    open = '{';\n    close = '}';\n  } else if (firstArr !== -1) {\n    start = firstArr;\n    open = '[';\n    close = ']';\n  } else {\n    return null;\n  }\n\n  let depth = 0;\n  let inString = false;\n  let escaped = false;\n  for (let i = start; i < raw.length; i += 1) {\n    const ch = raw[i];\n    if (escaped) {\n      escaped = false;\n      continue;\n    }\n    if (ch === '\\\\') {\n      escaped = true;\n      continue;\n    }\n    if (ch === '\"') {\n      inString = !inString;\n      continue;\n    }\n    if (inString) {\n      continue;\n    }\n    if (ch === open) {\n      depth += 1;\n    } else if (ch === close) {\n      depth -= 1;\n      if (depth === 0) {\n        const snippet = raw.slice(start, i + 1);\n        try {\n          return JSON.parse(snippet);\n        } catch (error) {\n          return null;\n        }\n      }\n    }\n  }\n\n  return null;\n}\n\nconst payload = {\n  model,\n  temperature,\n  max_tokens: maxTokens,\n  messages,\n  response_format: { type: 'json_object' },\n};\n\nlet response;\ntry {\n  response = await axios.post(`${baseUrl.replace(/\\/+$/, '')}/chat/completions`, payload, { headers });\n} catch (error) {\n  const message = JSON.stringify(error?.response?.data || {}) || error.message || '';\n  if (error?.response?.status === 400 && String(message).toLowerCase().includes('response_format')) {\n    const fallback = { ...payload };\n    delete fallback.response_format;\n    response = await axios.post(`${baseUrl.replace(/\\/+$/, '')}/chat/completions`, fallback, { headers });\n  } else {\n    throw error;\n  }\n}\n\nconst content = response?.data?.choices?.[0]?.message?.content || '';\nlet parsed = null;\ntry {\n  parsed = JSON.parse(content);\n} catch (error) {\n  parsed = extractJson(content);\n}\n\nif (!parsed) {\n  throw new Error('AI response was not valid JSON');\n}\n\nmsg.payload = { result: parsed, raw: content };\nreturn msg;",
+    "func": "const axios = require('axios');\n\nconst baseUrl = env.get('AXET_AI_BASE_URL');\nconst model = env.get('AXET_AI_MODEL');\nconst apiKey = env.get('AXET_AI_API_KEY') || '';\n\nif (!baseUrl || !model) {\n  throw new Error('AXET_AI_BASE_URL and AXET_AI_MODEL are required');\n}\n\nconst maxTokensRaw = Number(msg.payload.max_tokens ?? env.get('AI_MAX_TOKENS'));\nconst maxTokens = Number.isFinite(maxTokensRaw) && maxTokensRaw > 0 ? maxTokensRaw : 800;\nconst temperatureRaw = Number(msg.payload.temperature ?? env.get('AI_TEMPERATURE'));\nconst temperature = Number.isFinite(temperatureRaw) && temperatureRaw >= 0 ? temperatureRaw : 0.2;\n\nconst system = String(msg.payload.system || '');\nconst user = String(msg.payload.user || '');\n\nconst messages = system\n  ? [{ role: 'system', content: system }, { role: 'user', content: user }]\n  : [{ role: 'user', content: user }];\n\nconst headers = { 'Content-Type': 'application/json' };\nif (apiKey) {\n  headers.Authorization = `Bearer ${apiKey}`;\n}\n\nfunction extractJson(text) {\n  if (!text) return null;\n  const raw = String(text).trim();\n  if (!raw) return null;\n\n  try {\n    return JSON.parse(raw);\n  } catch (error) {}\n\n  const codeFenceRegex = /```(?:json)?\\s*([\\s\\S]*?)```/gi;\n  for (const match of raw.matchAll(codeFenceRegex)) {\n    const snippet = String(match?.[1] || '').trim();\n    if (!snippet) continue;\n    try {\n      return JSON.parse(snippet);\n    } catch (error) {}\n  }\n\n  const firstObj = raw.indexOf('{');\n  const firstArr = raw.indexOf('[');\n  let start = -1;\n  let open = '';\n  let close = '';\n  if (firstObj !== -1 && (firstArr === -1 || firstObj < firstArr)) {\n    start = firstObj;\n    open = '{';\n    close = '}';\n  } else if (firstArr !== -1) {\n    start = firstArr;\n    open = '[';\n    close = ']';\n  } else {\n    return null;\n  }\n\n  let depth = 0;\n  let inString = false;\n  let escaped = false;\n  for (let i = start; i < raw.length; i += 1) {\n    const ch = raw[i];\n    if (escaped) {\n      escaped = false;\n      continue;\n    }\n    if (ch === '\\\\') {\n      escaped = true;\n      continue;\n    }\n    if (ch === '\"') {\n      inString = !inString;\n      continue;\n    }\n    if (inString) {\n      continue;\n    }\n    if (ch === open) {\n      depth += 1;\n    } else if (ch === close) {\n      depth -= 1;\n      if (depth === 0) {\n        const snippet = raw.slice(start, i + 1);\n        try {\n          return JSON.parse(snippet);\n        } catch (error) {\n          return null;\n        }\n      }\n    }\n  }\n\n  return null;\n}\n\nconst payload = {\n  model,\n  temperature,\n  max_tokens: maxTokens,\n  messages,\n  response_format: { type: 'json_object' },\n};\n\nlet response;\ntry {\n  response = await axios.post(`${baseUrl.replace(/\\/+$/, '')}/chat/completions`, payload, { headers });\n} catch (error) {\n  const message = JSON.stringify(error?.response?.data || {}) || error.message || '';\n  if (error?.response?.status === 400 && String(message).toLowerCase().includes('response_format')) {\n    const fallback = { ...payload };\n    delete fallback.response_format;\n    response = await axios.post(`${baseUrl.replace(/\\/+$/, '')}/chat/completions`, fallback, { headers });\n  } else {\n    throw error;\n  }\n}\n\nconst content = response?.data?.choices?.[0]?.message?.content || '';\nlet parsed = null;\ntry {\n  parsed = JSON.parse(content);\n} catch (error) {\n  parsed = extractJson(content);\n}\n\nif (!parsed) {\n  throw new Error('AI response was not valid JSON');\n}\n\nmsg.payload = { result: parsed, raw: content };\nreturn msg;",
     "outputs": 1,
     "noerr": 0,
     "initialize": "",
@@ -88,7 +112,9 @@
     "x": 970,
     "y": 40,
     "wires": [
-      ["h1h2h3h4.h5h6h7"]
+      [
+        "h1h2h3h4.h5h6h7"
+      ]
     ]
   },
   {
@@ -96,7 +122,7 @@
     "type": "function",
     "z": "f0a1b2c3.d4e5f6",
     "name": "Call LLM (Chat)",
-    "func": "const axios = require('axios');\n\nconst baseUrl = env.get('AI_BASE_URL') || env.get('LOCAL_AI_URL') || 'https://api.groq.com/openai/v1';\nconst model = env.get('AI_MODEL') || env.get('LOCAL_AI_MODEL') || 'llama-3.1-8b-instant';\nconst apiKey = env.get('AI_API_KEY') || env.get('OPENAI_API_KEY') || '';\nconst allowNoKey = Boolean(env.get('LOCAL_AI_URL') || env.get('AI_ALLOW_NO_KEY'));\n\nif (!apiKey && !allowNoKey) {\n  throw new Error('AI_API_KEY is required');\n}\n\nconst maxTokensRaw = Number(msg.payload.max_tokens ?? env.get('AI_MAX_TOKENS'));\nconst maxTokens = Number.isFinite(maxTokensRaw) && maxTokensRaw > 0 ? maxTokensRaw : 800;\nconst temperatureRaw = Number(msg.payload.temperature ?? env.get('AI_TEMPERATURE'));\nconst temperature = Number.isFinite(temperatureRaw) && temperatureRaw >= 0 ? temperatureRaw : 0.4;\n\nconst system = String(msg.payload.system || '');\nconst safeMessages = Array.isArray(msg.payload.messages) ? msg.payload.messages : [];\nconst chatMessages = system\n  ? [{ role: 'system', content: system }, ...safeMessages]\n  : safeMessages.length ? safeMessages : [{ role: 'user', content: String(msg.payload.user || '') }];\n\nconst headers = { 'Content-Type': 'application/json' };\nif (apiKey) {\n  headers.Authorization = `Bearer ${apiKey}`;\n}\n\nconst payload = {\n  model,\n  temperature,\n  max_tokens: maxTokens,\n  messages: chatMessages,\n};\n\nconst response = await axios.post(`${baseUrl.replace(/\\/+$/, '')}/chat/completions`, payload, { headers });\nconst content = response?.data?.choices?.[0]?.message?.content || '';\n\nmsg.payload = { answer: content };\nreturn msg;",
+    "func": "const axios = require('axios');\n\nconst baseUrl = env.get('AXET_AI_BASE_URL');\nconst model = env.get('AXET_AI_MODEL');\nconst apiKey = env.get('AXET_AI_API_KEY') || '';\n\nif (!baseUrl || !model) {\n  throw new Error('AXET_AI_BASE_URL and AXET_AI_MODEL are required');\n}\n\nconst maxTokensRaw = Number(msg.payload.max_tokens ?? env.get('AI_MAX_TOKENS'));\nconst maxTokens = Number.isFinite(maxTokensRaw) && maxTokensRaw > 0 ? maxTokensRaw : 800;\nconst temperatureRaw = Number(msg.payload.temperature ?? env.get('AI_TEMPERATURE'));\nconst temperature = Number.isFinite(temperatureRaw) && temperatureRaw >= 0 ? temperatureRaw : 0.4;\n\nconst system = String(msg.payload.system || '');\nconst safeMessages = Array.isArray(msg.payload.messages) ? msg.payload.messages : [];\nconst chatMessages = system\n  ? [{ role: 'system', content: system }, ...safeMessages]\n  : safeMessages.length ? safeMessages : [{ role: 'user', content: String(msg.payload.user || '') }];\n\nconst headers = { 'Content-Type': 'application/json' };\nif (apiKey) {\n  headers.Authorization = `Bearer ${apiKey}`;\n}\n\nconst payload = {\n  model,\n  temperature,\n  max_tokens: maxTokens,\n  messages: chatMessages,\n};\n\nconst response = await axios.post(`${baseUrl.replace(/\\/+$/, '')}/chat/completions`, payload, { headers });\nconst content = response?.data?.choices?.[0]?.message?.content || '';\n\nmsg.payload = { answer: content };\nreturn msg;",
     "outputs": 1,
     "noerr": 0,
     "initialize": "",
@@ -104,7 +130,9 @@
     "x": 970,
     "y": 120,
     "wires": [
-      ["h1h2h3h4.h5h6h7"]
+      [
+        "h1h2h3h4.h5h6h7"
+      ]
     ]
   },
   {
@@ -120,7 +148,9 @@
     "x": 960,
     "y": 200,
     "wires": [
-      ["h1h2h3h4.h5h6h7"]
+      [
+        "h1h2h3h4.h5h6h7"
+      ]
     ]
   },
   {
@@ -144,7 +174,9 @@
     "x": 300,
     "y": 200,
     "wires": [
-      ["j1j2j3j4.j5j6j7"]
+      [
+        "j1j2j3j4.j5j6j7"
+      ]
     ]
   },
   {
@@ -160,7 +192,9 @@
     "x": 520,
     "y": 200,
     "wires": [
-      ["h1h2h3h4.h5h6h7"]
+      [
+        "h1h2h3h4.h5h6h7"
+      ]
     ]
   },
   {
@@ -168,7 +202,7 @@
     "type": "comment",
     "z": "f0a1b2c3.d4e5f6",
     "name": "POST /axetflow/ai accepts { mode: 'chat'|'json', system, user, messages, max_tokens, temperature }",
-    "info": "Set env vars: AI_BASE_URL, AI_MODEL, AI_API_KEY. Optional: AXET_FLOW_API_KEY for inbound auth.",
+    "info": "Set env vars: AXET_AI_BASE_URL, AXET_AI_MODEL, AXET_AI_API_KEY. Optional: AXET_FLOW_API_KEY for inbound auth.",
     "x": 370,
     "y": 20,
     "wires": []

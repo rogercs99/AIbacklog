@@ -66,10 +66,12 @@ else
   row "Port 62078" "UNKNOWN" "IPHONE_OVERLAY_IP is not configured."
 fi
 
+WG_HANDSHAKE=NO
 if wg show 2>/dev/null | grep -q 'latest handshake'; then
+  WG_HANDSHAKE=YES
   row "WireGuard handshake" "YES" "WireGuard reports handshake metadata."
 else
-  row "WireGuard handshake" "NO" "No WireGuard handshake metadata observed."
+  row "WireGuard handshake" "NO" "No WireGuard handshake metadata observed after overlay traffic."
 fi
 
 BONJOUR_OUTPUT="$(dns-sd -B _apple-mobdev2._tcp local. 2>&1 & pid=$!; sleep 4; kill "$pid" >/dev/null 2>&1 || true; wait "$pid" >/dev/null 2>&1 || true)"
@@ -178,7 +180,9 @@ fi
 row "Install possible" "NO" "Apple signing is intentionally not configured in this diagnostic phase."
 
 if [[ "$WG_STATUS" != "OK" ]]; then
-  row "Blocking reason" "WireGuard" "Tunnel setup did not complete."
+  row "Blocking reason" "WireGuard setup" "Local tunnel setup did not complete."
+elif [[ "${WG_HANDSHAKE:-NO}" != "YES" ]]; then
+  row "Blocking reason" "WireGuard data plane" "OIDC and peer registration succeeded and the local interface/routes were created, but no server handshake was observed after traffic to 10.79.0.1/10.79.0.2."
 elif [[ -z "$SELECTED" ]]; then
   row "Blocking reason" "Apple discovery" "IP overlay diagnostics completed, but CoreDevice did not resolve a physical iPhone."
 elif [[ "${PAIR_STATE:-unknown}" != "paired" ]]; then

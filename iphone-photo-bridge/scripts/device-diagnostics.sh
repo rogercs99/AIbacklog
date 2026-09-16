@@ -67,11 +67,12 @@ else
 fi
 
 WG_HANDSHAKE=NO
-if wg show 2>/dev/null | grep -q 'latest handshake'; then
+HANDSHAKES="$(sudo wg show all latest-handshakes 2>/dev/null || true)"
+if awk '$2 ~ /^[0-9]+$/ && $2 > 0 {found=1} END {exit !found}' <<<"$HANDSHAKES"; then
   WG_HANDSHAKE=YES
-  row "WireGuard handshake" "YES" "WireGuard reports handshake metadata."
+  row "WireGuard handshake" "YES" "WireGuard reports a non-zero latest-handshake timestamp."
 else
-  row "WireGuard handshake" "NO" "No WireGuard handshake metadata observed after overlay traffic."
+  row "WireGuard handshake" "NO" "No non-zero WireGuard latest-handshake timestamp observed after overlay traffic."
 fi
 
 BONJOUR_OUTPUT="$(dns-sd -B _apple-mobdev2._tcp local. 2>&1 & pid=$!; sleep 4; kill "$pid" >/dev/null 2>&1 || true; wait "$pid" >/dev/null 2>&1 || true)"

@@ -43,14 +43,18 @@ else
   row "WireGuard" "UNKNOWN" "Tunnel was not attempted."
 fi
 
+VPS_REACHABLE=NO
 if ping -c 1 -W 1500 "$VPS_OVERLAY_IP" >/dev/null 2>&1; then
+  VPS_REACHABLE=YES
   row "VPS 10.79.0.1 reachable" "YES" "$VPS_OVERLAY_IP responds to ICMP."
 else
   row "VPS 10.79.0.1 reachable" "NO" "No ICMP reply from $VPS_OVERLAY_IP."
 fi
 
+IPHONE_REACHABLE=NO
 if [[ -n "$IPHONE_OVERLAY_IP" ]]; then
   if ping -c 1 -W 1500 "$IPHONE_OVERLAY_IP" >/dev/null 2>&1; then
+    IPHONE_REACHABLE=YES
     row "iPhone 10.79.0.2 reachable" "YES" "$IPHONE_OVERLAY_IP responds to ICMP."
   else
     row "iPhone 10.79.0.2 reachable" "NO" "No ICMP reply from $IPHONE_OVERLAY_IP."
@@ -182,8 +186,10 @@ row "Install possible" "NO" "Apple signing is intentionally not configured in th
 
 if [[ "$WG_STATUS" != "OK" ]]; then
   row "Blocking reason" "WireGuard setup" "Local tunnel setup did not complete."
-elif [[ "${WG_HANDSHAKE:-NO}" != "YES" ]]; then
-  row "Blocking reason" "WireGuard data plane" "OIDC and peer registration succeeded and the local interface/routes were created, but no server handshake was observed after traffic to 10.79.0.1/10.79.0.2."
+elif [[ "${VPS_REACHABLE:-NO}" != "YES" ]]; then
+  row "Blocking reason" "WireGuard data plane" "The local tunnel exists, but the VPS overlay address is not reachable."
+elif [[ "${IPHONE_REACHABLE:-NO}" != "YES" ]]; then
+  row "Blocking reason" "VPS-to-iPhone forwarding" "Runner-to-VPS overlay traffic works, but runner-to-iPhone traffic does not. Check VPS forwarding/firewall and the iPhone peer return path before Apple discovery."
 elif [[ -z "$SELECTED" ]]; then
   row "Blocking reason" "Apple discovery" "IP overlay diagnostics completed, but CoreDevice did not resolve a physical iPhone."
 elif [[ "${PAIR_STATE:-unknown}" != "paired" ]]; then

@@ -1,6 +1,9 @@
 #!/usr/bin/env bash
 set -euo pipefail
-IFACE="${WG_INTERFACE:-wg0}"
+CONF="${RUNNER_TEMP:-/tmp}/iphone-photo-bridge-wg.conf"
 if command -v wg-quick >/dev/null 2>&1; then
-  sudo wg-quick down "$IFACE" >/dev/null 2>&1 || true
+  if [[ -f "$CONF" ]]; then
+    sudo wg-quick down "$CONF" >/dev/null 2>&1 || true
+    rm -f "$CONF"
+  fi
 fi

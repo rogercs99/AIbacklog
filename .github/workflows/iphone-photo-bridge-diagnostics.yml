@@ -5,6 +5,9 @@ on:
     branches: [project/iphone-photo-bridge]
     paths:
       - '.github/workflows/iphone-photo-bridge-diagnostics.yml'
+      - 'iphone-photo-bridge/scripts/wg-up-macos.sh'
+      - 'iphone-photo-bridge/scripts/wg-down-macos.sh'
+      - 'iphone-photo-bridge/scripts/device-diagnostics.sh'
   workflow_dispatch:
     inputs:
       attempt_pair:
@@ -15,20 +18,22 @@ on:
 
 permissions:
   contents: read
+  id-token: write
 
 jobs:
   diagnose:
     runs-on: xcode-27
     timeout-minutes: 20
     env:
-      WG_PRIVATE_KEY: ${{ secrets.WG_PRIVATE_KEY }}
-      WG_PEER_PUBLIC_KEY: ${{ vars.WG_PEER_PUBLIC_KEY }}
-      WG_ENDPOINT: ${{ vars.WG_ENDPOINT }}
-      WG_ADDRESS: ${{ vars.WG_ADDRESS }}
-      WG_ALLOWED_IPS: ${{ vars.WG_ALLOWED_IPS }}
-      IPHONE_OVERLAY_IP: ${{ vars.IPHONE_OVERLAY_IP }}
+      WG_PEER_PUBLIC_KEY: P6lgCy9US7tN5XFtWmNBICPlRv7Bgy/Id1J59sstulk=
+      WG_ENDPOINT: 152.114.195.138:51821
+      WG_ADDRESS: 10.79.0.4/32
+      WG_ALLOWED_IPS: 10.79.0.1/32,10.79.0.2/32
+      VPS_OVERLAY_IP: 10.79.0.1
+      IPHONE_OVERLAY_IP: 10.79.0.2
+      WG_BROKER_URL: https://github-wg.gamemodai.pro
+      OIDC_AUDIENCE: iphone-photo-bridge-vps
       IPHONE_DEVICE_ID: ${{ vars.IPHONE_DEVICE_ID }}
-      APPLE_DEVELOPMENT_TEAM: ${{ vars.APPLE_DEVELOPMENT_TEAM }}
       ATTEMPT_PAIR: ${{ github.event_name == 'workflow_dispatch' && inputs.attempt_pair || false }}
     defaults:
       run:
@@ -43,44 +48,72 @@ jobs:
           sw_vers
           xcodebuild -version
           xcrun devicectl --version || true
-          xcrun devicectl list devices || true
           route -n get default || true
       - name: Install WireGuard tools
         working-directory: .
         run: brew install wireguard-tools
-      - name: Validate bridge configuration
-        id: config
+      - name: Create ephemeral WireGuard peer with GitHub OIDC
+        id: peer
         shell: bash
         run: |
           set -euo pipefail
-          missing=()
-          [[ -n "$WG_PRIVATE_KEY" ]] || missing+=(WG_PRIVATE_KEY)
-          for name in WG_PEER_PUBLIC_KEY WG_ENDPOINT WG_ADDRESS WG_ALLOWED_IPS IPHONE_OVERLAY_IP; do
-            [[ -n "${!name:-}" ]] || missing+=("$name")
-          done
-          if ((${#missing[@]})); then
-            echo "ready=false" >> "$GITHUB_OUTPUT"
-            echo "WG_STATUS=FAIL" >> "$GITHUB_ENV"
-            echo "WG_CONFIG_MISSING=${missing[*]}" >> "$GITHUB_ENV"
-            printf 'Bridge configuration missing: %s\n' "${missing[*]}"
-          else
-            echo "ready=true" >> "$GITHUB_OUTPUT"
+          umask 077
+          WG_PRIVATE_KEY="$(wg genkey)"
+          WG_PUBLIC_KEY="$(printf '%s' "$WG_PRIVATE_KEY" | wg pubkey)"
+          printf '%s' "$WG_PRIVATE_KEY" > "$RUNNER_TEMP/wg-private-key"
+          printf '%s' "$WG_PUBLIC_KEY" > "$RUNNER_TEMP/wg-public-key"
+          chmod 600 "$RUNNER_TEMP/wg-private-key" "$RUNNER_TEMP/wg-public-key"
+
+          token_json="$(curl --fail-with-body --silent --show-error             -H "Authorization: bearer $ACTIONS_ID_TOKEN_REQUEST_TOKEN"             "$ACTIONS_ID_TOKEN_REQUEST_URL&audience=$OIDC_AUDIENCE")"
+          OIDC_TOKEN="$(python3 -c 'import json,sys; print(json.load(sys.stdin)["value"])' <<<"$token_json")"
+          [[ -n "$OIDC_TOKEN" ]] || { echo "OIDC token response contained no value"; exit 1; }
+
+          http="$(curl --silent --show-error -o "$RUNNER_TEMP/peer-register.json" -w '%{http_code}'             -X POST "$WG_BROKER_URL/v1/peer"             -H "Authorization: Bearer $OIDC_TOKEN"             -H 'Content-Type: application/json'             --data "$(python3 -c 'import json,sys; print(json.dumps({"public_key":sys.argv[1]}))' "$WG_PUBLIC_KEY")")"
+          if [[ "$http" != 2* ]]; then
+            echo "Broker rejected GitHub OIDC identity (HTTP $http)."
+            python3 - "$RUNNER_TEMP/peer-register.json" <<'PY'
+import json,sys
+try:
+    d=json.load(open(sys.argv[1]))
+    print("Broker response:", {k:v for k,v in d.items() if k.lower() not in {"token","jwt","private_key"}})
+except Exception:
+    print("Broker returned a non-JSON error body.")
+PY
+            exit 1
           fi
-      - name: Bring up WireGuard
-        if: steps.config.outputs.ready == 'true'
+          echo "OIDC_STATUS=OK" >> "$GITHUB_ENV"
+          echo "PEER_STATUS=OK" >> "$GITHUB_ENV"
+      - name: Bring up ephemeral WireGuard tunnel
         id: wg
         shell: bash
         run: |
+          set -euo pipefail
+          export WG_PRIVATE_KEY="$(cat "$RUNNER_TEMP/wg-private-key")"
           if ./scripts/wg-up-macos.sh; then
             echo "WG_STATUS=OK" >> "$GITHUB_ENV"
           else
             echo "WG_STATUS=FAIL" >> "$GITHUB_ENV"
+            exit 1
           fi
       - name: Run device diagnostics
         if: always()
         shell: bash
         run: ./scripts/device-diagnostics.sh
-      - name: Bring down WireGuard
-        if: always() && steps.config.outputs.ready == 'true'
+      - name: Revoke ephemeral peer and lower tunnel
+        if: always()
         shell: bash
-        run: ./scripts/wg-down-macos.sh
+        run: |
+          set +e
+          if [[ -s "$RUNNER_TEMP/wg-public-key" ]]; then
+            WG_PUBLIC_KEY="$(cat "$RUNNER_TEMP/wg-public-key")"
+            token_json="$(curl --fail-with-body --silent --show-error               -H "Authorization: bearer $ACTIONS_ID_TOKEN_REQUEST_TOKEN"               "$ACTIONS_ID_TOKEN_REQUEST_URL&audience=$OIDC_AUDIENCE")"
+            OIDC_TOKEN="$(python3 -c 'import json,sys; print(json.load(sys.stdin).get("value",""))' <<<"$token_json")"
+            if [[ -n "$OIDC_TOKEN" ]]; then
+              http="$(curl --silent --show-error -o "$RUNNER_TEMP/peer-delete.json" -w '%{http_code}'                 -X DELETE "$WG_BROKER_URL/v1/peer"                 -H "Authorization: Bearer $OIDC_TOKEN"                 -H 'Content-Type: application/json'                 --data "$(python3 -c 'import json,sys; print(json.dumps({"public_key":sys.argv[1]}))' "$WG_PUBLIC_KEY")")"
+              echo "Ephemeral peer cleanup HTTP $http"
+            else
+              echo "Cleanup OIDC token unavailable."
+            fi
+          fi
+          ./scripts/wg-down-macos.sh || true
+          rm -f "$RUNNER_TEMP/wg-private-key" "$RUNNER_TEMP/wg-public-key"

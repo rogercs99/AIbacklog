@@ -1,6 +1,10 @@
 name: iPhone Photo Bridge - Diagnostics
 
 on:
+  push:
+    branches: [project/iphone-photo-bridge]
+    paths:
+      - '.github/workflows/iphone-photo-bridge-diagnostics.yml'
   workflow_dispatch:
     inputs:
       attempt_pair:
@@ -25,7 +29,7 @@ jobs:
       IPHONE_OVERLAY_IP: ${{ vars.IPHONE_OVERLAY_IP }}
       IPHONE_DEVICE_ID: ${{ vars.IPHONE_DEVICE_ID }}
       APPLE_DEVELOPMENT_TEAM: ${{ vars.APPLE_DEVELOPMENT_TEAM }}
-      ATTEMPT_PAIR: ${{ inputs.attempt_pair }}
+      ATTEMPT_PAIR: ${{ github.event_name == 'workflow_dispatch' && inputs.attempt_pair || false }}
     defaults:
       run:
         working-directory: iphone-photo-bridge

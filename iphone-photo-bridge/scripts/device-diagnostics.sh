@@ -3,7 +3,10 @@ set -euo pipefail
 
 SUMMARY="${GITHUB_STEP_SUMMARY:-/tmp/iphone-bridge-summary.md}"
 WG_STATUS="${WG_STATUS:-UNKNOWN}"
+VPS_OVERLAY_IP="${VPS_OVERLAY_IP:-10.79.0.1}"
 IPHONE_OVERLAY_IP="${IPHONE_OVERLAY_IP:-}"
+OIDC_STATUS="${OIDC_STATUS:-FAIL}"
+PEER_STATUS="${PEER_STATUS:-FAIL}"
 IPHONE_DEVICE_ID="${IPHONE_DEVICE_ID:-}"
 APPLE_DEVELOPMENT_TEAM="${APPLE_DEVELOPMENT_TEAM:-}"
 ATTEMPT_PAIR="${ATTEMPT_PAIR:-true}"
@@ -28,6 +31,8 @@ row() {
 }
 
 write_header
+row "OIDC authentication" "$OIDC_STATUS" "GitHub Actions OIDC token exchange with the peer broker."
+row "Ephemeral peer registration" "$PEER_STATUS" "Runtime WireGuard public key registration."
 
 # WireGuard is evaluated independently from CoreDevice/Bonjour.
 if [[ "$WG_STATUS" == "OK" ]]; then
@@ -38,11 +43,17 @@ else
   row "WireGuard" "UNKNOWN" "Tunnel was not attempted."
 fi
 
+if ping -c 1 -W 1500 "$VPS_OVERLAY_IP" >/dev/null 2>&1; then
+  row "VPS 10.79.0.1 reachable" "YES" "$VPS_OVERLAY_IP responds to ICMP."
+else
+  row "VPS 10.79.0.1 reachable" "NO" "No ICMP reply from $VPS_OVERLAY_IP."
+fi
+
 if [[ -n "$IPHONE_OVERLAY_IP" ]]; then
   if ping -c 1 -W 1500 "$IPHONE_OVERLAY_IP" >/dev/null 2>&1; then
-    row "Overlay reachability" "OK" "$IPHONE_OVERLAY_IP responds to ICMP."
+    row "iPhone 10.79.0.2 reachable" "YES" "$IPHONE_OVERLAY_IP responds to ICMP."
   else
-    row "Overlay reachability" "FAIL" "No ICMP reply from $IPHONE_OVERLAY_IP."
+    row "iPhone 10.79.0.2 reachable" "NO" "No ICMP reply from $IPHONE_OVERLAY_IP."
   fi
 
   if nc -z -G 2 "$IPHONE_OVERLAY_IP" 62078 >/dev/null 2>&1; then
@@ -51,15 +62,21 @@ if [[ -n "$IPHONE_OVERLAY_IP" ]]; then
     row "Port 62078" "FAIL" "TCP 62078 is not reachable."
   fi
 else
-  row "Overlay reachability" "UNKNOWN" "IPHONE_OVERLAY_IP is not configured."
+  row "iPhone 10.79.0.2 reachable" "UNKNOWN" "IPHONE_OVERLAY_IP is not configured."
   row "Port 62078" "UNKNOWN" "IPHONE_OVERLAY_IP is not configured."
+fi
+
+if wg show 2>/dev/null | grep -q 'latest handshake'; then
+  row "WireGuard handshake" "YES" "WireGuard reports handshake metadata."
+else
+  row "WireGuard handshake" "NO" "No WireGuard handshake metadata observed."
 fi
 
 BONJOUR_OUTPUT="$(dns-sd -B _apple-mobdev2._tcp local. 2>&1 & pid=$!; sleep 4; kill "$pid" >/dev/null 2>&1 || true; wait "$pid" >/dev/null 2>&1 || true)"
 if grep -q '_apple-mobdev2._tcp' <<<"$BONJOUR_OUTPUT" && grep -qE 'Add|Rmv' <<<"$BONJOUR_OUTPUT"; then
-  row "Bonjour _apple-mobdev2" "OK" "A service advertisement was observed."
+  row "Bonjour" "FOUND" "A service advertisement was observed."
 else
-  row "Bonjour _apple-mobdev2" "FAIL" "No iPhone wireless-device Bonjour advertisement observed in the sampling window."
+  row "Bonjour" "NOT FOUND" "No iPhone wireless-device Bonjour advertisement observed in the sampling window."
 fi
 
 COREDEVICE_OK=false
@@ -114,7 +131,7 @@ if [[ -z "$SELECTED" && -n "$IPHONE_DEVICE_ID" ]]; then
 fi
 
 if [[ -n "$SELECTED" ]] && xcrun devicectl device info details --device "$SELECTED" --json-output "$DETAILS_JSON" >/tmp/devicectl-details.log 2>&1; then
-  row "CoreDevice visibility" "OK" "Device resolved as $SELECTED."
+  row "CoreDevice" "VISIBLE" "Device resolved as $SELECTED."
   PAIR_STATE="$(python3 - "$DETAILS_JSON" <<'PY'
 import json,sys
 try:d=json.load(open(sys.argv[1])).get('result') or {}
@@ -135,9 +152,9 @@ else: print('unknown')
 PY
 )"
   if [[ "$PAIR_STATE" == paired ]]; then
-    row "Device paired" "OK" "CoreDevice reports pairing metadata consistent with paired."
+    row "Paired" "YES" "CoreDevice reports pairing metadata consistent with paired."
   else
-    row "Device paired" "FAIL" "Pairing is not confirmed by details output."
+    row "Paired" "NO" "Pairing is not confirmed by details output."
     if [[ "$ATTEMPT_PAIR" == true ]]; then
       if xcrun devicectl manage pair --device "$SELECTED" >/tmp/devicectl-pair.log 2>&1; then
         row "Pairing attempt" "OK" "devicectl manage pair returned success."
@@ -150,18 +167,24 @@ PY
   fi
 else
   if [[ "$COREDEVICE_OK" == true ]]; then
-    row "CoreDevice visibility" "FAIL" "No uniquely selectable physical iPhone was visible."
+    row "CoreDevice" "NOT VISIBLE" "No uniquely selectable physical iPhone was visible."
   else
     row "CoreDevice visibility" "FAIL" "devicectl list devices failed; see workflow logs."
   fi
-  row "Device paired" "UNKNOWN" "Cannot evaluate pairing without CoreDevice visibility."
+  row "Paired" "UNKNOWN" "Cannot evaluate pairing without CoreDevice visibility."
   row "Pairing attempt" "UNKNOWN" "No device selected."
 fi
 
-if [[ -n "$APPLE_DEVELOPMENT_TEAM" ]] && security find-identity -v -p codesigning 2>/dev/null | grep -q 'Apple Development'; then
-  row "Signing environment" "OK" "Development team variable and local Apple Development identity are present."
+row "Install possible" "NO" "Apple signing is intentionally not configured in this diagnostic phase."
+
+if [[ "$WG_STATUS" != "OK" ]]; then
+  row "Blocking reason" "WireGuard" "Tunnel setup did not complete."
+elif [[ -z "$SELECTED" ]]; then
+  row "Blocking reason" "Apple discovery" "IP overlay diagnostics completed, but CoreDevice did not resolve a physical iPhone."
+elif [[ "${PAIR_STATE:-unknown}" != "paired" ]]; then
+  row "Blocking reason" "Pairing" "CoreDevice resolved a device but pairing is not confirmed."
 else
-  row "Signing environment" "FAIL" "Signing intentionally not configured on this ephemeral runner."
+  row "Blocking reason" "Signing" "Connectivity/pairing checks passed; signing remains intentionally disabled."
 fi
 
 {

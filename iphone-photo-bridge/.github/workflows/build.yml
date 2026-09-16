@@ -1,0 +1,41 @@
+name: Build unsigned iOS app
+
+on:
+  push:
+    branches: [project/iphone-photo-bridge]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: xcode-27
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - name: Show toolchain
+        run: |
+          sw_vers
+          xcodebuild -version
+          xcrun devicectl --version || true
+      - name: Install XcodeGen
+        run: brew install xcodegen
+      - name: Generate project
+        working-directory: iphone-photo-bridge
+        run: xcodegen generate
+      - name: Build without signing
+        working-directory: iphone-photo-bridge
+        run: |
+          set -o pipefail
+          xcodebuild \
+            -project PhotoCleaner.xcodeproj \
+            -scheme PhotoCleaner \
+            -configuration Debug \
+            -sdk iphoneos \
+            -destination 'generic/platform=iOS' \
+            -derivedDataPath "$RUNNER_TEMP/DerivedData" \
+            CODE_SIGNING_ALLOWED=NO \
+            CODE_SIGNING_REQUIRED=NO \
+            build | tee "$RUNNER_TEMP/xcodebuild.log"

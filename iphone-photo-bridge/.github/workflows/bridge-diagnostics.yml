@@ -1,0 +1,87 @@
+name: iPhone bridge diagnostics
+
+on:
+  workflow_dispatch:
+    inputs:
+      attempt_pair:
+        description: Attempt devicectl pairing if CoreDevice sees an unpaired iPhone
+        required: true
+        type: boolean
+        default: true
+
+permissions:
+  contents: read
+
+jobs:
+  diagnose:
+    runs-on: xcode-27
+    timeout-minutes: 20
+    env:
+      WG_PRIVATE_KEY: ${{ secrets.WG_PRIVATE_KEY }}
+      WG_PEER_PUBLIC_KEY: ${{ vars.WG_PEER_PUBLIC_KEY }}
+      WG_ENDPOINT: ${{ vars.WG_ENDPOINT }}
+      WG_ADDRESS: ${{ vars.WG_ADDRESS }}
+      WG_ALLOWED_IPS: ${{ vars.WG_ALLOWED_IPS }}
+      IPHONE_OVERLAY_IP: ${{ vars.IPHONE_OVERLAY_IP }}
+      IPHONE_DEVICE_ID: ${{ vars.IPHONE_DEVICE_ID }}
+      APPLE_DEVELOPMENT_TEAM: ${{ vars.APPLE_DEVELOPMENT_TEAM }}
+      ATTEMPT_PAIR: ${{ inputs.attempt_pair }}
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: project/iphone-photo-bridge
+
+      - name: Toolchain diagnostics
+        run: |
+          sw_vers
+          xcodebuild -version
+          xcrun devicectl --version || true
+          xcrun devicectl list devices || true
+          route -n get default || true
+
+      - name: Install WireGuard tools
+        run: brew install wireguard-tools
+
+      - name: Validate bridge configuration
+        id: config
+        shell: bash
+        run: |
+          set -euo pipefail
+          missing=()
+          [[ -n "$WG_PRIVATE_KEY" ]] || missing+=(WG_PRIVATE_KEY)
+          for name in WG_PEER_PUBLIC_KEY WG_ENDPOINT WG_ADDRESS WG_ALLOWED_IPS IPHONE_OVERLAY_IP; do
+            [[ -n "${!name:-}" ]] || missing+=("$name")
+          done
+          if ((${#missing[@]})); then
+            echo "ready=false" >> "$GITHUB_OUTPUT"
+            echo "WG_STATUS=FAIL" >> "$GITHUB_ENV"
+            echo "WG_CONFIG_MISSING=${missing[*]}" >> "$GITHUB_ENV"
+            printf 'Bridge configuration missing: %s\n' "${missing[*]}"
+          else
+            echo "ready=true" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Bring up WireGuard
+        working-directory: iphone-photo-bridge
+        if: steps.config.outputs.ready == 'true'
+        id: wg
+        shell: bash
+        run: |
+          if ./scripts/wg-up-macos.sh; then
+            echo "WG_STATUS=OK" >> "$GITHUB_ENV"
+          else
+            echo "WG_STATUS=FAIL" >> "$GITHUB_ENV"
+          fi
+
+      - name: Run device diagnostics
+        working-directory: iphone-photo-bridge
+        if: always()
+        shell: bash
+        run: ./scripts/device-diagnostics.sh
+
+      - name: Bring down WireGuard
+        working-directory: iphone-photo-bridge
+        if: always() && steps.config.outputs.ready == 'true'
+        shell: bash
+        run: ./scripts/wg-down-macos.sh

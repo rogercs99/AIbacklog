@@ -1,0 +1,18 @@
+# Xcode
+DerivedData/
+*.xcworkspace/xcuserdata/
+*.xcodeproj/xcuserdata/
+*.xcuserstate
+
+# Generated project
+PhotoCleaner.xcodeproj/
+
+# macOS
+.DS_Store
+
+# Secrets / local config
+.env
+*.private
+*.mobileprovision
+*.p12
+*.cer

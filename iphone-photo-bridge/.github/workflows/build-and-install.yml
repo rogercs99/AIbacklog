@@ -1,0 +1,106 @@
+name: Build and optional device install
+
+on:
+  workflow_dispatch:
+    inputs:
+      attempt_install:
+        description: Attempt install only after bridge diagnostics reports the device paired
+        required: true
+        type: boolean
+        default: false
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: xcode-27
+    timeout-minutes: 25
+    env:
+      APPLE_DEVELOPMENT_TEAM: ${{ vars.APPLE_DEVELOPMENT_TEAM }}
+      IPHONE_DEVICE_ID: ${{ vars.IPHONE_DEVICE_ID }}
+      WG_PRIVATE_KEY: ${{ secrets.WG_PRIVATE_KEY }}
+      WG_PEER_PUBLIC_KEY: ${{ vars.WG_PEER_PUBLIC_KEY }}
+      WG_ENDPOINT: ${{ vars.WG_ENDPOINT }}
+      WG_ADDRESS: ${{ vars.WG_ADDRESS }}
+      WG_ALLOWED_IPS: ${{ vars.WG_ALLOWED_IPS }}
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: project/iphone-photo-bridge
+      - run: brew install xcodegen
+      - working-directory: iphone-photo-bridge
+        run: xcodegen generate
+
+      - name: Always prove unsigned build first
+        working-directory: iphone-photo-bridge
+        run: |
+          xcodebuild \
+            -project PhotoCleaner.xcodeproj \
+            -scheme PhotoCleaner \
+            -configuration Debug \
+            -sdk iphoneos \
+            -destination 'generic/platform=iOS' \
+            -derivedDataPath "$RUNNER_TEMP/UnsignedDerivedData" \
+            CODE_SIGNING_ALLOWED=NO CODE_SIGNING_REQUIRED=NO build
+
+      - name: Explain signing gate
+        if: inputs.attempt_install == false
+        run: |
+          echo "## Install" >> "$GITHUB_STEP_SUMMARY"
+          echo "Unsigned build succeeded. Installation was not requested; signing credentials are intentionally not stored by this project." >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Validate explicitly authorized signing setup
+        if: inputs.attempt_install == true
+        id: signing
+        shell: bash
+        run: |
+          set -euo pipefail
+          ready=true
+          reason=""
+          if [[ -z "${IPHONE_DEVICE_ID:-}" ]]; then ready=false; reason="IPHONE_DEVICE_ID is not configured."; fi
+          if [[ -z "${APPLE_DEVELOPMENT_TEAM:-}" ]]; then ready=false; reason="APPLE_DEVELOPMENT_TEAM is not configured."; fi
+          if ! security find-identity -v -p codesigning 2>/dev/null | grep -q 'Apple Development'; then
+            ready=false
+            reason="No Apple Development signing identity is installed on this ephemeral runner."
+          fi
+          echo "ready=$ready" >> "$GITHUB_OUTPUT"
+          echo "reason=$reason" >> "$GITHUB_OUTPUT"
+          if [[ "$ready" != true ]]; then
+            echo "Install skipped safely: $reason" | tee -a "$GITHUB_STEP_SUMMARY"
+          fi
+
+      - name: Stop before unsafe signing automation
+        if: inputs.attempt_install == true && steps.signing.outputs.ready != 'true'
+        run: |
+          echo "No Apple password, session, private key, certificate, or provisioning profile will be requested or fabricated." >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Signed build and install
+        working-directory: iphone-photo-bridge
+        if: inputs.attempt_install == true && steps.signing.outputs.ready == 'true'
+        shell: bash
+        run: |
+          set -euo pipefail
+          brew install wireguard-tools
+          ./scripts/wg-up-macos.sh
+          trap './scripts/wg-down-macos.sh' EXIT
+          DETAILS_JSON="$RUNNER_TEMP/device-details.json"
+          xcrun devicectl device info details --device "$IPHONE_DEVICE_ID" --json-output "$DETAILS_JSON"
+          XCODE_UDID="$(python3 -c 'import json,sys; d=json.load(open(sys.argv[1])).get("result",{}); h=d.get("hardwareProperties") or {}; p=d.get("properties") or {}; nh=(p.get("hardware") or {}) if isinstance(p,dict) else {}; print(h.get("udid") or nh.get("udid") or "")' "$DETAILS_JSON")"
+          if [[ -z "$XCODE_UDID" ]]; then
+            echo "Could not resolve the hardware UDID required by xcodebuild." >&2
+            exit 3
+          fi
+          xcodebuild \
+            -project PhotoCleaner.xcodeproj \
+            -scheme PhotoCleaner \
+            -configuration Debug \
+            -sdk iphoneos \
+            -destination "id=$XCODE_UDID" \
+            -derivedDataPath "$RUNNER_TEMP/SignedDerivedData" \
+            DEVELOPMENT_TEAM="$APPLE_DEVELOPMENT_TEAM" \
+            -allowProvisioningUpdates \
+            build
+          APP_PATH="$RUNNER_TEMP/SignedDerivedData/Build/Products/Debug-iphoneos/PhotoCleaner.app"
+          ./scripts/install-device.sh "$APP_PATH"

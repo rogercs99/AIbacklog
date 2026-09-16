@@ -1,0 +1,39 @@
+name: iPhone Photo Bridge - Optional install
+on:
+  workflow_dispatch:
+    inputs:
+      attempt_install:
+        description: Attempt install only after diagnostics reports a paired device
+        required: true
+        type: boolean
+        default: false
+permissions:
+  contents: read
+jobs:
+  build:
+    runs-on: xcode-27
+    timeout-minutes: 25
+    env:
+      APPLE_DEVELOPMENT_TEAM: ${{ vars.APPLE_DEVELOPMENT_TEAM }}
+      IPHONE_DEVICE_ID: ${{ vars.IPHONE_DEVICE_ID }}
+    defaults:
+      run:
+        working-directory: iphone-photo-bridge
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: project/iphone-photo-bridge
+      - name: Install XcodeGen
+        working-directory: .
+        run: brew install xcodegen
+      - run: xcodegen generate
+      - name: Prove unsigned build first
+        run: xcodebuild -project PhotoCleaner.xcodeproj -scheme PhotoCleaner -configuration Debug -sdk iphoneos -destination 'generic/platform=iOS' -derivedDataPath "$RUNNER_TEMP/UnsignedDerivedData" CODE_SIGNING_ALLOWED=NO CODE_SIGNING_REQUIRED=NO build
+      - name: Signing gate
+        if: inputs.attempt_install == true
+        shell: bash
+        run: |
+          echo "Installation remains intentionally gated until an explicitly authorized Apple Development signing identity is available." >> "$GITHUB_STEP_SUMMARY"
+          if [[ -z "${APPLE_DEVELOPMENT_TEAM:-}" || -z "${IPHONE_DEVICE_ID:-}" ]]; then exit 0; fi
+          if ! security find-identity -v -p codesigning | grep -q 'Apple Development'; then exit 0; fi
+          echo "Signing identity detected; use the project-local build-and-install workflow logic only after diagnostics confirms pairing." >> "$GITHUB_STEP_SUMMARY"

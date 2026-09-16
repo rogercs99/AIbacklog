@@ -6,7 +6,7 @@ set -euo pipefail
 : "${WG_ADDRESS:?WG_ADDRESS is required}"
 : "${WG_ALLOWED_IPS:?WG_ALLOWED_IPS is required}"
 
-CONF="${RUNNER_TEMP:-/tmp}/iphone-photo-bridge-wg.conf"
+CONF="${RUNNER_TEMP:-/tmp}/wg0.conf"
 umask 077
 cat > "$CONF" <<EOF
 [Interface]

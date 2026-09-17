@@ -1,0 +1,90 @@
+name: iPhone Photo Bridge - Relay verified artifact
+
+on:
+  push:
+    branches: [project/iphone-photo-bridge]
+    paths:
+      - '.github/workflows/iphone-photo-bridge-relay-artifact.yml'
+
+permissions:
+  actions: read
+  contents: read
+  id-token: write
+
+jobs:
+  relay:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    env:
+      ARTIFACT_ID: '10498091553'
+      EXPECTED_SIZE: '138344'
+      EXPECTED_SHA256: 'e2fa5863bd14a48012341ebc271547c7d26f2d20205ca8bb6707c0c1ba13cfcd'
+      WG_PEER_PUBLIC_KEY: 'P6lgCy9US7tN5XFtWmNBICPlRv7Bgy/Id1J59sstulk='
+      WG_ENDPOINT: '152.114.195.138:51821'
+      WG_ADDRESS: '10.79.0.4/32'
+      WG_ALLOWED_IPS: '10.79.0.1/32'
+      WG_BROKER_URL: 'https://github-wg.gamemodai.pro'
+      OIDC_AUDIENCE: 'iphone-photo-bridge-vps'
+    steps:
+      - uses: actions/checkout@v4
+      - name: Download and verify historical artifact
+        shell: bash
+        run: |
+          set -euo pipefail
+          curl --fail-with-body --location --silent --show-error \
+            -H "Authorization: Bearer ${{ github.token }}" \
+            -H 'Accept: application/vnd.github+json' \
+            "https://api.github.com/repos/${GITHUB_REPOSITORY}/actions/artifacts/${ARTIFACT_ID}/zip" \
+            -o "$RUNNER_TEMP/artifact.zip"
+          test "$(stat -c '%s' "$RUNNER_TEMP/artifact.zip")" = "$EXPECTED_SIZE"
+          printf '%s  %s\n' "$EXPECTED_SHA256" "$RUNNER_TEMP/artifact.zip" | sha256sum -c -
+      - name: Install WireGuard tools
+        run: sudo apt-get update -qq && sudo apt-get install -y -qq wireguard-tools
+      - name: Create ephemeral WireGuard peer
+        shell: bash
+        run: |
+          set -euo pipefail
+          umask 077
+          WG_PRIVATE_KEY="$(wg genkey)"
+          WG_PUBLIC_KEY="$(printf '%s' "$WG_PRIVATE_KEY" | wg pubkey)"
+          printf '%s' "$WG_PRIVATE_KEY" > "$RUNNER_TEMP/wg-private-key"
+          printf '%s' "$WG_PUBLIC_KEY" > "$RUNNER_TEMP/wg-public-key"
+          token_json="$(curl --fail-with-body --silent --show-error -H "Authorization: bearer $ACTIONS_ID_TOKEN_REQUEST_TOKEN" "$ACTIONS_ID_TOKEN_REQUEST_URL&audience=$OIDC_AUDIENCE")"
+          OIDC_TOKEN="$(python3 -c 'import json,sys; print(json.load(sys.stdin)["value"])' <<<"$token_json")"
+          curl --fail-with-body --silent --show-error -X POST "$WG_BROKER_URL/v1/peer" \
+            -H "Authorization: Bearer $OIDC_TOKEN" -H 'Content-Type: application/json' \
+            --data "$(python3 -c 'import json,sys; print(json.dumps({"public_key":sys.argv[1]}))' "$WG_PUBLIC_KEY")" >/dev/null
+          cat > "$RUNNER_TEMP/wg0.conf" <<EOF
+          [Interface]
+          PrivateKey = $WG_PRIVATE_KEY
+          Address = $WG_ADDRESS
+          [Peer]
+          PublicKey = $WG_PEER_PUBLIC_KEY
+          Endpoint = $WG_ENDPOINT
+          AllowedIPs = $WG_ALLOWED_IPS
+          PersistentKeepalive = 25
+          EOF
+          sudo wg-quick up "$RUNNER_TEMP/wg0.conf"
+      - name: Relay exact verified artifact to VPS
+        shell: bash
+        run: |
+          set -euo pipefail
+          curl --fail-with-body --silent --show-error -X POST \
+            -H 'Content-Type: application/zip' \
+            --data-binary @"$RUNNER_TEMP/artifact.zip" \
+            http://10.79.0.1:8120/upload
+      - name: Cleanup ephemeral peer
+        if: always()
+        shell: bash
+        run: |
+          set +e
+          sudo wg-quick down "$RUNNER_TEMP/wg0.conf" >/dev/null 2>&1 || true
+          if [[ -s "$RUNNER_TEMP/wg-public-key" ]]; then
+            WG_PUBLIC_KEY="$(cat "$RUNNER_TEMP/wg-public-key")"
+            token_json="$(curl --fail-with-body --silent --show-error -H "Authorization: bearer $ACTIONS_ID_TOKEN_REQUEST_TOKEN" "$ACTIONS_ID_TOKEN_REQUEST_URL&audience=$OIDC_AUDIENCE")"
+            OIDC_TOKEN="$(python3 -c 'import json,sys; print(json.load(sys.stdin).get("value",""))' <<<"$token_json")"
+            [[ -n "$OIDC_TOKEN" ]] && curl --silent --show-error -X DELETE "$WG_BROKER_URL/v1/peer" \
+              -H "Authorization: Bearer $OIDC_TOKEN" -H 'Content-Type: application/json' \
+              --data "$(python3 -c 'import json,sys; print(json.dumps({"public_key":sys.argv[1]}))' "$WG_PUBLIC_KEY")" >/dev/null || true
+          fi
+          rm -f "$RUNNER_TEMP/wg-private-key" "$RUNNER_TEMP/wg-public-key" "$RUNNER_TEMP/wg0.conf"

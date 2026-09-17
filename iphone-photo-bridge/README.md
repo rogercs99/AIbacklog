@@ -50,3 +50,7 @@ xcodebuild \
 A GitHub-hosted macOS runner can establish ordinary Layer-3 WireGuard connectivity when suitable peer configuration is supplied. That does **not** itself reproduce the local-link discovery environment used by Apple's wireless device support. The diagnostics therefore report tunnel reachability, Bonjour observations and CoreDevice visibility separately instead of treating a successful VPN handshake as proof that an iPhone is pairable/installable.
 
 See `docs/GITHUB_CONFIGURATION.md` and `docs/LIMITATIONS.md`.
+
+## Current signing/install checkpoint
+
+The Personal Team signing path is operational for bundle ID `com.gamemodai.PhotoCleaner`. A signed IPA has been produced and cryptographically validated on the VPS without committing private signing material or the device-specific IPA. The private HTTPS bootstrap exposes an OTA test page for the registered iPhone. See `docs/OTA_INSTALL.md`.

@@ -1,6 +1,6 @@
 name: PhotoCleaner
 options:
-  bundleIdPrefix: pro.gamemodai
+  bundleIdPrefix: com.gamemodai
   deploymentTarget:
     iOS: "17.0"
 settings:
@@ -15,7 +15,7 @@ targets:
       - PhotoCleaner/Sources/PhotoCleaner
     settings:
       base:
-        PRODUCT_BUNDLE_IDENTIFIER: pro.gamemodai.PhotoCleaner
+        PRODUCT_BUNDLE_IDENTIFIER: com.gamemodai.PhotoCleaner
         GENERATE_INFOPLIST_FILE: YES
         INFOPLIST_KEY_CFBundleDisplayName: PhotoCleaner
         INFOPLIST_KEY_NSPhotoLibraryUsageDescription: "PhotoCleaner analyzes your library locally to help you review duplicates and similar photos."
@@ -36,4 +36,4 @@ targets:
     settings:
       base:
         GENERATE_INFOPLIST_FILE: YES
-        PRODUCT_BUNDLE_IDENTIFIER: pro.gamemodai.PhotoCleanerTests
+        PRODUCT_BUNDLE_IDENTIFIER: com.gamemodai.PhotoCleanerTests

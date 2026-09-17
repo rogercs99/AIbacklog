@@ -44,3 +44,17 @@ jobs:
             CODE_SIGNING_ALLOWED=NO \
             CODE_SIGNING_REQUIRED=NO \
             build | tee "$RUNNER_TEMP/xcodebuild.log"
+      - name: Package unsigned app
+        run: |
+          set -euo pipefail
+          APP="$RUNNER_TEMP/DerivedData/Build/Products/Debug-iphoneos/PhotoCleaner.app"
+          test -d "$APP"
+          ditto -c -k --sequesterRsrc --keepParent "$APP" "$RUNNER_TEMP/PhotoCleaner-unsigned.zip"
+
+      - name: Upload unsigned app artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: PhotoCleaner-unsigned
+          path: ${{ runner.temp }}/PhotoCleaner-unsigned.zip
+          if-no-files-found: error
+          retention-days: 7

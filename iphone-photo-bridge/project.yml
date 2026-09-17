@@ -17,6 +17,10 @@ targets:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: com.gamemodai.PhotoCleaner
         GENERATE_INFOPLIST_FILE: YES
+        MARKETING_VERSION: 1.0.0
+        CURRENT_PROJECT_VERSION: 1
+        INFOPLIST_KEY_CFBundleShortVersionString: 1.0.0
+        INFOPLIST_KEY_CFBundleVersion: 1
         INFOPLIST_KEY_CFBundleDisplayName: PhotoCleaner
         INFOPLIST_KEY_NSPhotoLibraryUsageDescription: "PhotoCleaner analyzes your library locally to help you review duplicates and similar photos."
         INFOPLIST_KEY_NSPhotoLibraryAddUsageDescription: "PhotoCleaner may later let you explicitly save reviewed results."

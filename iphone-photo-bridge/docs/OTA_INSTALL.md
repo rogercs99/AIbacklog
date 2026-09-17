@@ -41,3 +41,13 @@ The existing HTTPS bootstrap service at `iphone-bootstrap.gamemodai.pro` now ser
 The externally served IPA SHA-256 is verified against the local signed IPA after deployment. The bootstrap service was backed up before modification.
 
 This OTA route is a device-side experiment for the already registered iPhone. If current iOS rejects legacy manifest-based OTA installation for a Personal Team development build, do not weaken signing or TLS; fall back to another native device-side installation mechanism. Developer Mode is required to run IPA-installed development builds.
+
+## iOS install failure diagnosed on first OTA attempt
+
+The first device-side install reached the manifest and IPA but failed with a generic iOS installation error. VPS logs showed iOS issuing `HEAD` requests to the IPA and receiving HTTP 501 because the bootstrap server only implemented GET. The signed app's generated `Info.plist` also lacked both `CFBundleVersion` and `CFBundleShortVersionString`.
+
+Fixes:
+- bootstrap now handles HEAD for the IPA and manifest and returns the real content length;
+- project source declares marketing version `1.0.0` and build `1` and explicitly emits the matching Info.plist keys;
+- the current IPA was rebuilt from the verified unsigned artifact, patched to version `1.0.0` build `1`, re-signed, and redeployed;
+- HTTPS HEAD returns 200 and the remote IPA SHA-256 matches the local signed copy.

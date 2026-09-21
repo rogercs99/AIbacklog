@@ -1,0 +1,17 @@
+2026-09-21T13:37:56.978 ERROR [ErrorLogger] - Error when executing MySQL query:
+java.sql.SQLSyntaxErrorException: (conn=16) Table 'havana.navigator_styles' doesn't exist
+	at org.mariadb.jdbc.internal.util.exceptions.ExceptionMapper.get(ExceptionMapper.java:236)
+	at org.mariadb.jdbc.internal.util.exceptions.ExceptionMapper.getException(ExceptionMapper.java:165)
+	at org.mariadb.jdbc.MariaDbStatement.executeExceptionEpilogue(MariaDbStatement.java:238)
+	at org.mariadb.jdbc.MariaDbPreparedStatementClient.executeInternal(MariaDbPreparedStatementClient.java:232)
+	at org.mariadb.jdbc.MariaDbPreparedStatementClient.execute(MariaDbPreparedStatementClient.java:159)
+	at org.mariadb.jdbc.MariaDbPreparedStatementClient.executeQuery(MariaDbPreparedStatementClient.java:174)
+	at com.zaxxer.hikari.pool.ProxyPreparedStatement.executeQuery(ProxyPreparedStatement.java:52)
+	at com.zaxxer.hikari.pool.HikariProxyPreparedStatement.executeQuery(HikariProxyPreparedStatement.java)
+	at org.alexdev.havana.dao.mysql.NavigatorDao.getNavigatorStyles(NavigatorDao.java:220)
+	at org.alexdev.havana.game.navigator.NavigatorManager.<init>(NavigatorManager.java:16)
+	at org.alexdev.havana.game.navigator.NavigatorManager.getInstance(NavigatorManager.java:98)
+	at org.alexdev.havana.Havana.main(Havana.java:146)
+Caused by: java.sql.SQLException: Table 'havana.navigator_styles' doesn't exist
+Query is: SELECT * FROM navigator_styles
+java thread: main

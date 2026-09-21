@@ -1,0 +1,44 @@
+name: MariaDB x64 dependency transport
+on:
+  push:
+    branches: [tmp-habbo-dual-video-20260921]
+    paths:
+      - ".github/workflows/habbo-mariadb-x64-dep.yml"
+permissions:
+  contents: read
+jobs:
+  transport:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Download GitHub release asset and split
+        shell: bash
+        run: |
+          set -euxo pipefail
+          curl -fL --retry 5 https://github.com/AndyTargino/mariadb-portable-driver/releases/download/v0.0.5/mariadb-linux.zip -o mariadb-linux.zip
+          test "$(stat -c %s mariadb-linux.zip)" = "523165893"
+          echo "c41fa45890035437112c3a356d7101509226968eaf263f3d8a1ab940c27a196c  mariadb-linux.zip" | sha256sum -c -
+          unzip -l mariadb-linux.zip | head -80 || true
+          split -b 200M -d -a 2 mariadb-linux.zip mariadb-linux.zip.part-
+          ls -lh mariadb-linux.zip.part-*
+      - name: Upload part 00
+        uses: actions/upload-artifact@v4.6.2
+        with:
+          name: mariadb-linux-part-00
+          path: mariadb-linux.zip.part-00
+          compression-level: 0
+          retention-days: 1
+      - name: Upload part 01
+        uses: actions/upload-artifact@v4.6.2
+        with:
+          name: mariadb-linux-part-01
+          path: mariadb-linux.zip.part-01
+          compression-level: 0
+          retention-days: 1
+      - name: Upload part 02
+        uses: actions/upload-artifact@v4.6.2
+        with:
+          name: mariadb-linux-part-02
+          path: mariadb-linux.zip.part-02
+          compression-level: 0
+          retention-days: 1

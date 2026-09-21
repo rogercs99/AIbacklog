@@ -10,18 +10,18 @@ jobs:
   fetch:
     runs-on: ubuntu-latest
     steps:
-      - name: Fetch self-contained Wine AppImage dependency only
+      - name: Fetch pure Wine32 AppImage dependency only
         run: |
           set -euo pipefail
           curl -fL --retry 5 --retry-delay 2 \
-            'https://github.com/pkgforge-dev/wine-AppImage/releases/download/11.16-2%402026-09-03_1788416451/wine-11.16-2-anylinux-x86_64.AppImage' \
-            -o wine-anylinux.AppImage
-          test "$(stat -c %s wine-anylinux.AppImage)" -eq 150671725
-          sha256sum wine-anylinux.AppImage > wine-anylinux.AppImage.sha256
+            'https://github.com/pkgforge-dev/wine32-cli-AppImage/releases/download/11.16%402026-09-03_1788399350/wine32-cli-11.16-anylinux-x86_64.AppImage' \
+            -o wine32-cli.AppImage
+          test "$(stat -c %s wine32-cli.AppImage)" -eq 40040822
+          sha256sum wine32-cli.AppImage > wine32-cli.AppImage.sha256
       - uses: actions/upload-artifact@v4.6.2
         with:
-          name: wine-anylinux-appimage
+          name: wine32-cli-appimage
           path: |
-            wine-anylinux.AppImage
-            wine-anylinux.AppImage.sha256
+            wine32-cli.AppImage
+            wine32-cli.AppImage.sha256
           retention-days: 1

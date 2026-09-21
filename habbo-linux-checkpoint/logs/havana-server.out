@@ -1,0 +1,22 @@
+HAVANA EMULATOR
+THE FREE AND OPEN SOURCE HABBO HOTEL EMULATOR
+COPYRIGHT (C) 2025 BY QUACKSTER
+FOR MORE DETAILS CHECK LICENSE.TXT
+
+BUILD
+ CORE: Java 17
+ CLIENT: V31+
+
+2026-09-21T13:37:56.618 INFO  [org.alexdev.havana.Havana] - Starting Havana...
+2026-09-21T13:37:56.619 INFO  [org.alexdev.havana.dao.Storage] - Connecting to MySQL server
+2026-09-21T13:37:56.729 INFO  [org.alexdev.havana.dao.Storage] - Connection to MySQL was a success
+2026-09-21T13:37:56.750 INFO  [org.alexdev.havana.Havana] - Setting up game
+2026-09-21T13:37:57.025 INFO  [org.alexdev.havana.game.commands.CommandManager] - Loaded 39 commands
+2026-09-21T13:37:57.381 INFO  [org.alexdev.havana.server.rcon.RconServer] - RCON (remote connection) is listening on 127.0.0.1:12309
+2026-09-21T13:37:57.383 INFO  [org.alexdev.havana.server.mus.MusServer] - Multi User Server (MUS) is listening on 127.0.0.1:12322
+2026-09-21T13:37:57.395 INFO  [org.alexdev.havana.server.netty.NettyServer] - Shockwave game server is listening on 127.0.0.1:12321
+2026-09-21T13:37:57.396 INFO  [org.alexdev.havana.server.netty.NettyServer] - Flash game server is listening on 127.0.0.1:12323
+2026-09-21T13:37:57.430 INFO  [org.alexdev.havana.server.netty.connections.ConnectionHandler] - [1] Connection from 127.0.0.1
+2026-09-21T13:37:57.430 INFO  [org.alexdev.havana.server.netty.connections.ConnectionHandler] - [2] Connection from 127.0.0.1
+2026-09-21T13:37:57.455 INFO  [org.alexdev.havana.server.netty.connections.ConnectionHandler] - [1] Disconnection from 127.0.0.1
+2026-09-21T13:37:57.463 INFO  [org.alexdev.havana.server.netty.connections.ConnectionHandler] - [2] Disconnection from 127.0.0.1

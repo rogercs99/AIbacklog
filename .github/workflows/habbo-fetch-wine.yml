@@ -9,20 +9,49 @@ permissions:
 jobs:
   fetch:
     runs-on: ubuntu-latest
+    timeout-minutes: 30
     steps:
-      - name: Fetch standalone talloc 2.4.4 source dependency only
+      - name: Fetch missing Linux sandbox dependencies only
         run: |
           set -euo pipefail
-          git clone --depth 1 https://github.com/py4n6/pytsk.git pytsk
-          test -s pytsk/talloc/talloc.c
-          test -s pytsk/talloc/talloc.h
-          test -s pytsk/talloc/replace.h
-          tar -C pytsk -czf talloc-2.4.4-standalone.tar.gz talloc
-          sha256sum talloc-2.4.4-standalone.tar.gz > SHA256SUMS
+          mkdir deps
+
+          curl -fL --retry 5 --retry-delay 2             'https://github.com/Quackster/Havana/releases/download/v1.5.4/Havana-v1.5.4.zip'             -o deps/Havana-v1.5.4.zip
+
+          curl -fL --retry 5 --retry-delay 2             'https://raw.githubusercontent.com/Palsternakka/HabboLauncher/main/HabboLauncher.Net/Resources/Projectors.zip'             -o deps/Projectors.zip
+
+          curl -fL --retry 5 --retry-delay 2             'https://github.com/hiperesp/Habbo-v31-Projector/releases/download/v2.0.0/launcher.zip'             -o deps/v31-launcher.zip
+
+          curl -fL --retry 5 --retry-delay 2             'https://raw.githubusercontent.com/hiperesp/Habbo-v31-Projector/main/dcr/fuse_client.cct'             -o deps/fuse_client.cct
+
+          curl -fL --retry 5 --retry-delay 2             'https://downloads.mariadb.org/rest-api/mariadb/11.5.2/mariadb-11.5.2-linux-systemd-x86_64.tar.gz'             -o deps/mariadb-11.5.2-linux-systemd-x86_64.tar.gz
+
+          python3 - <<'PY'
+          import html,re,urllib.request
+          u='https://www.mediafire.com/file/xzjfsvb3k2962xo/havana_www_10_09_2024.7z/file'
+          s=urllib.request.urlopen(urllib.request.Request(u,headers={'User-Agent':'Mozilla/5.0'}),timeout=30).read().decode('utf8','ignore')
+          pats=[r'id="downloadButton"[^>]*href="([^"]+)"',r'href="([^"]+)"[^>]*id="downloadButton"',r'href="(https://download[^"]+)"']
+          m=next((re.search(p,s,re.I) for p in pats if re.search(p,s,re.I)),None)
+          if not m: raise SystemExit('MediaFire direct URL not resolved')
+          direct=html.unescape(m.group(1))
+          open('deps/www-url.txt','w').write(direct+'\n')
+          urllib.request.urlretrieve(direct,'deps/havana_www_10_09_2024.7z')
+          PY
+
+          test -s deps/Havana-v1.5.4.zip
+          test -s deps/Projectors.zip
+          test -s deps/v31-launcher.zip
+          test -s deps/fuse_client.cct
+          test -s deps/mariadb-11.5.2-linux-systemd-x86_64.tar.gz
+          test -s deps/havana_www_10_09_2024.7z
+
+          sha256sum deps/* > SHA256SUMS
+          du -h deps/*
+
       - uses: actions/upload-artifact@v4.6.2
         with:
-          name: talloc-2.4.4-standalone
+          name: habbo-linux-missing-deps
           path: |
-            talloc-2.4.4-standalone.tar.gz
+            deps/
             SHA256SUMS
           retention-days: 1

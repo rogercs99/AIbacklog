@@ -86,7 +86,7 @@ sleep 3
 ffmpeg -y -loglevel warning -f x11grab -draw_mouse 1 -framerate 24 -video_size 1280x720 -i :99.0 -c:v libx264 -preset veryfast -crf 25 -pix_fmt yuv420p "$ART/dual-client-real.mp4" >"$ART/ffmpeg.log" 2>&1 &
 REC_PID=$!
 
-# Shockwave V31. The API currently returns the missing setting name literally, so use the canonical served DCR directly.
+# Shockwave V31 via SPRD with local DCR and explicit external params.
 T="$ART/ticket.json"
 HOST="$(jq -r '.host // .Host' "$T")"
 SWPORT="$(jq -r '.shockwavePort // .ShockwavePort' "$T")"
@@ -94,41 +94,67 @@ MUSPORT="$(jq -r '.musPort // .MusPort' "$T")"
 SITE="$(jq -r '.site // .Site' "$T")"
 TEXTS="$(jq -r '.shockwaveTexts // .ShockwaveTexts' "$T")"
 VARS="$(jq -r '.shockwaveVariables // .ShockwaveVariables' "$T")"
-DCR='http://localhost/dcr/v31/habbo.dcr?'
-printf '%s\n' "$HOST" "$SWPORT" "$MUSPORT" "$SITE" "$TEXTS" "$VARS" "$DCR" "$SSO" > "$PROJ/Shockwave/vars.txt"
-(cd "$PROJ/Shockwave" && wine './Habbo Hotel.exe' >"$ART/shockwave-wine.log" 2>&1) &
-sleep 35
+
+git clone --depth 1 https://github.com/Webbanditten/kepler-docker.git "$RUNNER_TEMP/kepler"
+SPRD="$ROOT/sprd"
+cp -a "$RUNNER_TEMP/kepler/windows-client/projector" "$SPRD"
+cp "$LAB/tools/www/dcr/v31/habbo.dcr" "$SPRD/habbo.dcr"
+DCR_WIN="$(winepath -w "$SPRD/habbo.dcr")"
+
+(
+  cd "$SPRD"
+  wine './SPRD.exe' "$DCR_WIN" \
+    --setExternalParam "src" "habbo.dcr" \
+    --setExternalParam "sw1" "client.allow.cross.domain=1;client.notify.cross.domain=0" \
+    --setExternalParam "sw2" "connection.info.host=$HOST;connection.info.port=$SWPORT" \
+    --setExternalParam "sw3" "connection.mus.host=$HOST;connection.mus.port=$MUSPORT" \
+    --setExternalParam "sw4" "site.url=$SITE;url.prefix=$SITE" \
+    --setExternalParam "sw5" "client.reload.url=$SITE/client;client.fatal.error.url=$SITE/client_error" \
+    --setExternalParam "sw6" "client.connection.failed.url=$SITE/client_connection_failed;external.variables.txt=$VARS" \
+    --setExternalParam "sw7" "external.texts.txt=$TEXTS" \
+    --setExternalParam "sw8" "use.sso.ticket=1;sso.ticket=$SSO" \
+    --setExternalParam "sw9" "forward.type=2;forward.id=$ROOMID;processlog.url=" \
+    --setTheRunMode "Plugin" \
+    --forceTheExitLock 0 \
+    --traceLoad 1 \
+    --traceLogFile "$ART/sprd-trace.txt" \
+    >"$ART/shockwave-wine.log" 2>&1
+) &
+sleep 40
 wmctrl -lG > "$ART/shockwave-windows.txt" || true
 ffmpeg -y -loglevel error -f x11grab -video_size 1280x720 -i :99.0 -frames:v 1 "$ART/shockwave-screen.png"
-# Try navigator/room interaction after a real client load.
-xdotool search --name 'Habbo Hotel' windowactivate --sync key --clearmodifiers Alt+F10 || true
+xdotool search --name 'Habbo' windowactivate --sync key --clearmodifiers Alt+F10 || true
 sleep 2
-xdotool mousemove 55 680 click 1 || true
+xdotool mousemove 620 385 click 1 || true
 sleep 3
-xdotool mousemove 290 210 doubleclick 1 || true
-sleep 10
+xdotool mousemove 760 430 click 1 || true
+sleep 8
 ffmpeg -y -loglevel error -f x11grab -video_size 1280x720 -i :99.0 -frames:v 1 "$ART/shockwave-after.png"
 
 wineserver -k || true
 sleep 4
 
-# Flash R39 with the canonical port and direct room forward.
+# Flash R39 with a local SWF; external assets and socket still use the real local Havana server.
 curl -fsS 'http://127.0.0.1/api/ticket?username=RogerVideo&password=labpass' -o "$ART/ticket-flash.json"
 SSO2="$(jq -r '.ssoTicket // .SsoTicket' "$ART/ticket-flash.json")"
-SWF='http://localhost/gordon/RELEASE39-22643-22891-200911110035_07c3a2a30713fd5bea8a8caf07e33438/Habbo.swf'
 BASE='http://localhost/gordon/RELEASE39-22643-22891-200911110035_07c3a2a30713fd5bea8a8caf07e33438/'
 FVARS='http://localhost/flash/gamedata/external_variables.txt'
 FTEXTS='http://localhost/flash/gamedata/external_flash_texts.txt'
-ARG="${SWF}?client.allow.cross.domain=1&client.notify.cross.domain=0&connection.info.host=127.0.0.1&connection.info.port=12323&site.url=http://localhost/&url.prefix=http://localhost/&client.reload.url=/disconnected&client.fatal.error.url=http://localhost/disconnected&client.connection.failed.url=http://localhost/disconnected&external.variables.txt=${FVARS}?&external.texts.txt=${FTEXTS}?&use.sso.ticket=1&sso.ticket=${SSO2}&processlog.enabled=1&account_id=1&client.starting=Please%20wait!&flash.client.url=${BASE}&user.hash=ticket&has.identity=0&flash.client.origin=popup&country_code=US&forward.type=2&forward.id=${ROOMID}"
-(cd "$PROJ/Flash" && wine './Habbo Hotel.exe' "$ARG" >"$ART/flash-wine.log" 2>&1) &
-sleep 40
+cp "$LAB/tools/www/gordon/RELEASE39-22643-22891-200911110035_07c3a2a30713fd5bea8a8caf07e33438/Habbo.swf" "$PROJ/Flash/Habbo.swf"
+SWF_WIN="$(winepath -w "$PROJ/Flash/Habbo.swf")"
+ARG="${SWF_WIN}?client.allow.cross.domain=1&client.notify.cross.domain=0&connection.info.host=127.0.0.1&connection.info.port=12323&site.url=http://localhost/&url.prefix=http://localhost/&client.reload.url=/disconnected&client.fatal.error.url=http://localhost/disconnected&client.connection.failed.url=http://localhost/disconnected&external.variables.txt=${FVARS}?&external.texts.txt=${FTEXTS}?&use.sso.ticket=1&sso.ticket=${SSO2}&processlog.enabled=1&account_id=1&client.starting=Please%20wait!&flash.client.url=${BASE}&user.hash=ticket&has.identity=0&flash.client.origin=popup&country_code=US&forward.type=2&forward.id=${ROOMID}"
+(
+  cd "$PROJ/Flash"
+  wine './Habbo Hotel.exe' "$ARG" >"$ART/flash-wine.log" 2>&1
+) &
+sleep 45
 wmctrl -lG > "$ART/flash-windows.txt" || true
 ffmpeg -y -loglevel error -f x11grab -video_size 1280x720 -i :99.0 -frames:v 1 "$ART/flash-screen.png"
 xdotool search --name 'Adobe Flash Player' windowactivate --sync key --clearmodifiers Alt+F10 || true
 sleep 2
-xdotool mousemove 500 360 click 1 || true
-sleep 2
-xdotool mousemove 620 430 click 1 || true
+xdotool mousemove 575 370 click 1 || true
+sleep 3
+xdotool mousemove 700 430 click 1 || true
 sleep 8
 ffmpeg -y -loglevel error -f x11grab -video_size 1280x720 -i :99.0 -frames:v 1 "$ART/flash-after.png"
 

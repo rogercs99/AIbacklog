@@ -1,0 +1,33 @@
+name: Windows GUI smoke
+on:
+  push:
+    branches: [tmp-habbo-dual-video-20260921]
+    paths:
+      - ".github/workflows/habbo-windows-gui-smoke.yml"
+permissions:
+  contents: read
+jobs:
+  smoke:
+    runs-on: windows-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - name: Capture real Windows desktop
+        shell: powershell
+        run: |
+          New-Item -ItemType Directory -Force artifacts | Out-Null
+          Start-Process notepad.exe
+          Start-Sleep -Seconds 3
+          Add-Type -AssemblyName System.Windows.Forms
+          Add-Type -AssemblyName System.Drawing
+          $bounds = [System.Windows.Forms.Screen]::PrimaryScreen.Bounds
+          $bmp = New-Object System.Drawing.Bitmap $bounds.Width,$bounds.Height
+          $g = [System.Drawing.Graphics]::FromImage($bmp)
+          $g.CopyFromScreen($bounds.Location,[System.Drawing.Point]::Empty,$bounds.Size)
+          $bmp.Save("$env:GITHUB_WORKSPACE\artifacts\desktop.png",[System.Drawing.Imaging.ImageFormat]::Png)
+          $g.Dispose(); $bmp.Dispose()
+          Get-Process notepad -ErrorAction SilentlyContinue | Stop-Process -Force
+      - uses: actions/upload-artifact@v4.6.2
+        with:
+          name: windows-gui-smoke
+          path: artifacts/

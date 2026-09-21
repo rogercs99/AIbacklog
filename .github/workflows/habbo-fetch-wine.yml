@@ -10,13 +10,21 @@ jobs:
   fetch:
     runs-on: ubuntu-latest
     steps:
-      - name: Fetch QEMU 11.0.0 i386 user-mode dependency only
+      - name: Fetch QEMU i386 version matrix dependencies only
         run: |
           set -euo pipefail
-          curl -fL --retry 5 --retry-delay 2             'https://github.com/hermeticbuild/qemu-user-prebuilt/releases/download/11.0.0/qemu-user-linux-amd64-i386.tar.gz'             -o qemu-user-linux-amd64-i386.tar.gz
-          echo 'e428f1727f04d64a01427794aef5e25a4db4a6928ee0a473951ad6545b817961  qemu-user-linux-amd64-i386.tar.gz' | sha256sum -c -
+          mkdir qemu-matrix
+          curl -fL --retry 5 --retry-delay 2 'https://github.com/hermeticbuild/qemu-user-prebuilt/releases/download/8.2.10/qemu-user-linux-amd64-i386.tar.gz' -o qemu-matrix/qemu-8.2.10.tar.gz
+          curl -fL --retry 5 --retry-delay 2 'https://github.com/hermeticbuild/qemu-user-prebuilt/releases/download/9.2.4/qemu-user-linux-amd64-i386.tar.gz' -o qemu-matrix/qemu-9.2.4.tar.gz
+          curl -fL --retry 5 --retry-delay 2 'https://github.com/hermeticbuild/qemu-user-prebuilt/releases/download/10.2.2/qemu-user-linux-amd64-i386.tar.gz' -o qemu-matrix/qemu-10.2.2.tar.gz
+          echo '6c009e1b25ec81f64bcc8afb3ca6405b3f3ad53122ff4e3b6304174fc6e6ab04  qemu-matrix/qemu-8.2.10.tar.gz' > SHA256SUMS
+          echo '5c72b741d7411f2610de59cb30838bb00cad28af7c1c678ba7bf76f9d9dfc653  qemu-matrix/qemu-9.2.4.tar.gz' >> SHA256SUMS
+          echo '9d3735e20df12b7881eb6847420e7835e52d8127a3e238ae3f0ac560eeadad00  qemu-matrix/qemu-10.2.2.tar.gz' >> SHA256SUMS
+          sha256sum -c SHA256SUMS
       - uses: actions/upload-artifact@v4.6.2
         with:
-          name: qemu-user-linux-amd64-i386-11.0.0
-          path: qemu-user-linux-amd64-i386.tar.gz
+          name: qemu-i386-version-matrix
+          path: |
+            qemu-matrix/
+            SHA256SUMS
           retention-days: 1

@@ -20,8 +20,7 @@ jobs:
           curl -fL --retry 5 https://github.com/Kron4ek/Wine-Builds/releases/download/11.17/wine-11.17-amd64-wow64.tar.xz -o runtime/wine-11.17-amd64-wow64.tar.xz
           curl -fL --retry 5 https://raw.githubusercontent.com/pts/portable-mariadb/master/release/portable-mariadb-5.5.46.tbz2 -o runtime/portable-mariadb-5.5.46.tbz2
           curl -fL --retry 5 https://github.com/hiperesp/Habbo-v31-Projector/releases/download/v2.0.0/launcher.zip -o runtime/v31-launcher.zip
-          git clone --depth 1 --filter=blob:none --sparse https://github.com/Palsternakka/HabboLauncher.git _launcher
-          git -C _launcher sparse-checkout set HabboLauncher.Net/Resources/Projectors.zip fuse_client.cct
+          git clone --depth 1 https://github.com/Palsternakka/HabboLauncher.git _launcher
           cp _launcher/HabboLauncher.Net/Resources/Projectors.zip runtime/Projectors.zip
           cp _launcher/fuse_client.cct runtime/fuse_client.cct
           sha256sum runtime/* > runtime/SHA256SUMS.txt

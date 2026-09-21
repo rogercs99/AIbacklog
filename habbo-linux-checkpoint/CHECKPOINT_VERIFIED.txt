@@ -1,0 +1,25 @@
+HABBO 2009 DUAL LINUX CHECKPOINT VERIFICATION
+Date: 2026-09-21
+Status: PASS
+
+Context ZIP SHA256:
+ef89248818064468dde65fca8a03b62c4b8211c542a8c2fb35631278fb82f2d1
+
+Reassembled runtime ZIP SHA256:
+d354af6186907324f7773c7b7f8e4b4b2d37c325b10906912ceb24d208539928
+PASS
+
+Reassembled initialized Wine prefix SHA256:
+69e284ae5ad27aa633a7e7bc4a1a2d421d5232c42e39b85747f13e7695cdfdcc
+PASS
+
+Reassembled MariaDB 11.5.2 archive SHA256:
+6fffce126dda54ecaaa3659e03caa47bf5ff6828936001176f84b6bed9637f5c
+PASS
+
+Reassembled Havana historical WWW archive SHA256:
+877273abddab946849aed3d5d2416185fe175a7207a602890fd08ebe7e376ed0
+PASS
+
+Runtime milestone: PROOT_FORCE_FOREIGN_BINARY=1 + PRoot 5.4 + QEMU 7.2 + Wine32 5.11 produced PROOT_PE32_OK and a real Notepad window in Xvfb.
+Final Habbo gameplay remains pending and must run inside the Linux sandbox.

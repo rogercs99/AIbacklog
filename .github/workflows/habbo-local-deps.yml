@@ -11,26 +11,59 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 20
     steps:
-      - name: Download GitHub-hosted dependencies only
+      - name: Fetch local runtime bundle
         shell: bash
         run: |
           set -euxo pipefail
-          mkdir -p deps
-          curl -fL --retry 5 https://github.com/Quackster/Havana/releases/download/v1.5.4/Havana-v1.5.4.zip -o deps/Havana-v1.5.4.zip
-          curl -fL --retry 5 https://github.com/Kron4ek/Wine-Builds/releases/download/11.17/wine-11.17-amd64-wow64.tar.xz -o deps/wine-11.17-amd64-wow64.tar.xz
-          curl -fL --retry 5 https://raw.githubusercontent.com/pts/portable-mariadb/master/release/portable-mariadb-5.5.46.tbz2 -o deps/portable-mariadb-5.5.46.tbz2
-          curl -fL --retry 5 https://github.com/hiperesp/Habbo-v31-Projector/releases/download/v2.0.0/launcher.zip -o deps/v31-launcher.zip
-          git clone --depth 1 https://github.com/Palsternakka/HabboLauncher.git deps/HabboLauncher
-          git clone --depth 1 https://github.com/ultraviolet-jordan/habbokt.git deps/habbokt
-          git clone --depth 1 https://github.com/jeppe9821/HavanaR39.git deps/HavanaR39
-          git clone --depth 1 https://github.com/Sonykko/Havana_theallseeingeye.git deps/Havana_theallseeingeye
-          rm -rf deps/HabboLauncher/.git deps/habbokt/.git deps/HavanaR39/.git deps/Havana_theallseeingeye/.git
-          sha256sum deps/Havana-v1.5.4.zip deps/wine-11.17-amd64-wow64.tar.xz deps/portable-mariadb-5.5.46.tbz2 deps/v31-launcher.zip > deps/SHA256SUMS.txt
-          du -sh deps
-      - name: Upload dependencies
+          mkdir -p runtime
+          curl -fL --retry 5 https://github.com/Quackster/Havana/releases/download/v1.5.4/Havana-v1.5.4.zip -o runtime/Havana-v1.5.4.zip
+          curl -fL --retry 5 https://github.com/Kron4ek/Wine-Builds/releases/download/11.17/wine-11.17-amd64-wow64.tar.xz -o runtime/wine-11.17-amd64-wow64.tar.xz
+          curl -fL --retry 5 https://raw.githubusercontent.com/pts/portable-mariadb/master/release/portable-mariadb-5.5.46.tbz2 -o runtime/portable-mariadb-5.5.46.tbz2
+          curl -fL --retry 5 https://github.com/hiperesp/Habbo-v31-Projector/releases/download/v2.0.0/launcher.zip -o runtime/v31-launcher.zip
+          git clone --depth 1 --filter=blob:none --sparse https://github.com/Palsternakka/HabboLauncher.git _launcher
+          git -C _launcher sparse-checkout set HabboLauncher.Net/Resources/Projectors.zip fuse_client.cct
+          cp _launcher/HabboLauncher.Net/Resources/Projectors.zip runtime/Projectors.zip
+          cp _launcher/fuse_client.cct runtime/fuse_client.cct
+          sha256sum runtime/* > runtime/SHA256SUMS.txt
+          du -sh runtime
+      - name: Fetch V31 assets
+        shell: bash
+        run: |
+          set -euxo pipefail
+          git clone --depth 1 --filter=blob:none --sparse https://github.com/ultraviolet-jordan/habbokt.git _v31
+          git -C _v31 sparse-checkout set web/src/main/resources/www/dcr/v31
+          mkdir -p v31
+          cp -a _v31/web/src/main/resources/www/dcr/v31 v31/
+          find v31 -type f -printf '%p %s\n' | sort > v31/FILES.txt
+          du -sh v31
+      - name: Fetch R39 assets
+        shell: bash
+        run: |
+          set -euxo pipefail
+          git clone --depth 1 --filter=blob:none --sparse https://github.com/jeppe9821/HavanaR39.git _r39
+          git -C _r39 sparse-checkout set tools/gamedata/flash
+          mkdir -p r39
+          cp -a _r39/tools/gamedata/flash r39/
+          find r39 -type f -printf '%p %s\n' | sort > r39/FILES.txt
+          du -sh r39
+      - name: Upload runtime
         uses: actions/upload-artifact@v4.6.2
         with:
-          name: habbo-local-sandbox-deps
-          path: deps/
+          name: habbo-local-runtime
+          path: runtime/
+          retention-days: 1
+          compression-level: 0
+      - name: Upload V31 assets
+        uses: actions/upload-artifact@v4.6.2
+        with:
+          name: habbo-local-v31-assets
+          path: v31/
+          retention-days: 1
+          compression-level: 0
+      - name: Upload R39 assets
+        uses: actions/upload-artifact@v4.6.2
+        with:
+          name: habbo-local-r39-assets
+          path: r39/
           retention-days: 1
           compression-level: 0

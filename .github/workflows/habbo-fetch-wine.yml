@@ -10,21 +10,21 @@ jobs:
   fetch:
     runs-on: ubuntu-latest
     steps:
-      - name: Fetch tonistiigi binfmt QEMU 10.2.3 asset only
+      - name: Extract tonistiigi QEMU 10.2.3 i386 binary only
         run: |
           set -euo pipefail
-          curl -fL --retry 5 --retry-delay 2             'https://github.com/tonistiigi/binfmt/releases/download/deploy%2Fv10.2.3-68/binfmt_linux-amd64.tar.gz'             -o binfmt_linux-amd64.tar.gz
-          echo '9f955e980acb29986365766db7d36383a1dbbf2159f30b532a74474f6f5dd75d  binfmt_linux-amd64.tar.gz' | sha256sum -c -
-          mkdir extracted
-          tar -xzf binfmt_linux-amd64.tar.gz -C extracted
-          find extracted -maxdepth 4 -type f -printf '%p %s bytes\n' | sort | tee CONTENTS.txt
-          file extracted/* 2>/dev/null | tee FILES.txt || true
+          docker pull tonistiigi/binfmt:qemu-v10.2.3-68
+          cid="$(docker create tonistiigi/binfmt:qemu-v10.2.3-68)"
+          trap 'docker rm -f "$cid" >/dev/null 2>&1 || true' EXIT
+          docker cp "$cid:/usr/bin/qemu-i386" ./qemu-i386-tonistiigi-10.2.3
+          chmod +x qemu-i386-tonistiigi-10.2.3
+          file qemu-i386-tonistiigi-10.2.3
+          ./qemu-i386-tonistiigi-10.2.3 --version | head -3
+          sha256sum qemu-i386-tonistiigi-10.2.3 > SHA256SUMS
       - uses: actions/upload-artifact@v4.6.2
         with:
-          name: tonistiigi-binfmt-10.2.3-amd64
+          name: qemu-i386-tonistiigi-10.2.3
           path: |
-            binfmt_linux-amd64.tar.gz
-            extracted/
-            CONTENTS.txt
-            FILES.txt
+            qemu-i386-tonistiigi-10.2.3
+            SHA256SUMS
           retention-days: 1

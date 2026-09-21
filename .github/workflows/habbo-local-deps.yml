@@ -1,0 +1,36 @@
+name: Habbo local sandbox dependencies
+on:
+  push:
+    branches: [tmp-habbo-dual-video-20260921]
+    paths:
+      - ".github/workflows/habbo-local-deps.yml"
+permissions:
+  contents: read
+jobs:
+  deps:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - name: Download GitHub-hosted dependencies only
+        shell: bash
+        run: |
+          set -euxo pipefail
+          mkdir -p deps
+          curl -fL --retry 5 https://github.com/Quackster/Havana/releases/download/v1.5.4/Havana-v1.5.4.zip -o deps/Havana-v1.5.4.zip
+          curl -fL --retry 5 https://github.com/Kron4ek/Wine-Builds/releases/download/11.17/wine-11.17-amd64-wow64.tar.xz -o deps/wine-11.17-amd64-wow64.tar.xz
+          curl -fL --retry 5 https://raw.githubusercontent.com/pts/portable-mariadb/master/release/portable-mariadb-5.5.46.tbz2 -o deps/portable-mariadb-5.5.46.tbz2
+          curl -fL --retry 5 https://github.com/hiperesp/Habbo-v31-Projector/releases/download/v2.0.0/launcher.zip -o deps/v31-launcher.zip
+          git clone --depth 1 https://github.com/Palsternakka/HabboLauncher.git deps/HabboLauncher
+          git clone --depth 1 https://github.com/ultraviolet-jordan/habbokt.git deps/habbokt
+          git clone --depth 1 https://github.com/jeppe9821/HavanaR39.git deps/HavanaR39
+          git clone --depth 1 https://github.com/Sonykko/Havana_theallseeingeye.git deps/Havana_theallseeingeye
+          rm -rf deps/HabboLauncher/.git deps/habbokt/.git deps/HavanaR39/.git deps/Havana_theallseeingeye/.git
+          sha256sum deps/Havana-v1.5.4.zip deps/wine-11.17-amd64-wow64.tar.xz deps/portable-mariadb-5.5.46.tbz2 deps/v31-launcher.zip > deps/SHA256SUMS.txt
+          du -sh deps
+      - name: Upload dependencies
+        uses: actions/upload-artifact@v4.6.2
+        with:
+          name: habbo-local-sandbox-deps
+          path: deps/
+          retention-days: 1
+          compression-level: 0

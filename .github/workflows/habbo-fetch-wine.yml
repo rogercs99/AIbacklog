@@ -10,19 +10,13 @@ jobs:
   fetch:
     runs-on: ubuntu-latest
     steps:
-      - name: Fetch exact Havana web templates and migrations only
+      - name: Fetch QEMU 11.0.0 i386 user-mode dependency only
         run: |
           set -euo pipefail
-          git clone https://github.com/Quackster/Havana.git src
-          cd src
-          git checkout b550f00f27788145d26723fd19e943aa63504a63
-          tar -czf ../havana-v1.5.4-web-support.tar.gz tools/www-tpl tools/migrations
-          cd ..
-          sha256sum havana-v1.5.4-web-support.tar.gz > SHA256SUMS
+          curl -fL --retry 5 --retry-delay 2             'https://github.com/hermeticbuild/qemu-user-prebuilt/releases/download/11.0.0/qemu-user-linux-amd64-i386.tar.gz'             -o qemu-user-linux-amd64-i386.tar.gz
+          echo 'e428f1727f04d64a01427794aef5e25a4db4a6928ee0a473951ad6545b817961  qemu-user-linux-amd64-i386.tar.gz' | sha256sum -c -
       - uses: actions/upload-artifact@v4.6.2
         with:
-          name: havana-v1.5.4-web-support
-          path: |
-            havana-v1.5.4-web-support.tar.gz
-            SHA256SUMS
+          name: qemu-user-linux-amd64-i386-11.0.0
+          path: qemu-user-linux-amd64-i386.tar.gz
           retention-days: 1

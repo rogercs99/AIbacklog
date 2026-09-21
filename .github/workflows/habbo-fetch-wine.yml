@@ -10,20 +10,16 @@ jobs:
   fetch:
     runs-on: ubuntu-latest
     steps:
-      - name: Fetch static PRoot dependency only
+      - name: Fetch PRoot 5.4.0 source dependency only
         run: |
           set -euo pipefail
-          curl -fL --retry 5 --retry-delay 2 \
-            'https://github.com/proot-me/proot-static-build/releases/download/v5.1.1/proot_5.1.1_x86_64_rc2' \
-            -o proot
-          chmod +x proot
-          file proot
-          ./proot --version | head -5
-          sha256sum proot > SHA256SUMS
+          git clone --depth 1 --branch v5.4.0 --recurse-submodules https://github.com/proot-me/proot.git proot-5.4.0
+          tar -C proot-5.4.0 -czf proot-5.4.0-source.tar.gz .
+          sha256sum proot-5.4.0-source.tar.gz > SHA256SUMS
       - uses: actions/upload-artifact@v4.6.2
         with:
-          name: proot-static-x86_64
+          name: proot-5.4.0-source
           path: |
-            proot
+            proot-5.4.0-source.tar.gz
             SHA256SUMS
           retention-days: 1

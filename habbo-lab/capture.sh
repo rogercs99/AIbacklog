@@ -86,48 +86,54 @@ sleep 3
 ffmpeg -y -loglevel warning -f x11grab -draw_mouse 1 -framerate 24 -video_size 1280x720 -i :99.0 -c:v libx264 -preset veryfast -crf 25 -pix_fmt yuv420p "$ART/dual-client-real.mp4" >"$ART/ffmpeg.log" 2>&1 &
 REC_PID=$!
 
-# Shockwave V31 via SPRD with local DCR and explicit external params.
+# Shockwave V31 using the dedicated SSO projector and HTTP-served DCR/casts.
 T="$ART/ticket.json"
 HOST="$(jq -r '.host // .Host' "$T")"
 SWPORT="$(jq -r '.shockwavePort // .ShockwavePort' "$T")"
 MUSPORT="$(jq -r '.musPort // .MusPort' "$T")"
 SITE="$(jq -r '.site // .Site' "$T")"
-TEXTS="$(jq -r '.shockwaveTexts // .ShockwaveTexts' "$T")"
-VARS="$(jq -r '.shockwaveVariables // .ShockwaveVariables' "$T")"
+TEXTS='http://127.0.0.1/dcr/v31/gamedata/external_texts.txt?'
+VARS='http://127.0.0.1/dcr/v31/gamedata/external_variables.txt?country=uk'
+USERID="$(docker compose exec -T mariadb mariadb -N -B -uhavana -pgoldfish havana -e "SELECT id FROM users WHERE username='RogerVideo' LIMIT 1;")"
 
-git clone --depth 1 https://github.com/Webbanditten/kepler-docker.git "$RUNNER_TEMP/kepler"
-SPRD="$ROOT/sprd"
-cp -a "$RUNNER_TEMP/kepler/windows-client/projector" "$SPRD"
-cp "$LAB/tools/www/dcr/v31/habbo.dcr" "$SPRD/habbo.dcr"
-DCR_WIN="$(winepath -w "$SPRD/habbo.dcr")"
-
+curl -fL --retry 5 'https://raw.githubusercontent.com/hiperesp/Habbo-v31-Projector/main/dcr/fuse_client.cct' -o "$LAB/tools/www/dcr/v31/fuse_client.cct"
+test -s "$LAB/tools/www/dcr/v31/fuse_client.cct"
+V31="$ROOT/v31-projector"
+mkdir -p "$V31"
+curl -fL --retry 5 'https://github.com/hiperesp/Habbo-v31-Projector/releases/download/v2.0.0/launcher.zip' -o "$RUNNER_TEMP/v31-launcher.zip"
+unzip -q "$RUNNER_TEMP/v31-launcher.zip" -d "$V31"
+find "$V31" -maxdepth 4 -type f -printf '%p %s bytes\n' | sort > "$ART/v31-projector-files.txt"
+V31EXE="$(find "$V31" -type f -iname '*.exe' | grep -vi '/Redist/' | head -n1)"
+test -n "$V31EXE"
+V31DIR="$(dirname "$V31EXE")"
+cat > "$V31DIR/vars.txt" <<EOF
+client.allow.cross.domain=1;client.notify.cross.domain=0
+connection.info.host=$HOST;connection.info.port=$SWPORT
+connection.mus.host=$HOST;connection.mus.port=$MUSPORT
+site.url=$SITE;url.prefix=$SITE
+client.reload.url=$SITE/client;client.fatal.error.url=$SITE/client_error
+client.connection.failed.url=$SITE/client_connection_failed;external.variables.txt=$VARS
+external.texts.txt=$TEXTS
+use.sso.ticket=1;sso.ticket=$SSO
+forward.type=2;forward.id=$ROOMID;processlog.url=;account_id=$USERID
+http://127.0.0.1/dcr/v31/habbo.dcr?
+0
+http://127.0.0.1/client
+960
+540
+EOF
 (
-  cd "$SPRD"
-  wine './SPRD.exe' "$DCR_WIN" \
-    --setExternalParam "src" "habbo.dcr" \
-    --setExternalParam "sw1" "client.allow.cross.domain=1;client.notify.cross.domain=0" \
-    --setExternalParam "sw2" "connection.info.host=$HOST;connection.info.port=$SWPORT" \
-    --setExternalParam "sw3" "connection.mus.host=$HOST;connection.mus.port=$MUSPORT" \
-    --setExternalParam "sw4" "site.url=$SITE;url.prefix=$SITE" \
-    --setExternalParam "sw5" "client.reload.url=$SITE/client;client.fatal.error.url=$SITE/client_error" \
-    --setExternalParam "sw6" "client.connection.failed.url=$SITE/client_connection_failed;external.variables.txt=$VARS" \
-    --setExternalParam "sw7" "external.texts.txt=$TEXTS" \
-    --setExternalParam "sw8" "use.sso.ticket=1;sso.ticket=$SSO" \
-    --setExternalParam "sw9" "forward.type=2;forward.id=$ROOMID;processlog.url=" \
-    --setTheRunMode "Plugin" \
-    --forceTheExitLock 0 \
-    --traceLoad 1 \
-    --traceLogFile "$ART/sprd-trace.txt" \
-    >"$ART/shockwave-wine.log" 2>&1
+  cd "$V31DIR"
+  wine "$V31EXE" >"$ART/shockwave-wine.log" 2>&1
 ) &
-sleep 40
+sleep 45
 wmctrl -lG > "$ART/shockwave-windows.txt" || true
 ffmpeg -y -loglevel error -f x11grab -video_size 1280x720 -i :99.0 -frames:v 1 "$ART/shockwave-screen.png"
 xdotool search --name 'Habbo' windowactivate --sync key --clearmodifiers Alt+F10 || true
 sleep 2
-xdotool mousemove 620 385 click 1 || true
+xdotool mousemove 650 390 click 1 || true
 sleep 3
-xdotool mousemove 760 430 click 1 || true
+xdotool mousemove 720 420 click 1 || true
 sleep 8
 ffmpeg -y -loglevel error -f x11grab -video_size 1280x720 -i :99.0 -frames:v 1 "$ART/shockwave-after.png"
 
@@ -140,9 +146,8 @@ SSO2="$(jq -r '.ssoTicket // .SsoTicket' "$ART/ticket-flash.json")"
 BASE='http://localhost/gordon/RELEASE39-22643-22891-200911110035_07c3a2a30713fd5bea8a8caf07e33438/'
 FVARS='http://localhost/flash/gamedata/external_variables.txt'
 FTEXTS='http://localhost/flash/gamedata/external_flash_texts.txt'
-cp "$LAB/tools/www/gordon/RELEASE39-22643-22891-200911110035_07c3a2a30713fd5bea8a8caf07e33438/Habbo.swf" "$PROJ/Flash/Habbo.swf"
-SWF_WIN="$(winepath -w "$PROJ/Flash/Habbo.swf")"
-ARG="${SWF_WIN}?client.allow.cross.domain=1&client.notify.cross.domain=0&connection.info.host=127.0.0.1&connection.info.port=12323&site.url=http://localhost/&url.prefix=http://localhost/&client.reload.url=/disconnected&client.fatal.error.url=http://localhost/disconnected&client.connection.failed.url=http://localhost/disconnected&external.variables.txt=${FVARS}?&external.texts.txt=${FTEXTS}?&use.sso.ticket=1&sso.ticket=${SSO2}&processlog.enabled=1&account_id=1&client.starting=Please%20wait!&flash.client.url=${BASE}&user.hash=ticket&has.identity=0&flash.client.origin=popup&country_code=US&forward.type=2&forward.id=${ROOMID}"
+SWF_HTTP='http://127.0.0.1/gordon/RELEASE39-22643-22891-200911110035_07c3a2a30713fd5bea8a8caf07e33438/Habbo.swf'
+ARG="${SWF_HTTP}?client.allow.cross.domain=1&client.notify.cross.domain=0&connection.info.host=127.0.0.1&connection.info.port=12323&site.url=http://localhost/&url.prefix=http://localhost/&client.reload.url=/disconnected&client.fatal.error.url=http://localhost/disconnected&client.connection.failed.url=http://localhost/disconnected&external.variables.txt=${FVARS}?&external.texts.txt=${FTEXTS}?&use.sso.ticket=1&sso.ticket=${SSO2}&processlog.enabled=1&account_id=1&client.starting=Please%20wait!&flash.client.url=${BASE}&user.hash=ticket&has.identity=0&flash.client.origin=popup&country_code=US&forward.type=2&forward.id=${ROOMID}"
 (
   cd "$PROJ/Flash"
   wine './Habbo Hotel.exe' "$ARG" >"$ART/flash-wine.log" 2>&1
@@ -162,5 +167,6 @@ kill -INT "$REC_PID" || true
 sleep 5
 ffprobe -v error -show_entries format=duration,size -of json "$ART/dual-client-real.mp4" > "$ART/video-info.json"
 docker compose logs --no-color > "$ART/compose.log" || true
+grep -F 'Connection from' "$ART/compose.log" > "$ART/socket-connections.txt" || true
 find "$ART" -maxdepth 1 -type f -printf '%f %s bytes\n' | sort > "$ART/files.txt"
 kill "$OPENBOX_PID" "$XVFB_PID" || true

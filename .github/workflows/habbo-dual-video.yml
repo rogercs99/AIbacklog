@@ -84,6 +84,12 @@ jobs:
           set -euxo pipefail
           cd "$GITHUB_WORKSPACE/lab/Havana"
           docker compose exec -T mariadb mariadb -uhavana -pgoldfish havana -e "INSERT INTO settings (setting,value) VALUES ('loader.dcr.http','http://localhost/dcr/v31/habbo.dcr?'),('loader.flash.port','12323') ON DUPLICATE KEY UPDATE value=VALUES(value);"
+          # GameConfiguration is loaded at web startup, so reload it after seeding legacy keys.
+          docker compose restart havana-web
+          for i in $(seq 1 60); do
+            if curl -fsS http://127.0.0.1/ >/dev/null 2>&1; then break; fi
+            sleep 1
+          done
           HASH="$(python3 - <<'PY'
           from argon2 import PasswordHasher, Type
           print(PasswordHasher(time_cost=2,memory_cost=65536,parallelism=1,hash_len=32,salt_len=16,type=Type.ID).hash('password'))
@@ -91,6 +97,9 @@ jobs:
           )"
           SQL="INSERT INTO users (username,password,figure,sex,pool_figure,sso_ticket,email) VALUES ('RogerVideo','$HASH','hr-165-45.hd-180-1.ch-255-66.lg-280-110.sh-290-62','M','','','roger-video@example.invalid') ON DUPLICATE KEY UPDATE password=VALUES(password),figure=VALUES(figure),sex=VALUES(sex);"
           docker compose exec -T mariadb mariadb -uhavana -pgoldfish havana -e "$SQL"
+          docker compose exec -T mariadb mariadb -uhavana -pgoldfish havana -e "INSERT INTO rooms (owner_id,name,description,model,showname,password,accesstype) SELECT id,'RogerVideo Lab','Dual-client capture room','model_s',1,'',0 FROM users WHERE username='RogerVideo' AND NOT EXISTS (SELECT 1 FROM rooms WHERE name='RogerVideo Lab');"
+          ROOMID="$(docker compose exec -T mariadb mariadb -N -B -uhavana -pgoldfish havana -e "SELECT id FROM rooms WHERE name='RogerVideo Lab' ORDER BY id DESC LIMIT 1;")"
+          echo "$ROOMID" > "$GITHUB_WORKSPACE/artifacts/room-id.txt"
           curl -fsS 'http://127.0.0.1/api/ticket?username=RogerVideo&password=password' -o "$GITHUB_WORKSPACE/artifacts/ticket.json"
           jq 'del(.ssoTicket,.SsoTicket)' "$GITHUB_WORKSPACE/artifacts/ticket.json" > "$GITHUB_WORKSPACE/artifacts/ticket-redacted.json"
           jq -e '(.ssoTicket // .SsoTicket) | length > 5' "$GITHUB_WORKSPACE/artifacts/ticket.json"
@@ -155,7 +164,8 @@ jobs:
           T="$GITHUB_WORKSPACE/artifacts/ticket-flash.json"
           jget(){ jq -r "$1 // $2 // empty" "$T"; }
           HOST="$(jget '.host' '.Host')"; FPORT="$(jget '.flashPort' '.FlashPort')"; SITE="$(jget '.site' '.Site')"; SWF="$(jget '.flashSwf' '.FlashSwf')"; BASE="$(jget '.flashBase' '.FlashBase')"; VARS="$(jget '.flashVariables' '.FlashVariables')"; TEXTS="$(jget '.flashTexts' '.FlashTexts')"; SSO="$(jget '.ssoTicket' '.SsoTicket')"
-          ARG="${SWF}?client.allow.cross.domain=1&client.notify.cross.domain=0&connection.info.host=${HOST}&connection.info.port=${FPORT}&site.url=${SITE}/&url.prefix=${SITE}/&client.reload.url=/disconnected&client.fatal.error.url=${SITE}/disconnected&client.connection.failed.url=${SITE}/disconnected&external.variables.txt=${VARS}?&external.texts.txt=${TEXTS}?&use.sso.ticket=1&sso.ticket=${SSO}&processlog.enabled=1&account_id=1&client.starting=Please%20wait!%20Habbo%20is%20starting%20up&flash.client.url=${BASE}&user.hash=ticket&has.identity=0&flash.client.origin=popup&country_code=US"
+          ROOMID="$(cat "$GITHUB_WORKSPACE/artifacts/room-id.txt")"
+          ARG="${SWF}?client.allow.cross.domain=1&client.notify.cross.domain=0&connection.info.host=${HOST}&connection.info.port=${FPORT}&site.url=${SITE}/&url.prefix=${SITE}/&client.reload.url=/disconnected&client.fatal.error.url=${SITE}/disconnected&client.connection.failed.url=${SITE}/disconnected&external.variables.txt=${VARS}?&external.texts.txt=${TEXTS}?&use.sso.ticket=1&sso.ticket=${SSO}&processlog.enabled=1&account_id=1&client.starting=Please%20wait!%20Habbo%20is%20starting%20up&flash.client.url=${BASE}&user.hash=ticket&has.identity=0&flash.client.origin=popup&country_code=US&forward.type=2&forward.id=${ROOMID}"
           (cd "$GITHUB_WORKSPACE/projectors/Flash" && wine './Habbo Hotel.exe' "$ARG" >"$GITHUB_WORKSPACE/artifacts/flash-wine.log" 2>&1) &
           echo $! > "$RUNNER_TEMP/flash.pid"
           sleep 30

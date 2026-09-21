@@ -13,12 +13,20 @@ jobs:
       - name: Extract Tonistiigi BuildKit QEMU 10.2.3 i386 only
         run: |
           set -euo pipefail
-          docker pull tonistiigi/binfmt:buildkit-v10.2.3-66
-          cid="$(docker create tonistiigi/binfmt:buildkit-v10.2.3-66)"
-          trap 'docker rm -f "$cid" >/dev/null 2>&1 || true' EXIT
-          docker export "$cid" -o rootfs.tar
-          mkdir rootfs
-          tar -xf rootfs.tar -C rootfs
+          img='tonistiigi/binfmt:buildkit-v10.2.3-66'
+          docker pull "$img"
+          docker image save "$img" -o image.tar
+          mkdir image rootfs
+          tar -xf image.tar -C image
+          python3 - <<'PY'
+          import json, tarfile, pathlib
+          root=pathlib.Path("image")
+          manifest=json.loads((root/"manifest.json").read_text())[0]
+          out=pathlib.Path("rootfs")
+          for layer in manifest["Layers"]:
+              with tarfile.open(root/layer) as t:
+                  t.extractall(out)
+          PY
           find rootfs -maxdepth 3 -type f -printf '%p %s bytes\n' | sort | tee CONTENTS.txt
           q="$(find rootfs -type f -name 'buildkit-qemu-i386' | head -n1)"
           test -n "$q"

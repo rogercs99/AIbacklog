@@ -10,13 +10,21 @@ jobs:
   fetch:
     runs-on: ubuntu-latest
     steps:
-      - name: Fetch QEMU 7.2.22 i386 dependency only
+      - name: Fetch tonistiigi binfmt QEMU 10.2.3 asset only
         run: |
           set -euo pipefail
-          curl -fL --retry 5 --retry-delay 2             'https://github.com/hermeticbuild/qemu-user-prebuilt/releases/download/7.2.22/qemu-user-linux-amd64-i386.tar.gz'             -o qemu-user-linux-amd64-i386-7.2.22.tar.gz
-          echo '5f358b2236cb4681d12c48704a429ec562fda149b77a2f99c9dfc5f8da91baae  qemu-user-linux-amd64-i386-7.2.22.tar.gz' | sha256sum -c -
+          curl -fL --retry 5 --retry-delay 2             'https://github.com/tonistiigi/binfmt/releases/download/deploy%2Fv10.2.3-68/binfmt_linux-amd64.tar.gz'             -o binfmt_linux-amd64.tar.gz
+          echo '9f955e980acb29986365766db7d36383a1dbbf2159f30b532a74474f6f5dd75d  binfmt_linux-amd64.tar.gz' | sha256sum -c -
+          mkdir extracted
+          tar -xzf binfmt_linux-amd64.tar.gz -C extracted
+          find extracted -maxdepth 4 -type f -printf '%p %s bytes\n' | sort | tee CONTENTS.txt
+          file extracted/* 2>/dev/null | tee FILES.txt || true
       - uses: actions/upload-artifact@v4.6.2
         with:
-          name: qemu-user-linux-amd64-i386-7.2.22
-          path: qemu-user-linux-amd64-i386-7.2.22.tar.gz
+          name: tonistiigi-binfmt-10.2.3-amd64
+          path: |
+            binfmt_linux-amd64.tar.gz
+            extracted/
+            CONTENTS.txt
+            FILES.txt
           retention-days: 1

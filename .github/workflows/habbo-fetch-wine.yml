@@ -10,18 +10,24 @@ jobs:
   fetch:
     runs-on: ubuntu-latest
     steps:
-      - name: Fetch pure Wine32 AppImage dependency only
+      - name: Fetch classic Wine32 GUI and qemu-i386 dependencies only
         run: |
           set -euo pipefail
           curl -fL --retry 5 --retry-delay 2 \
-            'https://github.com/pkgforge-dev/wine32-cli-AppImage/releases/download/11.16%402026-09-03_1788399350/wine32-cli-11.16-anylinux-x86_64.AppImage' \
-            -o wine32-cli.AppImage
-          test "$(stat -c %s wine32-cli.AppImage)" -eq 40040822
-          sha256sum wine32-cli.AppImage > wine32-cli.AppImage.sha256
+            'https://github.com/ferion11/Wine_Appimage/releases/download/v5.11/wine-staging-linux-x86-v5.11-PlayOnLinux-x86_64.AppImage' \
+            -o wine32-gui.AppImage
+          test "$(stat -c %s wine32-gui.AppImage)" -eq 311955496
+          curl -fL --retry 5 --retry-delay 2 \
+            'https://github.com/multiarch/qemu-user-static/releases/download/v5.2.0-2/qemu-i386-static' \
+            -o qemu-i386-static
+          test "$(stat -c %s qemu-i386-static)" -eq 8440232
+          chmod +x qemu-i386-static
+          sha256sum wine32-gui.AppImage qemu-i386-static > SHA256SUMS
       - uses: actions/upload-artifact@v4.6.2
         with:
-          name: wine32-cli-appimage
+          name: classic-wine32-gui-qemu-i386
           path: |
-            wine32-cli.AppImage
-            wine32-cli.AppImage.sha256
+            wine32-gui.AppImage
+            qemu-i386-static
+            SHA256SUMS
           retention-days: 1

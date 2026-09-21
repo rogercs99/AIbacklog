@@ -10,16 +10,19 @@ jobs:
   fetch:
     runs-on: ubuntu-latest
     steps:
-      - name: Fetch PRoot 5.4.0 source dependency only
+      - name: Fetch standalone talloc 2.4.4 source dependency only
         run: |
           set -euo pipefail
-          git clone --depth 1 --branch v5.4.0 --recurse-submodules https://github.com/proot-me/proot.git proot-5.4.0
-          tar -C proot-5.4.0 -czf proot-5.4.0-source.tar.gz .
-          sha256sum proot-5.4.0-source.tar.gz > SHA256SUMS
+          git clone --depth 1 https://github.com/py4n6/pytsk.git pytsk
+          test -s pytsk/talloc/talloc.c
+          test -s pytsk/talloc/talloc.h
+          test -s pytsk/talloc/replace.h
+          tar -C pytsk -czf talloc-2.4.4-standalone.tar.gz talloc
+          sha256sum talloc-2.4.4-standalone.tar.gz > SHA256SUMS
       - uses: actions/upload-artifact@v4.6.2
         with:
-          name: proot-5.4.0-source
+          name: talloc-2.4.4-standalone
           path: |
-            proot-5.4.0-source.tar.gz
+            talloc-2.4.4-standalone.tar.gz
             SHA256SUMS
           retention-days: 1

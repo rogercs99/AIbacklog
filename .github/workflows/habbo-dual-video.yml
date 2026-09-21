@@ -1,200 +1,25 @@
 name: Habbo dual-client video lab
-
 on:
   push:
-    branches:
-      - tmp-habbo-dual-video-20260921
+    branches: [tmp-habbo-dual-video-20260921]
     paths:
       - ".github/workflows/habbo-dual-video.yml"
-
+      - "habbo-lab/capture.sh"
 permissions:
   contents: read
-
 jobs:
   capture:
     runs-on: ubuntu-24.04
     timeout-minutes: 75
     steps:
       - uses: actions/checkout@v4
-
-      - name: Install capture and Wine dependencies
-        run: |
-          set -euxo pipefail
-          sudo dpkg --add-architecture i386
-          sudo apt-get update
-          sudo apt-get install -y xvfb openbox xdotool wmctrl ffmpeg p7zip-full unzip jq curl wine64 wine32:i386 python3-argon2
-          mkdir -p "$GITHUB_WORKSPACE/artifacts"
-
-      - name: Fetch Havana v1.5.4 and build containers
-        run: |
-          set -euxo pipefail
-          git clone --depth 1 --branch v1.5.4 https://github.com/Quackster/Havana.git "$GITHUB_WORKSPACE/lab/Havana"
-          cd "$GITHUB_WORKSPACE/lab/Havana"
-          sed -i '/site.directory=.*var\/www\/html/a\    sed -i -E "s/(bind.ip=)(.*)/\\10.0.0.0/g" webserver-config.ini' tools/docker/web-entrypoint.sh
-          docker compose build
-
-      - name: Download historical WWW assets
-        run: |
-          set -euxo pipefail
-          cd "$GITHUB_WORKSPACE/lab/Havana"
-          DIRECT="$(python3 - <<'PY'
-          import html, re, urllib.request
-          u='https://www.mediafire.com/file/xzjfsvb3k2962xo/havana_www_10_09_2024.7z/file'
-          req=urllib.request.Request(u, headers={'User-Agent':'Mozilla/5.0'})
-          s=urllib.request.urlopen(req, timeout=30).read().decode('utf-8','ignore')
-          pats=[r'id="downloadButton"[^>]*href="([^"]+)"',r'href="([^"]+)"[^>]*id="downloadButton"',r'href="(https://download[^"]+)"']
-          for p in pats:
-              m=re.search(p,s,re.I)
-              if m:
-                  print(html.unescape(m.group(1))); break
-          else:
-              raise SystemExit('MediaFire direct URL not found')
-          PY
-          )"
-          echo "Resolved MediaFire host: $(printf '%s' "$DIRECT" | sed -E 's#(https?://[^/]+).*#\1#')"
-          curl -fL --retry 5 --retry-delay 3 "$DIRECT" -o "$RUNNER_TEMP/havana_www.7z"
-          test "$(stat -c%s "$RUNNER_TEMP/havana_www.7z")" -gt 100000000
-          mkdir -p "$RUNNER_TEMP/www_extract"
-          7z x -y "$RUNNER_TEMP/havana_www.7z" -o"$RUNNER_TEMP/www_extract" >/tmp/7z.log
-          DCR="$(find "$RUNNER_TEMP/www_extract" -type f -path '*/dcr/v31/habbo.dcr' | head -n1)"
-          test -n "$DCR"
-          ROOT="${DCR%/dcr/v31/habbo.dcr}"
-          rm -rf tools/www
-          mkdir -p tools/www
-          cp -a "$ROOT"/. tools/www/
-          test -s tools/www/dcr/v31/habbo.dcr
-          test -s tools/www/gordon/RELEASE39-22643-22891-200911110035_07c3a2a30713fd5bea8a8caf07e33438/Habbo.swf
-          du -sh tools/www | tee "$GITHUB_WORKSPACE/artifacts/www-size.txt"
-
-      - name: Start Havana
-        run: |
-          set -euxo pipefail
-          cd "$GITHUB_WORKSPACE/lab/Havana"
-          docker compose up -d
-          for i in $(seq 1 90); do
-            if curl -fsS http://127.0.0.1/ >/dev/null 2>&1; then break; fi
-            sleep 2
-          done
-          curl -fsS http://127.0.0.1/ -o "$GITHUB_WORKSPACE/artifacts/home.html"
-          docker compose ps | tee "$GITHUB_WORKSPACE/artifacts/compose-ps.txt"
-          docker compose logs --no-color > "$GITHUB_WORKSPACE/artifacts/compose-start.log" || true
-
-      - name: Create deterministic test user and obtain SSO ticket
-        run: |
-          set -euxo pipefail
-          cd "$GITHUB_WORKSPACE/lab/Havana"
-          docker compose exec -T mariadb mariadb -uhavana -pgoldfish havana -e "INSERT INTO settings (setting,value) VALUES ('loader.dcr.http','http://localhost/dcr/v31/habbo.dcr?'),('loader.flash.port','12323') ON DUPLICATE KEY UPDATE value=VALUES(value);"
-          # GameConfiguration is loaded at web startup, so reload it after seeding legacy keys.
-          docker compose restart havana-web
-          for i in $(seq 1 60); do
-            if curl -fsS http://127.0.0.1/ >/dev/null 2>&1; then break; fi
-            sleep 1
-          done
-          HASH="$(python3 - <<'PY'
-          from argon2 import PasswordHasher, Type
-          print(PasswordHasher(time_cost=2,memory_cost=65536,parallelism=1,hash_len=32,salt_len=16,type=Type.ID).hash('password'))
-          PY
-          )"
-          SQL="INSERT INTO users (username,password,figure,sex,pool_figure,sso_ticket,email) VALUES ('RogerVideo','$HASH','hr-165-45.hd-180-1.ch-255-66.lg-280-110.sh-290-62','M','','','roger-video@example.invalid') ON DUPLICATE KEY UPDATE password=VALUES(password),figure=VALUES(figure),sex=VALUES(sex);"
-          docker compose exec -T mariadb mariadb -uhavana -pgoldfish havana -e "$SQL"
-          docker compose exec -T mariadb mariadb -uhavana -pgoldfish havana -e "INSERT INTO rooms (owner_id,name,description,model,showname,password,accesstype) SELECT id,'RogerVideo Lab','Dual-client capture room','model_s',1,'',0 FROM users WHERE username='RogerVideo' AND NOT EXISTS (SELECT 1 FROM rooms WHERE name='RogerVideo Lab');"
-          ROOMID="$(docker compose exec -T mariadb mariadb -N -B -uhavana -pgoldfish havana -e "SELECT id FROM rooms WHERE name='RogerVideo Lab' ORDER BY id DESC LIMIT 1;")"
-          echo "$ROOMID" > "$GITHUB_WORKSPACE/artifacts/room-id.txt"
-          curl -fsS 'http://127.0.0.1/api/ticket?username=RogerVideo&password=password' -o "$GITHUB_WORKSPACE/artifacts/ticket.json"
-          jq 'del(.ssoTicket,.SsoTicket)' "$GITHUB_WORKSPACE/artifacts/ticket.json" > "$GITHUB_WORKSPACE/artifacts/ticket-redacted.json"
-          jq -e '(.ssoTicket // .SsoTicket) | length > 5' "$GITHUB_WORKSPACE/artifacts/ticket.json"
-
-      - name: Fetch standalone Shockwave and Flash projectors
-        run: |
-          set -euxo pipefail
-          mkdir -p "$GITHUB_WORKSPACE/projectors"
-          curl -fL --retry 5 'https://raw.githubusercontent.com/Palsternakka/HabboLauncher/main/HabboLauncher.Net/Resources/Projectors.zip' -o "$RUNNER_TEMP/projectors.zip"
-          unzip -q "$RUNNER_TEMP/projectors.zip" -d "$GITHUB_WORKSPACE/projectors"
-          find "$GITHUB_WORKSPACE/projectors" -maxdepth 3 -type f -printf '%p %s bytes\n' | sort > "$GITHUB_WORKSPACE/artifacts/projector-files.txt"
-          test -f "$GITHUB_WORKSPACE/projectors/Shockwave/Habbo Hotel.exe"
-          test -f "$GITHUB_WORKSPACE/projectors/Flash/Habbo Hotel.exe"
-
-      - name: Start virtual desktop and recorder
-        run: |
-          set -euxo pipefail
-          export DISPLAY=:99
-          Xvfb :99 -screen 0 1280x720x24 -ac -noreset >"$GITHUB_WORKSPACE/artifacts/xvfb.log" 2>&1 &
-          echo $! > "$RUNNER_TEMP/xvfb.pid"
-          sleep 2
-          openbox >"$GITHUB_WORKSPACE/artifacts/openbox.log" 2>&1 &
-          echo $! > "$RUNNER_TEMP/openbox.pid"
-          export WINEARCH=win32 WINEPREFIX="$GITHUB_WORKSPACE/wineprefix" WINEDEBUG=-all WINEDLLOVERRIDES='mscoree,mshtml='
-          wineboot -u >"$GITHUB_WORKSPACE/artifacts/wineboot.log" 2>&1 || true
-          sleep 3
-          ffmpeg -y -loglevel warning -f x11grab -draw_mouse 1 -framerate 24 -video_size 1280x720 -i :99.0 -c:v libx264 -preset veryfast -crf 25 -pix_fmt yuv420p "$GITHUB_WORKSPACE/artifacts/dual-client-raw.mp4" >"$GITHUB_WORKSPACE/artifacts/ffmpeg.log" 2>&1 &
-          echo $! > "$RUNNER_TEMP/ffmpeg.pid"
-
-      - name: Capture Shockwave V31
-        continue-on-error: true
-        run: |
-          set -euxo pipefail
-          export DISPLAY=:99
-          export WINEARCH=win32 WINEPREFIX="$GITHUB_WORKSPACE/wineprefix" WINEDEBUG=-all WINEDLLOVERRIDES='mscoree,mshtml='
-          T="$GITHUB_WORKSPACE/artifacts/ticket.json"
-          jget(){ jq -r "$1 // $2 // empty" "$T"; }
-          HOST="$(jget '.host' '.Host')"; SWPORT="$(jget '.shockwavePort' '.ShockwavePort')"; MUSPORT="$(jget '.musPort' '.MusPort')"; SITE="$(jget '.site' '.Site')"; TEXTS="$(jget '.shockwaveTexts' '.ShockwaveTexts')"; VARS="$(jget '.shockwaveVariables' '.ShockwaveVariables')"; DCR="$(jget '.shockwaveDcr' '.ShockwaveDcr')"; SSO="$(jget '.ssoTicket' '.SsoTicket')"
-          printf '%s\n' "$HOST" "$SWPORT" "$MUSPORT" "$SITE" "$TEXTS" "$VARS" "$DCR" "$SSO" > "$GITHUB_WORKSPACE/projectors/Shockwave/vars.txt"
-          (cd "$GITHUB_WORKSPACE/projectors/Shockwave" && wine './Habbo Hotel.exe' >"$GITHUB_WORKSPACE/artifacts/shockwave-wine.log" 2>&1) &
-          echo $! > "$RUNNER_TEMP/shockwave.pid"
-          sleep 30
-          wmctrl -lG | tee "$GITHUB_WORKSPACE/artifacts/shockwave-windows.txt" || true
-          xdotool search --name 'Habbo Hotel' windowactivate --sync key --clearmodifiers Alt+F10 || true
-          sleep 3
-          ffmpeg -y -loglevel error -f x11grab -video_size 1280x720 -i :99.0 -frames:v 1 "$GITHUB_WORKSPACE/artifacts/shockwave-screen.png"
-          xdotool mousemove 45 675 click 1 || true
-          sleep 3
-          xdotool mousemove 255 220 click --repeat 2 --delay 120 1 || true
-          sleep 10
-          ffmpeg -y -loglevel error -f x11grab -video_size 1280x720 -i :99.0 -frames:v 1 "$GITHUB_WORKSPACE/artifacts/shockwave-after-interaction.png"
-
-      - name: Switch to Flash R39
-        continue-on-error: true
-        run: |
-          set -euxo pipefail
-          export DISPLAY=:99
-          export WINEARCH=win32 WINEPREFIX="$GITHUB_WORKSPACE/wineprefix" WINEDEBUG=-all WINEDLLOVERRIDES='mscoree,mshtml='
-          wineserver -k || true
-          sleep 4
-          curl -fsS 'http://127.0.0.1/api/ticket?username=RogerVideo&password=password' -o "$GITHUB_WORKSPACE/artifacts/ticket-flash.json"
-          T="$GITHUB_WORKSPACE/artifacts/ticket-flash.json"
-          jget(){ jq -r "$1 // $2 // empty" "$T"; }
-          HOST="$(jget '.host' '.Host')"; FPORT="$(jget '.flashPort' '.FlashPort')"; SITE="$(jget '.site' '.Site')"; SWF="$(jget '.flashSwf' '.FlashSwf')"; BASE="$(jget '.flashBase' '.FlashBase')"; VARS="$(jget '.flashVariables' '.FlashVariables')"; TEXTS="$(jget '.flashTexts' '.FlashTexts')"; SSO="$(jget '.ssoTicket' '.SsoTicket')"
-          ROOMID="$(cat "$GITHUB_WORKSPACE/artifacts/room-id.txt")"
-          ARG="${SWF}?client.allow.cross.domain=1&client.notify.cross.domain=0&connection.info.host=${HOST}&connection.info.port=${FPORT}&site.url=${SITE}/&url.prefix=${SITE}/&client.reload.url=/disconnected&client.fatal.error.url=${SITE}/disconnected&client.connection.failed.url=${SITE}/disconnected&external.variables.txt=${VARS}?&external.texts.txt=${TEXTS}?&use.sso.ticket=1&sso.ticket=${SSO}&processlog.enabled=1&account_id=1&client.starting=Please%20wait!%20Habbo%20is%20starting%20up&flash.client.url=${BASE}&user.hash=ticket&has.identity=0&flash.client.origin=popup&country_code=US&forward.type=2&forward.id=${ROOMID}"
-          (cd "$GITHUB_WORKSPACE/projectors/Flash" && wine './Habbo Hotel.exe' "$ARG" >"$GITHUB_WORKSPACE/artifacts/flash-wine.log" 2>&1) &
-          echo $! > "$RUNNER_TEMP/flash.pid"
-          sleep 30
-          wmctrl -lG | tee "$GITHUB_WORKSPACE/artifacts/flash-windows.txt" || true
-          xdotool search --name 'Habbo Hotel' windowactivate --sync key --clearmodifiers Alt+F10 || true
-          sleep 3
-          ffmpeg -y -loglevel error -f x11grab -video_size 1280x720 -i :99.0 -frames:v 1 "$GITHUB_WORKSPACE/artifacts/flash-screen.png"
-          xdotool mousemove 45 675 click 1 || true
-          sleep 3
-          xdotool mousemove 255 220 click --repeat 2 --delay 120 1 || true
-          sleep 10
-          ffmpeg -y -loglevel error -f x11grab -video_size 1280x720 -i :99.0 -frames:v 1 "$GITHUB_WORKSPACE/artifacts/flash-after-interaction.png"
-
-      - name: Stop recording and collect diagnostics
+      - name: Run isolated capture lab
+        run: bash habbo-lab/capture.sh
+      - name: Upload real capture evidence
         if: always()
-        run: |
-          set +e
-          if [ -f "$RUNNER_TEMP/ffmpeg.pid" ]; then kill -INT "$(cat "$RUNNER_TEMP/ffmpeg.pid")"; sleep 4; fi
-          cd "$GITHUB_WORKSPACE/lab/Havana" 2>/dev/null || exit 0
-          docker compose ps > "$GITHUB_WORKSPACE/artifacts/compose-final.txt" 2>&1
-          docker compose logs --no-color > "$GITHUB_WORKSPACE/artifacts/compose-final.log" 2>&1
-          ffprobe -v error -show_entries format=duration,size -of json "$GITHUB_WORKSPACE/artifacts/dual-client-raw.mp4" > "$GITHUB_WORKSPACE/artifacts/video-info.json" 2>&1
-          find "$GITHUB_WORKSPACE/artifacts" -maxdepth 1 -type f -printf '%f %s bytes\n' | sort > "$GITHUB_WORKSPACE/artifacts/files.txt"
-
-      - name: Upload evidence
-        if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v4.6.2
         with:
-          name: habbo-dual-video-diagnostic
+          name: habbo-dual-video-pass6
           path: artifacts/
           if-no-files-found: error
           retention-days: 3

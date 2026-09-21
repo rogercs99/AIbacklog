@@ -10,13 +10,19 @@ jobs:
   fetch:
     runs-on: ubuntu-latest
     steps:
-      - name: Fetch official 7-Zip Linux x64 dependency only
+      - name: Fetch exact Havana web templates and migrations only
         run: |
           set -euo pipefail
-          curl -fL --retry 5 --retry-delay 2             'https://github.com/ip7z/7zip/releases/download/26.03/7z2603-linux-x64.tar.xz'             -o 7z2603-linux-x64.tar.xz
-          echo 'dc99eff5008f1ab79bd7084c68513701547a808a89502bf4133683535ab3c695  7z2603-linux-x64.tar.xz' | sha256sum -c -
+          git clone https://github.com/Quackster/Havana.git src
+          cd src
+          git checkout b550f00f27788145d26723fd19e943aa63504a63
+          tar -czf ../havana-v1.5.4-web-support.tar.gz tools/www-tpl tools/migrations
+          cd ..
+          sha256sum havana-v1.5.4-web-support.tar.gz > SHA256SUMS
       - uses: actions/upload-artifact@v4.6.2
         with:
-          name: sevenzip-linux-x64
-          path: 7z2603-linux-x64.tar.xz
+          name: havana-v1.5.4-web-support
+          path: |
+            havana-v1.5.4-web-support.tar.gz
+            SHA256SUMS
           retention-days: 1

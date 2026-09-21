@@ -7,39 +7,34 @@ on:
 permissions:
   contents: read
 jobs:
-  fetch:
+  build:
     runs-on: ubuntu-latest
+    timeout-minutes: 30
     steps:
-      - name: Extract Tonistiigi BuildKit QEMU 10.2.3 i386 only
+      - name: Build QEMU 10.2.3 i386 linux-user against Ubuntu glibc
         run: |
           set -euo pipefail
-          img='tonistiigi/binfmt:buildkit-v10.2.3-66'
-          docker pull "$img"
-          docker image save "$img" -o image.tar
-          mkdir image rootfs
-          tar -xf image.tar -C image
-          python3 - <<'PY'
-          import json, tarfile, pathlib
-          root=pathlib.Path("image")
-          manifest=json.loads((root/"manifest.json").read_text())[0]
-          out=pathlib.Path("rootfs")
-          for layer in manifest["Layers"]:
-              with tarfile.open(root/layer) as t:
-                  t.extractall(out)
-          PY
-          find rootfs -maxdepth 3 -type f -printf '%p %s bytes\n' | sort | tee CONTENTS.txt
-          q="$(find rootfs -type f -name 'buildkit-qemu-i386' | head -n1)"
-          test -n "$q"
-          cp "$q" ./buildkit-qemu-i386-10.2.3
-          chmod +x buildkit-qemu-i386-10.2.3
-          file buildkit-qemu-i386-10.2.3
-          ./buildkit-qemu-i386-10.2.3 --version | head -3
-          sha256sum buildkit-qemu-i386-10.2.3 > SHA256SUMS
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq ninja-build pkg-config libglib2.0-dev libpixman-1-dev python3-venv
+          git clone --depth 1 --branch v10.2.3 https://github.com/qemu/qemu.git qemu
+          mkdir qemu/build
+          cd qemu/build
+          ../configure             --target-list=i386-linux-user             --disable-system             --disable-tools             --disable-docs             --disable-gtk             --disable-sdl             --disable-vnc             --disable-curses             --disable-slirp             --disable-guest-agent             --disable-debug-info             --disable-werror
+          ninja -j2 qemu-i386
+          cp qemu-i386 ../../qemu-i386-glibc-10.2.3
+          cd ../..
+          chmod +x qemu-i386-glibc-10.2.3
+          ./qemu-i386-glibc-10.2.3 --version | head -3 | tee VERSION.txt
+          file qemu-i386-glibc-10.2.3 | tee FILE.txt
+          ldd qemu-i386-glibc-10.2.3 | tee LDD.txt
+          sha256sum qemu-i386-glibc-10.2.3 > SHA256SUMS
       - uses: actions/upload-artifact@v4.6.2
         with:
-          name: buildkit-qemu-i386-10.2.3
+          name: qemu-i386-glibc-10.2.3
           path: |
-            buildkit-qemu-i386-10.2.3
+            qemu-i386-glibc-10.2.3
+            VERSION.txt
+            FILE.txt
+            LDD.txt
             SHA256SUMS
-            CONTENTS.txt
           retention-days: 1

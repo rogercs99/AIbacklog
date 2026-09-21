@@ -11,30 +11,30 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 30
     steps:
-      - name: Fetch missing Linux sandbox dependencies only
+      - name: Fetch and split Linux sandbox dependencies only
         run: |
           set -euo pipefail
-          mkdir -p deps/core deps/www
+          mkdir -p deps/core-small split
 
           curl -fL --retry 5 --retry-delay 2 \
             'https://github.com/Quackster/Havana/releases/download/v1.5.4/Havana-v1.5.4.zip' \
-            -o deps/core/Havana-v1.5.4.zip
+            -o deps/core-small/Havana-v1.5.4.zip
 
           curl -fL --retry 5 --retry-delay 2 \
             'https://raw.githubusercontent.com/Palsternakka/HabboLauncher/main/HabboLauncher.Net/Resources/Projectors.zip' \
-            -o deps/core/Projectors.zip
+            -o deps/core-small/Projectors.zip
 
           curl -fL --retry 5 --retry-delay 2 \
             'https://github.com/hiperesp/Habbo-v31-Projector/releases/download/v2.0.0/launcher.zip' \
-            -o deps/core/v31-launcher.zip
+            -o deps/core-small/v31-launcher.zip
 
           curl -fL --retry 5 --retry-delay 2 \
             'https://raw.githubusercontent.com/hiperesp/Habbo-v31-Projector/main/dcr/fuse_client.cct' \
-            -o deps/core/fuse_client.cct
+            -o deps/core-small/fuse_client.cct
 
           curl -fL --retry 5 --retry-delay 2 \
             'https://downloads.mariadb.org/rest-api/mariadb/11.5.2/mariadb-11.5.2-linux-systemd-x86_64.tar.gz' \
-            -o deps/core/mariadb-11.5.2-linux-systemd-x86_64.tar.gz
+            -o mariadb.tar.gz
 
           python3 - <<'PY'
           import html,re,urllib.request
@@ -43,26 +43,141 @@ jobs:
           pats=[r'id="downloadButton"[^>]*href="([^"]+)"',r'href="([^"]+)"[^>]*id="downloadButton"',r'href="(https://download[^"]+)"']
           m=next((re.search(p,s,re.I) for p in pats if re.search(p,s,re.I)),None)
           if not m: raise SystemExit('MediaFire direct URL not resolved')
-          direct=html.unescape(m.group(1))
-          urllib.request.urlretrieve(direct,'deps/www/havana_www_10_09_2024.7z')
+          urllib.request.urlretrieve(html.unescape(m.group(1)),'www.7z')
           PY
 
-          sha256sum deps/core/* > deps/core/SHA256SUMS
-          sha256sum deps/www/* > deps/www/SHA256SUMS
-          du -h deps/core/* deps/www/*
+          sha256sum deps/core-small/* > deps/core-small/SHA256SUMS
+          sha256sum mariadb.tar.gz www.7z > split/ORIGINAL_SHA256SUMS
 
-      - name: Upload backend core
+          split -b 64M -d -a 2 mariadb.tar.gz split/mariadb.part
+          split -b 64M -d -a 2 www.7z split/www.part
+
+          test "$(find split -name 'mariadb.part*' | wc -l)" -eq 6
+          test "$(find split -name 'www.part*' | wc -l)" -eq 8
+          sha256sum split/mariadb.part* > split/MARIADB_PART_SHA256SUMS
+          sha256sum split/www.part* > split/WWW_PART_SHA256SUMS
+          cp split/ORIGINAL_SHA256SUMS deps/core-small/
+          cp split/MARIADB_PART_SHA256SUMS deps/core-small/
+          cp split/WWW_PART_SHA256SUMS deps/core-small/
+          du -h deps/core-small/* split/*
+
+      - name: Upload small core
         uses: actions/upload-artifact@v4.6.2
         with:
-          name: habbo-linux-backend-core
-          path: deps/core/
+          name: habbo-core-small
+          path: deps/core-small/
           compression-level: 0
           retention-days: 1
 
-      - name: Upload historical WWW assets
+      - name: Upload MariaDB part 00
         uses: actions/upload-artifact@v4.6.2
         with:
-          name: habbo-linux-www-assets
-          path: deps/www/
+          name: habbo-mariadb-part-00
+          path: split/mariadb.part00
           compression-level: 0
           retention-days: 1
+
+      - name: Upload MariaDB part 01
+        uses: actions/upload-artifact@v4.6.2
+        with:
+          name: habbo-mariadb-part-01
+          path: split/mariadb.part01
+          compression-level: 0
+          retention-days: 1
+
+      - name: Upload MariaDB part 02
+        uses: actions/upload-artifact@v4.6.2
+        with:
+          name: habbo-mariadb-part-02
+          path: split/mariadb.part02
+          compression-level: 0
+          retention-days: 1
+
+      - name: Upload MariaDB part 03
+        uses: actions/upload-artifact@v4.6.2
+        with:
+          name: habbo-mariadb-part-03
+          path: split/mariadb.part03
+          compression-level: 0
+          retention-days: 1
+
+      - name: Upload MariaDB part 04
+        uses: actions/upload-artifact@v4.6.2
+        with:
+          name: habbo-mariadb-part-04
+          path: split/mariadb.part04
+          compression-level: 0
+          retention-days: 1
+
+      - name: Upload MariaDB part 05
+        uses: actions/upload-artifact@v4.6.2
+        with:
+          name: habbo-mariadb-part-05
+          path: split/mariadb.part05
+          compression-level: 0
+          retention-days: 1
+
+      - name: Upload WWW part 00
+        uses: actions/upload-artifact@v4.6.2
+        with:
+          name: habbo-www-part-00
+          path: split/www.part00
+          compression-level: 0
+          retention-days: 1
+
+      - name: Upload WWW part 01
+        uses: actions/upload-artifact@v4.6.2
+        with:
+          name: habbo-www-part-01
+          path: split/www.part01
+          compression-level: 0
+          retention-days: 1
+
+      - name: Upload WWW part 02
+        uses: actions/upload-artifact@v4.6.2
+        with:
+          name: habbo-www-part-02
+          path: split/www.part02
+          compression-level: 0
+          retention-days: 1
+
+      - name: Upload WWW part 03
+        uses: actions/upload-artifact@v4.6.2
+        with:
+          name: habbo-www-part-03
+          path: split/www.part03
+          compression-level: 0
+          retention-days: 1
+
+      - name: Upload WWW part 04
+        uses: actions/upload-artifact@v4.6.2
+        with:
+          name: habbo-www-part-04
+          path: split/www.part04
+          compression-level: 0
+          retention-days: 1
+
+      - name: Upload WWW part 05
+        uses: actions/upload-artifact@v4.6.2
+        with:
+          name: habbo-www-part-05
+          path: split/www.part05
+          compression-level: 0
+          retention-days: 1
+
+      - name: Upload WWW part 06
+        uses: actions/upload-artifact@v4.6.2
+        with:
+          name: habbo-www-part-06
+          path: split/www.part06
+          compression-level: 0
+          retention-days: 1
+
+      - name: Upload WWW part 07
+        uses: actions/upload-artifact@v4.6.2
+        with:
+          name: habbo-www-part-07
+          path: split/www.part07
+          compression-level: 0
+          retention-days: 1
+

@@ -83,6 +83,7 @@ jobs:
         run: |
           set -euxo pipefail
           cd "$GITHUB_WORKSPACE/lab/Havana"
+          docker compose exec -T mariadb mariadb -uhavana -pgoldfish havana -e "INSERT INTO settings (setting,value) VALUES ('loader.dcr.http','http://localhost/dcr/v31/habbo.dcr?'),('loader.flash.port','12323') ON DUPLICATE KEY UPDATE value=VALUES(value);"
           HASH="$(python3 - <<'PY'
           from argon2 import PasswordHasher, Type
           print(PasswordHasher(time_cost=2,memory_cost=65536,parallelism=1,hash_len=32,salt_len=16,type=Type.ID).hash('password'))

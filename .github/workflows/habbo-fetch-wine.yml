@@ -10,15 +10,18 @@ jobs:
   fetch:
     runs-on: ubuntu-latest
     steps:
-      - name: Fetch Wine 10 WoW64 dependency only
+      - name: Fetch self-contained Wine AppImage dependency only
         run: |
           set -euo pipefail
           curl -fL --retry 5 --retry-delay 2 \
-            https://github.com/Kron4ek/Wine-Builds/releases/download/10.0/wine-10.0-amd64-wow64.tar.xz \
-            -o wine-10.0-amd64-wow64.tar.xz
-          echo 'aeebbbf239e548f0136f1cd72a2e109dd9a572a8f703da3c09fa40d74d5c255f  wine-10.0-amd64-wow64.tar.xz' | sha256sum -c -
+            'https://github.com/pkgforge-dev/wine-AppImage/releases/download/11.16-2%402026-09-03_1788416451/wine-11.16-2-anylinux-x86_64.AppImage' \
+            -o wine-anylinux.AppImage
+          test "$(stat -c %s wine-anylinux.AppImage)" -eq 150671725
+          sha256sum wine-anylinux.AppImage > wine-anylinux.AppImage.sha256
       - uses: actions/upload-artifact@v4.6.2
         with:
-          name: wine-10-wow64
-          path: wine-10.0-amd64-wow64.tar.xz
+          name: wine-anylinux-appimage
+          path: |
+            wine-anylinux.AppImage
+            wine-anylinux.AppImage.sha256
           retention-days: 1

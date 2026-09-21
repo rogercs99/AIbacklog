@@ -10,19 +10,20 @@ jobs:
   fetch:
     runs-on: ubuntu-latest
     steps:
-      - name: Fetch modern qemu-i386 dependency only
+      - name: Fetch static PRoot dependency only
         run: |
           set -euo pipefail
           curl -fL --retry 5 --retry-delay 2 \
-            'https://github.com/multiarch/qemu-user-static/releases/download/v7.2.0-1/qemu-i386-static' \
-            -o qemu-i386-static
-          test "$(stat -c %s qemu-i386-static)" -eq 8702448
-          chmod +x qemu-i386-static
-          sha256sum qemu-i386-static > SHA256SUMS
+            'https://github.com/proot-me/proot-static-build/releases/download/v5.1.1/proot_5.1.1_x86_64_rc2' \
+            -o proot
+          chmod +x proot
+          file proot
+          ./proot --version | head -5
+          sha256sum proot > SHA256SUMS
       - uses: actions/upload-artifact@v4.6.2
         with:
-          name: qemu-i386-7.2
+          name: proot-static-x86_64
           path: |
-            qemu-i386-static
+            proot
             SHA256SUMS
           retention-days: 1

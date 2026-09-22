@@ -1,52 +1,8 @@
 name: Habbo R39 WWW fetch
 on:
-  push:
-    branches:
-      - lab/habbo-deps-20260922
+  workflow_dispatch:
 jobs:
-  fetch-www:
+  disabled-note:
     runs-on: ubuntu-latest
-    timeout-minutes: 10
     steps:
-      - name: Fetch HavanaR39 WWW bundle
-        shell: bash
-        run: |
-          set -euo pipefail
-          mkdir -p out
-          python3 - <<'PY'
-          import html, re, urllib.request
-          page='https://www.mediafire.com/file/0w0lsy335vyrh1w/www.zip/file'
-          req=urllib.request.Request(page, headers={'User-Agent':'Mozilla/5.0'})
-          body=urllib.request.urlopen(req, timeout=30).read().decode('utf-8','replace')
-          pats=[
-              r'id="downloadButton"[^>]*href="([^"]+)"',
-              r'href="([^"]+)"[^>]*id="downloadButton"',
-              r'aria-label="Download file"[^>]*href="([^"]+)"',
-              r'href="([^"]+)"[^>]*aria-label="Download file"',
-          ]
-          url=None
-          for p in pats:
-              m=re.search(p,body,re.I)
-              if m:
-                  url=html.unescape(m.group(1)); break
-          if not url:
-              open('out/mediafire-page.html','w').write(body)
-              raise SystemExit('direct download link not found')
-          req=urllib.request.Request(url, headers={'User-Agent':'Mozilla/5.0','Referer':page})
-          with urllib.request.urlopen(req, timeout=120) as r, open('out/www.zip','wb') as f:
-              while True:
-                  b=r.read(1024*1024)
-                  if not b: break
-                  f.write(b)
-          PY
-          file out/www.zip
-          unzip -t out/www.zip >/dev/null
-          sha256sum out/www.zip | tee out/SHA256SUMS-WWW.txt
-          stat -c '%s' out/www.zip | tee out/SIZE.txt
-      - name: Upload WWW reference
-        uses: actions/upload-artifact@v4
-        with:
-          name: habbo-r39-www-reference
-          path: out/
-          if-no-files-found: error
-          retention-days: 1
+      - run: echo 'Full WWW fetch disabled by default; critical files are already preserved.'

@@ -1,0 +1,28 @@
+name: Habbo Wine WoW64 dependency
+on:
+  push:
+    branches:
+      - lab/habbo-flash10-20260922
+jobs:
+  fetch:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Fetch Wine 11.18 WoW64 with checksum
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p out
+          base='https://github.com/Kron4ek/Wine-Builds/releases/download/11.18'
+          curl -fL --retry 3 --retry-delay 2 "$base/sha256sums.txt" -o sha256sums.txt
+          curl -fL --retry 3 --retry-delay 2 "$base/wine-11.18-amd64-wow64.tar.xz" -o out/wine-11.18-amd64-wow64.tar.xz
+          grep ' wine-11.18-amd64-wow64.tar.xz$' sha256sums.txt > out/CHECKSUM.txt
+          (cd out && sha256sum -c CHECKSUM.txt)
+          cp sha256sums.txt out/RELEASE_SHA256SUMS.txt
+      - name: Upload Wine WoW64
+        uses: actions/upload-artifact@v4
+        with:
+          name: wine-11.18-amd64-wow64
+          path: out/
+          if-no-files-found: error
+          retention-days: 1

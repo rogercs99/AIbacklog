@@ -1,0 +1,39 @@
+name: Habbo HavanaR39 server bundle
+on:
+  push:
+    branches:
+      - lab/habbo-deps-20260922
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          repository: jeppe9821/HavanaR39
+          ref: main
+          path: src
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+      - name: Build server fat jar
+        working-directory: src
+        shell: bash
+        run: |
+          set -euo pipefail
+          chmod +x gradlew
+          ./gradlew --no-daemon :Havana-Server:fatJar
+          mkdir -p ../out
+          cp Havana-Server/build/libs/*all*.jar ../out/Havana-Server-R39-all.jar
+          cp tools/havana.sql ../out/havana-r39.sql
+          git rev-parse HEAD > ../out/SOURCE_COMMIT.txt
+          sha256sum ../out/* > ../out/SHA256SUMS.txt
+          ls -lh ../out
+      - name: Upload server bundle
+        uses: actions/upload-artifact@v4
+        with:
+          name: habbo-havana-r39-server
+          path: out/
+          if-no-files-found: error
+          retention-days: 1

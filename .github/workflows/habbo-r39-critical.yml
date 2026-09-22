@@ -1,0 +1,68 @@
+name: Habbo R39 critical files
+on:
+  push:
+    branches:
+      - lab/habbo-deps-20260922
+jobs:
+  fetch-core:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - name: Fetch and extract critical R39 files
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p out/core
+          python3 - <<'PY'
+          import html, re, urllib.request, zipfile, os, pathlib, hashlib
+          page='https://www.mediafire.com/file/0w0lsy335vyrh1w/www.zip/file'
+          req=urllib.request.Request(page, headers={'User-Agent':'Mozilla/5.0'})
+          body=urllib.request.urlopen(req, timeout=30).read().decode('utf-8','replace')
+          pats=[
+              r'id="downloadButton"[^>]*href="([^"]+)"',
+              r'href="([^"]+)"[^>]*id="downloadButton"',
+              r'aria-label="Download file"[^>]*href="([^"]+)"',
+              r'href="([^"]+)"[^>]*aria-label="Download file"',
+          ]
+          url=None
+          for p in pats:
+              m=re.search(p,body,re.I)
+              if m:
+                  url=html.unescape(m.group(1)); break
+          if not url: raise SystemExit('direct download link not found')
+          zpath='out/www.zip'
+          req=urllib.request.Request(url, headers={'User-Agent':'Mozilla/5.0','Referer':page})
+          with urllib.request.urlopen(req, timeout=180) as r, open(zpath,'wb') as f:
+              while True:
+                  b=r.read(1024*1024)
+                  if not b: break
+                  f.write(b)
+          wanted={'habbo.swf','external_variables.txt','external_variables_exe.txt','external_flash_texts.txt','furnidata.txt','productdata.txt','figuredata.xml'}
+          manifest=[]
+          with zipfile.ZipFile(zpath) as z:
+              for i in z.infolist():
+                  if i.is_dir(): continue
+                  base=i.filename.rsplit('/',1)[-1].lower()
+                  low=i.filename.lower()
+                  # keep all exact critical files in plausible flash/r38/v39/gordon folders
+                  if base in wanted and any(k in low for k in ('r38','r39','flash','gordon','client')):
+                      data=z.read(i)
+                      safe=i.filename.replace('..','__').lstrip('/')
+                      dest=pathlib.Path('out/core')/safe
+                      dest.parent.mkdir(parents=True,exist_ok=True)
+                      dest.write_bytes(data)
+                      manifest.append((i.filename,len(data),hashlib.sha256(data).hexdigest()))
+          if not manifest: raise SystemExit('no critical files found')
+          with open('out/MANIFEST.tsv','w') as f:
+              for row in sorted(manifest): f.write('\t'.join(map(str,row))+'\n')
+          os.remove(zpath)
+          PY
+          du -sh out
+          cat out/MANIFEST.tsv
+      - name: Upload critical R39 files
+        uses: actions/upload-artifact@v4
+        with:
+          name: habbo-r39-critical
+          path: out/
+          if-no-files-found: error
+          retention-days: 1

@@ -1,0 +1,60 @@
+name: Habbo V31 client bundle
+on:
+  push:
+    branches:
+      - lab/habbo-deps-20260922
+jobs:
+  extract-v31:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - name: Fetch and extract V31 client
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p out/v31
+          python3 - <<'PY'
+          import html,re,urllib.request,zipfile,pathlib,hashlib,os
+          page='https://www.mediafire.com/file/0w0lsy335vyrh1w/www.zip/file'
+          req=urllib.request.Request(page,headers={'User-Agent':'Mozilla/5.0'})
+          body=urllib.request.urlopen(req,timeout=30).read().decode('utf-8','replace')
+          pats=[r'id="downloadButton"[^>]*href="([^"]+)"',r'href="([^"]+)"[^>]*id="downloadButton"',r'aria-label="Download file"[^>]*href="([^"]+)"',r'href="([^"]+)"[^>]*aria-label="Download file"']
+          url=None
+          for p in pats:
+              m=re.search(p,body,re.I)
+              if m: url=html.unescape(m.group(1)); break
+          if not url: raise SystemExit('direct link missing')
+          zpath='out/www.zip'
+          req=urllib.request.Request(url,headers={'User-Agent':'Mozilla/5.0','Referer':page})
+          with urllib.request.urlopen(req,timeout=180) as r, open(zpath,'wb') as f:
+              while True:
+                  b=r.read(1024*1024)
+                  if not b: break
+                  f.write(b)
+          manifest=[]
+          with zipfile.ZipFile(zpath) as z:
+              for i in z.infolist():
+                  if i.is_dir(): continue
+                  low=i.filename.lower()
+                  if not low.startswith('www/client/v31/'): continue
+                  data=z.read(i)
+                  rel=i.filename[len('www/client/v31/'):]
+                  dest=pathlib.Path('out/v31')/rel
+                  dest.parent.mkdir(parents=True,exist_ok=True)
+                  dest.write_bytes(data)
+                  manifest.append((rel,len(data),hashlib.sha256(data).hexdigest()))
+          if not manifest: raise SystemExit('no V31 files found')
+          with open('out/MANIFEST-V31.tsv','w') as f:
+              for row in sorted(manifest): f.write('\t'.join(map(str,row))+'\n')
+          os.remove(zpath)
+          print('files',len(manifest),'bytes',sum(r[1] for r in manifest))
+          PY
+          grep -Ei 'habbo\.dcr|external_variables|external_texts|fuse_client' out/MANIFEST-V31.tsv || true
+          du -sh out
+      - name: Upload V31 bundle
+        uses: actions/upload-artifact@v4
+        with:
+          name: habbo-v31-client-bundle
+          path: out/
+          if-no-files-found: error
+          retention-days: 1

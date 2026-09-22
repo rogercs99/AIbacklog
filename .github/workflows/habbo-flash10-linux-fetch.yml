@@ -1,0 +1,33 @@
+name: Habbo Flash 10 Linux dependency
+on:
+  push:
+    branches:
+      - lab/habbo-flash10-20260922
+jobs:
+  extract-linux:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Fetch verified Adobe Flash 10 archive
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p out
+          url='https://archive.org/download/flash-player-10-20241223/7f1e70e833c953cd70d34b84de6e3189552df67119f93d16b0b182175afc0528/fp10_archive.zip'
+          curl -fL --retry 3 --retry-delay 2 "$url" -o fp10_archive.zip
+          test "$(stat -c %s fp10_archive.zip)" = "197556324"
+          echo '178cc7863cf932e1d0605968dfd5f0cc  fp10_archive.zip' | md5sum -c -
+          unzip -j fp10_archive.zip 'fp10_archive/10r32_18/flashplayer_10r3218_linux_sa.tar.gz' -d out
+          test "$(stat -c %s out/flashplayer_10r3218_linux_sa.tar.gz)" = "3820562"
+          mkdir -p out/linux_sa
+          tar -xzf out/flashplayer_10r3218_linux_sa.tar.gz -C out/linux_sa
+          find out/linux_sa -maxdepth 3 -type f -printf '%p %s\n' | sort | tee out/CONTENTS.txt
+          file out/linux_sa/* | tee out/FILETYPES.txt || true
+          sha256sum out/flashplayer_10r3218_linux_sa.tar.gz out/linux_sa/* 2>/dev/null | tee out/SHA256SUMS.txt || true
+      - name: Upload Linux Flash 10 projector
+        uses: actions/upload-artifact@v4
+        with:
+          name: flashplayer10r3218-linux-sa
+          path: out/
+          if-no-files-found: error
+          retention-days: 1

@@ -1,0 +1,29 @@
+name: Habbo Adobe Flash Linux x64
+on:
+  push:
+    branches:
+      - lab/habbo-flash10-20260922
+jobs:
+  fetch:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Fetch verified Adobe Linux x64 projector
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p out
+          url='https://fpdownload.macromedia.com/pub/flashplayer/updaters/32/flash_player_sa_linux.x86_64.tar.gz'
+          curl -fL --retry 3 --retry-delay 2 "$url" -o out/flash_player_sa_linux.x86_64.tar.gz
+          echo '883f7aa23301fc80de879501157533a4acdbfee0721ed7c57676dc032fdf96c3  out/flash_player_sa_linux.x86_64.tar.gz' | sha256sum -c -
+          tar -xzf out/flash_player_sa_linux.x86_64.tar.gz -C out
+          file out/flashplayer
+          test "$(uname -m)" = x86_64
+          sha256sum out/flashplayer | tee out/FLASHPLAYER_SHA256.txt
+      - name: Upload projector
+        uses: actions/upload-artifact@v4
+        with:
+          name: adobe-flash-linux-x64
+          path: out/
+          if-no-files-found: error
+          retention-days: 1

@@ -1,0 +1,25 @@
+name: Habbo dependency fetch
+on:
+  push:
+    branches:
+      - lab/habbo-deps-20260922
+jobs:
+  fetch:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Fetch reference projectors
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p out
+          curl -fL --retry 3 --retry-delay 2             'https://raw.githubusercontent.com/Palsternakka/HabboLauncher/eb4cb3421988d5e43b4808b35c34836fe37d36ca/HabboLauncher.Cpp/Projectors.bin'             -o out/Projectors.bin
+          test "$(stat -c %s out/Projectors.bin)" = "13735043"
+          sha256sum out/Projectors.bin | tee out/SHA256SUMS.txt
+      - name: Upload reference bundle
+        uses: actions/upload-artifact@v4
+        with:
+          name: habbo-projectors-reference
+          path: out/
+          if-no-files-found: error
+          retention-days: 1

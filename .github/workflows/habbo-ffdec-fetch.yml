@@ -1,0 +1,24 @@
+name: Habbo FFDec dependency
+on:
+  push:
+    branches:
+      - lab/habbo-deps-20260922
+jobs:
+  fetch:
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - name: Fetch FFDec
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p out
+          curl -fL --retry 3 --retry-delay 2             'https://github.com/jindrapetrik/jpexs-decompiler/releases/download/version26.3.0/ffdec_26.3.0.zip'             -o out/ffdec.zip
+          unzip -t out/ffdec.zip >/dev/null
+          sha256sum out/ffdec.zip | tee out/SHA256SUMS.txt
+      - uses: actions/upload-artifact@v4
+        with:
+          name: habbo-ffdec
+          path: out/
+          if-no-files-found: error
+          retention-days: 1

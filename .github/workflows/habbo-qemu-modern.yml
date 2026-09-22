@@ -1,0 +1,28 @@
+name: Habbo QEMU i386 dependency
+on:
+  push:
+    branches:
+      - lab/habbo-flash10-20260922
+jobs:
+  fetch:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - name: Install modern qemu-user-static
+        shell: bash
+        run: |
+          set -euo pipefail
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq qemu-user-static
+          mkdir -p out
+          cp /usr/bin/qemu-i386-static out/qemu-i386-static
+          chmod 755 out/qemu-i386-static
+          out/qemu-i386-static --version | tee out/VERSION.txt
+          sha256sum out/qemu-i386-static | tee out/SHA256SUMS.txt
+      - name: Upload qemu
+        uses: actions/upload-artifact@v4
+        with:
+          name: qemu-i386-static-modern
+          path: out/
+          if-no-files-found: error
+          retention-days: 1

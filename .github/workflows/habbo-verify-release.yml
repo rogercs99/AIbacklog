@@ -1,0 +1,67 @@
+name: Habbo verify canonical release
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - project/habbo-2009-dual-linux
+    paths:
+      - '.github/workflows/habbo-verify-release.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Download canonical v1.1 assets
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          gh release download habbo-2009-dual-linux-v1.1.0-20260923             --repo "$GITHUB_REPOSITORY"             --pattern 'habbo-2009-dual-linux-FINAL-v2-20260923.zip'             --pattern 'HABBO_FINAL_V2_SHA256.txt'             --pattern 'FINAL_V2_PROVENANCE_20260923.json'
+
+      - name: Verify asset identities
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          ZIP='habbo-2009-dual-linux-FINAL-v2-20260923.zip'
+          MAN='HABBO_FINAL_V2_SHA256.txt'
+          PROV='FINAL_V2_PROVENANCE_20260923.json'
+
+          test "$(stat -c%s "$ZIP")" = "3476825"
+          echo 'f80bbefc5a486fd0f9cce058a39462ef3925c563253dc2f69ebe647f6a6630ec  '"$ZIP" | sha256sum -c -
+
+          test "$(stat -c%s "$MAN")" = "427"
+          echo '9a16bdb999471ef6577aea813f9e049c858cff70892d642ecea7834c7c0b6b48  '"$MAN" | sha256sum -c -
+
+          test "$(stat -c%s "$PROV")" = "1968"
+          echo 'd5fc94a7266be1f794c29d2872e0d0e1694a643ca4c6ca39cd6bbed9e1c3cd8d  '"$PROV" | sha256sum -c -
+
+      - name: Cross-check manifest and provenance
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          ZIP='habbo-2009-dual-linux-FINAL-v2-20260923.zip'
+          MAN='HABBO_FINAL_V2_SHA256.txt'
+          PROV='FINAL_V2_PROVENANCE_20260923.json'
+
+          grep -F 'Filename: habbo-2009-dual-linux-FINAL-v2-20260923.zip' "$MAN" >/dev/null
+          grep -F 'SHA-256: f80bbefc5a486fd0f9cce058a39462ef3925c563253dc2f69ebe647f6a6630ec' "$MAN" >/dev/null
+          grep -F 'Size: 3476825 bytes' "$MAN" >/dev/null
+
+          jq -e '.release.id == 394785116' "$PROV" >/dev/null
+          jq -e '.canonical_bundle.filename == "habbo-2009-dual-linux-FINAL-v2-20260923.zip"' "$PROV" >/dev/null
+          jq -e '.canonical_bundle.asset_id == 584208609' "$PROV" >/dev/null
+          jq -e '.canonical_bundle.size_bytes == 3476825' "$PROV" >/dev/null
+          jq -e '.canonical_bundle.sha256 == "f80bbefc5a486fd0f9cce058a39462ef3925c563253dc2f69ebe647f6a6630ec"' "$PROV" >/dev/null
+          jq -e '.checksum_manifest.asset_id == 584097161' "$PROV" >/dev/null
+          jq -e '.checksum_manifest.sha256 == "9a16bdb999471ef6577aea813f9e049c858cff70892d642ecea7834c7c0b6b48"' "$PROV" >/dev/null
+          jq -e '.validation.r39 == "PASS" and .validation.v31 == "PASS" and .validation.clean_restore == "PASS" and .validation.release_roundtrip == "PASS" and .validation.internal_bundle_audit == "PASS"' "$PROV" >/dev/null
+
+          unzip -t "$ZIP" >/dev/null
+          echo HABBO_CANONICAL_RELEASE_VERIFY_PASS

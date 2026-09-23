@@ -4,11 +4,23 @@ Do not restart the investigation. Dual gameplay validation is complete.
 
 ## Preferred bundle
 
-Use:
+Primary source:
+GitHub Release v1.1 at
+`https://github.com/rogercs99/AIbacklog/releases/tag/habbo-2009-dual-linux-v1.1.0-20260923`
+
+Download release asset:
+`habbo-2009-dual-linux-FINAL-v2-20260923.zip`
+
+Expected size:
+`3476825` bytes
+
+Verify SHA-256:
+`f80bbefc5a486fd0f9cce058a39462ef3925c563253dc2f69ebe647f6a6630ec`
+
+Fallback copy:
 `/Habbo 2009 Dual Linux/habbo-2009-dual-linux-FINAL-v2-20260923.zip`
 
-Verify:
-`f80bbefc5a486fd0f9cce058a39462ef3925c563253dc2f69ebe647f6a6630ec`
+Use whichever copy is available, but accept it only if the size and SHA-256 match the canonical values above.
 
 Keep the previously persisted large Library artifacts available and run the included `restore-habbo-final.sh` with `ASSET_DIR` pointing at them. The restore copies the complete dual evidence directory as well as runbooks/logs.
 

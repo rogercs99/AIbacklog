@@ -36,13 +36,21 @@ V31:
 
 ## Preferred recovery package
 
-Preferred v2 Library artifact:
-`/Habbo 2009 Dual Linux/habbo-2009-dual-linux-FINAL-v2-20260923.zip`
+Primary source: GitHub Release v1.1
+`https://github.com/rogercs99/AIbacklog/releases/tag/habbo-2009-dual-linux-v1.1.0-20260923`
+
+Release asset:
+`habbo-2009-dual-linux-FINAL-v2-20260923.zip`
+Asset id: `584208609`
+Size: `3476825` bytes
 
 SHA-256:
 `f80bbefc5a486fd0f9cce058a39462ef3925c563253dc2f69ebe647f6a6630ec`
 
-The v2 ZIP itself was extracted into a clean directory and its restore script was executed successfully. It restored all eight binary evidence files plus R39/V31 runbooks, verified QEMU 9.2.4, reconstructed MariaDB and historical WWW with the canonical hashes.
+Fallback copy in ChatGPT Library:
+`/Habbo 2009 Dual Linux/habbo-2009-dual-linux-FINAL-v2-20260923.zip`
+
+The GitHub Release asset and the Library copy are the same canonical ZIP by size and SHA-256. The v2 ZIP itself was extracted into a clean directory and its restore script was executed successfully. It restored all eight binary evidence files plus R39/V31 runbooks, verified QEMU 9.2.4, reconstructed MariaDB and historical WWW with the canonical hashes.
 
 The v1 package remains valid and immutable:
 `38e8175373094130e27202d65aef2be9406dbfcd08e23f3bd87ea95e40afc97f`.

@@ -72,8 +72,7 @@ The backup workflow now includes:
 Stable latest-backup pointer:
 `/srv/habbo/LATEST_PUBLIC_WEB_BACKUP`
 
-Current verified public-web backup at time of this document:
-`/srv/habbo/backups/manual-20260923T213136Z`
+Use `/srv/habbo/LATEST_PUBLIC_WEB_BACKUP` to locate the newest verified full operational backup. This avoids baking a stale timestamp into the runbook as later documentation-only backups are produced.
 
 The database restore-roundtrip-tested backup remains:
 `/srv/habbo/backups/manual-20260923T183558Z`

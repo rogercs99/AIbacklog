@@ -72,6 +72,7 @@ The final manual action is therefore reduced to: connect to noVNC through an SSH
 
 Operational details:
 - VPS helper: `/srv/habbo/ops/v31-final-validate.sh` (root-only).
-- Versioned copy: `habbo-linux-checkpoint/vps1-overlay/v31-final-validate.sh`, commit `128d34898fb576c092318d24b51de4ce7e69afd3`.
+- Versioned copy: `habbo-linux-checkpoint/vps1-overlay/v31-final-validate.sh`, hardened at commit `42ff551237a44079b8891de795d64c5826447485`.
 - noVNC/VNC listeners are configured strictly on `127.0.0.1:60831` and `127.0.0.1:59031`; no firewall or public proxy rule is added.
-- Latest backup containing the canonical helper: `/srv/habbo/backups/manual-20260923T200954Z`; gzip/SHA256 verification PASS and the ops overlay contains `v31-final-validate.sh` only (the redundant helper was removed).
+- The hardened helper records a per-session UTC marker; `check` only accepts a `WALK` emitted after that marker, preventing stale-log false positives. `status` exposes listeners/processes/user state, and cleanup force-stops stale VNC/Wine/Xvfb processes.
+- Latest backup containing the hardened canonical helper: `/srv/habbo/backups/manual-20260923T201543Z`; gzip/SHA256 verification PASS. The helper SHA-256 is `c8570fee932912ba16366df464670491001e78a0f2cdc4a3eedc5cea6d1cd239`, matching the copy inside `ops-overlay.tar.gz`. The redundant helper was removed.

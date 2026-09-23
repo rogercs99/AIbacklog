@@ -48,7 +48,7 @@ PASS results:
 - Docker and all three Habbo systemd units active + enabled;
 - final backup restore round-trip into temporary MariaDB: PASS (`88 / 40 / RogerVideo / room 1000`).
 
-The final post-change backup `/srv/habbo/backups/manual-20260923T183558Z` passed `gzip -t` and `sha256sum -c SHA256SUMS`. It contains the DB dump, sanitized operational overlay, systemd units and deployment context. It does not contain `.env`. A real restore round-trip imported this dump into a temporary MariaDB database and verified 88 tables, 40 `navigator_styles`, `RogerVideo`, and room 1000 before dropping the temporary database.
+Restore-tested backup `/srv/habbo/backups/manual-20260923T183558Z` passed `gzip -t` and `sha256sum -c SHA256SUMS` and completed a temporary-MariaDB restore round-trip verifying 88 tables, 40 `navigator_styles`, `RogerVideo`, and room 1000. After fresh client validation, `/srv/habbo/backups/manual-20260923T193329Z` was created and also passed gzip/SHA256 verification with the updated runbook/overlays. The earlier 183558Z backup remains the one with an explicit restore round-trip. Neither backup contains `.env`.
 
 No full-machine reboot was required; actual service/process restart persistence was exercised directly.
 

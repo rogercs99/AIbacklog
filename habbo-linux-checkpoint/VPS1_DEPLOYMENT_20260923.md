@@ -48,7 +48,7 @@ PASS results:
 - Docker and all three Habbo systemd units active + enabled;
 - final backup restore round-trip into temporary MariaDB: PASS (`88 / 40 / RogerVideo / room 1000`).
 
-Restore-tested backup `/srv/habbo/backups/manual-20260923T183558Z` passed `gzip -t` and `sha256sum -c SHA256SUMS` and completed a temporary-MariaDB restore round-trip verifying 88 tables, 40 `navigator_styles`, `RogerVideo`, and room 1000. The latest operational backup is `/srv/habbo/backups/manual-20260923T201543Z`; it passes gzip/SHA256 verification and its ops overlay contains the hardened canonical final V31 helper `ops/v31-final-validate.sh` (SHA-256 `c8570fee932912ba16366df464670491001e78a0f2cdc4a3eedc5cea6d1cd239`). The earlier 183558Z backup remains the one with an explicit restore round-trip. Neither backup contains `.env`.
+Restore-tested backup `/srv/habbo/backups/manual-20260923T183558Z` passed `gzip -t` and `sha256sum -c SHA256SUMS` and completed a temporary-MariaDB restore round-trip verifying 88 tables, 40 `navigator_styles`, `RogerVideo`, and room 1000. The final post-acceptance operational backup is `/srv/habbo/backups/manual-20260923T205014Z`; it passes gzip/SHA256 verification and its ops overlay contains the final hardened `ops/v31-final-validate.sh` with SHA-256 `0617f96a50d06f2c8bab612d5a5ea73acdcccf571c8e2382107591f3da097d88`, matching the live VPS copy. The earlier 183558Z backup remains the one with an explicit restore round-trip. Neither backup contains `.env`.
 
 No full-machine reboot was required; actual service/process restart persistence was exercised directly.
 
@@ -93,17 +93,19 @@ Database restore sequence:
 5. `systemctl daemon-reload && systemctl restart habbo-stack habbo-static habbo-websockify`
 6. `/srv/habbo/ops/smoke-test.sh`
 
-## Remaining graphical validation boundary
-Historical FINAL-v2 R39 and V31 room/avatar/WALK evidence remains PASS and is not being reinvestigated.
+## Fresh VPS1 client acceptance
 
-Fresh VPS1 R39 is now PASS: real authentication, TCP 12323, room 1000, visible avatar and Havana WALK were observed with sanitized before/after framebuffer evidence.
+Historical FINAL-v2 R39 and V31 evidence remains PASS and was not reinvestigated.
 
-Fresh VPS1 V31 also reached real authentication, hotel UI and room 1000 through the validated hiperesp + PRoot 5.4 + QEMU 9.2.4 + Wine32 5.11 path. Havana recorded GET_INFO, ROOM_DIRECTORY, TRYFLAT and GOTOFLAT, and the framebuffer rendered RogerVideo inside RogerVideo Lab.
+Fresh VPS1 R39 is PASS: native Adobe Flash Player 32.0.0.465 authenticated RogerVideo, held TCP 12323, loaded room 1000, rendered the avatar and produced a real Havana WALK with before/after framebuffer evidence.
 
-The only remaining fresh VPS1 client proof is a V31 floor click that produces a Havana WALK and visible displacement. The previous room session was interrupted by the Havana restart used to restore temporary packet logging. A subsequent credential transfer into the GUI was blocked by the available tool safety layer, so no bypass was attempted and no historical SSO was reused.
+Fresh VPS1 V31 is also PASS end-to-end through the validated hiperesp + PRoot 5.4 filesystem-only + explicit QEMU i386 9.2.4 + Wine32 5.11 path. The final clean session produced INIT_CRYPTO, GENERATEKEY, VERSIONCHECK, UNIQUEID, GET_SESSION_PARAMETERS and SSO, authenticated RogerVideo, then GET_INFO/navigation, TRYFLAT, GOTOFLAT and GETROOMAD. Room 1000 `RogerVideo Lab` rendered the avatar, and a floor click produced Havana `Received (WALK): 75 / AKPBQA` at `2026-09-23T20:45:23.814Z`. The before/after framebuffer changed 33474 pixels.
 
-Detailed proof: `habbo-linux-checkpoint/VPS1_CLIENT_VALIDATION_20260923.md`.
+The one-use SSO was cleared after authentication and before final evidence capture. Final V31 evidence is under `/srv/habbo/validation/final-evidence-20260923/` and is documented in `habbo-linux-checkpoint/VPS1_CLIENT_VALIDATION_20260923.md`.
 
-The remaining manual step is prepared by `/srv/habbo/ops/v31-final-validate.sh`. `start` launches the validated V31 stack plus VNC/noVNC bound only to `127.0.0.1:59031/60831`; `ticket` is intentionally user-run in an authorized SSH terminal so the one-use SSO never passes through ChatGPT; `check` captures state/events/framebuffer; `cleanup` clears the session, restores packet logging and runs smoke. The versioned helper is `habbo-linux-checkpoint/vps1-overlay/v31-final-validate.sh`, hardened at commit `42ff551237a44079b8891de795d64c5826447485`. It uses a per-session UTC marker so `check` cannot mistake an older WALK for the current validation, and `status` exposes any stale validation listeners/processes.
+Post-validation cleanup closed VNC/noVNC, Wine/QEMU/Xvfb/x11vnc/websockify and the temporary control-host SSH tunnel. Stale PRoot wrappers discovered during teardown were removed and the regression helper was hardened to clean them automatically. RogerVideo is offline with no active SSO, packet logging is false and the normal smoke test passes.
 
-Server/persistence/recovery and fresh R39 gameplay are PASS. Fresh V31 authentication/room rendering is PASS; fresh V31 WALK remains the only unclaimed acceptance item.
+Canonical regression helper: `/srv/habbo/ops/v31-final-validate.sh`; versioned copy: `habbo-linux-checkpoint/vps1-overlay/v31-final-validate.sh`.
+
+**No fresh graphical acceptance item remains pending.**
+

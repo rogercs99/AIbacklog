@@ -1,55 +1,64 @@
 # Habbo 2009 Dual Client — Linux sandbox checkpoint
 
-Checkpoint date: 2026-09-21
-Target: run a single local Havana hotel in the ChatGPT Linux sandbox and record REAL framebuffer gameplay from both historical clients:
-- Old Habbo V31 Shockwave
-- Habbo Beta / Flash Release39 (`RELEASE39-22643-22891-200911110035_07c3a2a30713fd5bea8a8caf07e33438`)
+Checkpoint date: 2026-09-23
+Status: **DUAL CLIENT GAMEPLAY PASS**
 
-## Hard requirement
-Final validation MUST run inside the local Linux sandbox. GitHub may be used only to fetch source/dependencies or persist state. Do not use GitHub Actions/Windows as the final runtime. Do not claim gameplay PASS without real framebuffer/video evidence from the Linux sandbox.
+## Hard validation result
 
-## Current local state
-Workspace: `/mnt/data/habbo_local_lab`
+Both historical clients have real Linux-sandbox gameplay validation against the same Havana hotel.
 
-Already present locally:
-- Portable Wine 11.17 AMD64/WoW64 under `runtime/wine/`
-- Portable MariaDB 11.5.2 x64 Linux under `runtime/mariadb-x64/linux/`
-- MariaDB datadir under `runtime/mariadb-data/`
-- Havana v1.5.4 binaries under `runtime/havana/Havana/`
-- Flash/Shockwave projectors under `runtime/projectors/`
-- Dedicated V31 launcher under `runtime/v31launcher/`
-- V31 assets under `deps/v31_bundle/`
-- R39 SWF/assets subset under `deps/r39_bundle/`
-- Xvfb and ffmpeg are available in the sandbox.
+- **R39 / Flash:** PASS from the prior native Adobe Flash Player Linux x86_64 validation. Real Havana login, real socket on 12323, `RogerVideo` visible in `RogerVideo Lab`, tile click and visible movement. Ruffle was diagnostic only.
+- **V31 / Shockwave:** PASS on 2026-09-23. Real Havana login, established socket on 12321, room 1000 loaded, avatar rendered, and two independent tile clicks produced server-side `WALK` plus visible framebuffer displacement.
 
-### Processes/listeners observed at checkpoint
-- MariaDB process was alive on `127.0.0.1:3307`.
-- Havana Server Java process was alive and listening on:
-  - RCON `127.0.0.1:12309`
-  - MUS `127.0.0.1:12322`
-  - Shockwave `127.0.0.1:12321`
-  - Flash `127.0.0.1:12323`
-- Havana logs show actual local TCP connections reaching 12321/12323 and disconnecting.
+## V31 runtime that passed
 
-### Current blocker
-Havana Server initializes far enough to bind all game ports, but then throws because the imported schema is incomplete:
+- PRoot 5.4 for filesystem/binds only. **Never use PRoot `-q`.**
+- Explicit QEMU i386 **9.2.4**.
+- Wine32 **5.11** with the initialized checkpoint prefix.
+- Correct launcher: `hiperesp/Habbo-v31-Projector`.
+- `vars.txt` must use **CRLF**.
+- Havana v1.5.4.
+- MariaDB 11.5.2 on loopback 3307.
+- Static historical WWW on loopback 18080.
 
-`Table 'havana.navigator_styles' doesn't exist`
+QEMU 7.2 is not the final V31 runtime: it reproduced Wine IPC `sendmsg: Message too long`. The stable path is QEMU 9.2.4.
 
-The local `Havana/havana.sql` does not contain `navigator_styles`, so the next task is to obtain/apply the matching schema/migration(s) for Havana v1.5.4, or reconstruct the missing table from the v1.5.4 source/schema history.
+## Backend / room
 
-### Separate Web config issue
-The current local `webserver-config.ini` snapshot still points to MySQL `127.0.0.1:3306` with the old Docker-era credentials. The actual local MariaDB is on port `3307`. Fix Web config before retesting Havana-Web.
+- Shockwave: 12321
+- MUS: 12322
+- Flash: 12323
+- RCON: 12309
+- Test user: `RogerVideo` (id 1)
+- Test room: `RogerVideo Lab` (id 1000, `model_a`)
+- Schema: 88 tables plus 40 `navigator_styles` rows after the official Havana migration.
 
-### MariaDB CLI issue
-The bundled `mariadb` CLI currently fails to start due to missing `libncurses.so.5`. The server binary `mariadbd` itself runs correctly. Use a compatible client/library, install/bridge ncurses compatibility, or query through another supported client. Do not replace the working server unnecessarily.
+## V31 proof
 
-## Validation gate
-A final PASS requires all of the following:
-1. MariaDB schema complete.
-2. Havana-Web stable on local loopback.
-3. Havana-Server stable with no fatal schema error.
-4. V31 client connects, authenticates `RogerVideo`, and visibly enters a room.
-5. R39 client connects, authenticates the same account/world, and visibly enters a room.
-6. Xvfb framebuffer is recorded with ffmpeg in THIS Linux sandbox.
-7. Inspect captured frames/video before calling it gameplay.
+Successful authentication progressed through:
+`INIT_CRYPTO -> GENERATEKEY -> VERSIONCHECK -> UNIQUEID -> GET_SESSION_PARAMETERS -> SSO -> RIGHTS -> LOGIN -> GET_INFO -> NAVIGATE`.
+
+Room entry progressed through `GETFLATINFO`, `TRYFLAT`, `GOTOFLAT`, `G_USRS`, and `G_STAT`.
+
+Movement proof 1:
+`8,6 -> 7,7 -> 7,8 -> 7,9 -> 6,10 -> 6,11`.
+
+Movement proof 2:
+`7,10 -> 8,9 -> 9,8 -> 10,7 -> 11,6`.
+
+During the proof, `RogerVideo` was online, selected room 1000, and TCP 12321 was ESTABLISHED.
+
+## Recovery package
+
+Persistent Library artifact:
+`/Habbo 2009 Dual Linux/habbo-2009-dual-linux-FINAL-20260923.zip`
+
+SHA-256:
+`38e8175373094130e27202d65aef2be9406dbfcd08e23f3bd87ea95e40afc97f`
+
+The restore script inside the package was executed in a clean target directory and verified:
+- QEMU 9.2.4 hash
+- MariaDB reconstructed archive hash
+- historical WWW reconstructed archive hash
+
+No live SSO ticket or database password is committed.

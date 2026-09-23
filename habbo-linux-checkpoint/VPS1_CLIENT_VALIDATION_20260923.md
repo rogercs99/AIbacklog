@@ -69,3 +69,9 @@ Subcommands:
 - `cleanup`: stops validation processes, clears SSO/online state, restores packet logging to false, restarts Havana and runs the normal smoke test.
 
 The final manual action is therefore reduced to: connect to noVNC through an SSH local tunnel, obtain the one-use ticket in that same SSH terminal, paste it into the V31 prompt, enter `RogerVideo Lab` and click one floor tile. ChatGPT can then run `check`, persist the fresh V31 WALK evidence and run `cleanup`.
+
+Operational details:
+- VPS helper: `/srv/habbo/ops/v31-final-validate.sh` (root-only).
+- Versioned copy: `habbo-linux-checkpoint/vps1-overlay/v31-final-validate.sh`, commit `128d34898fb576c092318d24b51de4ce7e69afd3`.
+- noVNC/VNC listeners are configured strictly on `127.0.0.1:60831` and `127.0.0.1:59031`; no firewall or public proxy rule is added.
+- Latest backup containing the canonical helper: `/srv/habbo/backups/manual-20260923T200954Z`; gzip/SHA256 verification PASS and the ops overlay contains `v31-final-validate.sh` only (the redundant helper was removed).

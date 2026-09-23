@@ -25,6 +25,7 @@ for i in 00 01 02 03 04 05; do
   need "$z"; unzip -p "$z" "mariadb.part$i" >> "$MDB"
 done
 check 6fffce126dda54ecaaa3659e03caa47bf5ff6828936001176f84b6bed9637f5c "$MDB"
+mkdir -p "$TARGET/mariadb"; tar -xzf "$MDB" -C "$TARGET/mariadb"
 
 WWW="$TARGET/_assembly/havana_www_10_09_2024.7z"
 : > "$WWW"
@@ -38,4 +39,10 @@ RUNTIME="$ASSET_DIR/habbo-2009-dual-linux-RUNTIME-20260921.zip"
 PREFIX="$ASSET_DIR/habbo-2009-dual-linux-WINEPREFIX-20260921.tar.gz"
 need "$RUNTIME"; need "$PREFIX"
 cp -a "$RUNTIME" "$PREFIX" "$TARGET/runtime/"
+
+cp -a "$SELF_DIR/FINAL_VALIDATION.md" "$SELF_DIR/CURRENT_STATE.md" "$SELF_DIR/RECOVERY.md" "$SELF_DIR/R39_VALIDATION.md" "$SELF_DIR/EVIDENCE_SHA256.txt" "$TARGET/"
+cp -a "$SELF_DIR/fetch-r39-flashplayer.sh" "$TARGET/"
+cp -a "$SELF_DIR/logs" "$TARGET/"
+cp -a "$SELF_DIR/evidence" "$TARGET/"
+
 printf '%s\n' "Restore assembly VERIFIED." "QEMU 9.2.4 hash: OK" "MariaDB archive hash: OK" "WWW archive hash: OK"

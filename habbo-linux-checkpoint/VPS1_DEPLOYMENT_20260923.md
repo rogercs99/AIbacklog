@@ -45,9 +45,10 @@ PASS results:
 - static HTTP and Havana web readiness;
 - critical R39 and V31 assets;
 - V31 deployment `vars.txt` CRLF and loopback targets;
-- Docker and all three Habbo systemd units active + enabled.
+- Docker and all three Habbo systemd units active + enabled;
+- final backup restore round-trip into temporary MariaDB: PASS (`88 / 40 / RogerVideo / room 1000`).
 
-The final post-change backup `/srv/habbo/backups/manual-20260923T182720Z` passed `gzip -t` and `sha256sum -c SHA256SUMS`. It contains the DB dump, sanitized operational overlay, systemd units and deployment context. It does not contain `.env`.
+The final post-change backup `/srv/habbo/backups/manual-20260923T183558Z` passed `gzip -t` and `sha256sum -c SHA256SUMS`. It contains the DB dump, sanitized operational overlay, systemd units and deployment context. It does not contain `.env`. A real restore round-trip imported this dump into a temporary MariaDB database and verified 88 tables, 40 `navigator_styles`, `RogerVideo`, and room 1000 before dropping the temporary database.
 
 No full-machine reboot was required; actual service/process restart persistence was exercised directly.
 
@@ -59,8 +60,8 @@ R39 runtime remains Adobe Flash Player Linux x86_64 32.0.0.465. Ruffle remains d
 - A fresh native VPS1 probe launched Adobe Flash but initially stayed at `client.starting` and did not authenticate.
 - That probe revealed a reproducible VPS1 asset issue: the Gordon RELEASE39 directory was missing `config_habbo.xml`, while the active variable set referenced stale external CDN assets.
 - Overlay fix: the Gordon directory links `config_habbo.xml` to the local validated v39 config.
-- Local variables overlay: `/srv/habbo/web/client/v39/gamedata/external_variables_vps1.txt`, pointing required data to loopback static assets.
-- The smoke test now verifies this config and the local figure/furnidata endpoints.
+- Local variables overlay: `/srv/habbo/web/client/v39/gamedata/external_variables_vps1.txt`, pointing static assets to loopback and Havana web routes to `127.0.0.1:18081`; SHA-256 `902bb2a88ca0a02d23a4ee6342a96405aeb19932203479ec44494d89af7327b3`.
+- This local overlay contains no `habbo.gamemodai.pro` or `cdn.classichabbo.com` references. The smoke test verifies the Gordon config, local figure/furnidata endpoints, correct web-route target, explicit room-1000 identity, and absence of those stale hosts.
 - The probe's one-use SSO was cleared; current RogerVideo SSO length is 0.
 - Static request logging was hardened after the probe: query strings are now removed from journald request lines; a synthetic query-marker test passed.
 

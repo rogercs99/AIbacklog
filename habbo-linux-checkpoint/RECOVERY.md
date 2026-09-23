@@ -46,3 +46,18 @@ For each client require all of:
 5. real tile click;
 6. Havana `WALK`;
 7. visible framebuffer displacement.
+
+## Post-validation hygiene — 2026-09-23
+
+The live sandbox was left in a reusable but credential-clean state:
+- persistent Xvfb/backend infrastructure remains available;
+- MariaDB listens on 127.0.0.1:3307;
+- historical WWW listens on 127.0.0.1:18080;
+- Havana listens on 12321/12322/12323/12309;
+- no Flash client, V31 client, capture process or established gameplay socket remains;
+- `RogerVideo` is `is_online=0`, retains `selected_room_id=1000`, and has an empty `sso_ticket`;
+- two R39 access-log SSO query values and two Havana raw-log SSO payloads were redacted in-place;
+- V31 `vars.txt` remains CRLF (14 CRLF line endings) and contains no opaque session token;
+- the preferred v2 ZIP was rechecked after cleanup and still matches SHA-256 `f80bbefc5a486fd0f9cce058a39462ef3925c563253dc2f69ebe647f6a6630ec`, with `unzip -t` clean.
+
+If this exact sandbox is still alive, reuse the backend and generate a fresh one-use SSO ticket rather than rebuilding it.

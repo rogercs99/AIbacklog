@@ -48,7 +48,7 @@ PASS results:
 - Docker and all three Habbo systemd units active + enabled;
 - final backup restore round-trip into temporary MariaDB: PASS (`88 / 40 / RogerVideo / room 1000`).
 
-Restore-tested backup `/srv/habbo/backups/manual-20260923T183558Z` passed `gzip -t` and `sha256sum -c SHA256SUMS` and completed a temporary-MariaDB restore round-trip verifying 88 tables, 40 `navigator_styles`, `RogerVideo`, and room 1000. The latest operational backup is `/srv/habbo/backups/manual-20260923T200954Z`; it also passes gzip/SHA256 verification and its ops overlay contains the canonical final V31 helper `ops/v31-final-validate.sh`. The earlier 183558Z backup remains the one with an explicit restore round-trip. Neither backup contains `.env`.
+Restore-tested backup `/srv/habbo/backups/manual-20260923T183558Z` passed `gzip -t` and `sha256sum -c SHA256SUMS` and completed a temporary-MariaDB restore round-trip verifying 88 tables, 40 `navigator_styles`, `RogerVideo`, and room 1000. The latest operational backup is `/srv/habbo/backups/manual-20260923T201543Z`; it passes gzip/SHA256 verification and its ops overlay contains the hardened canonical final V31 helper `ops/v31-final-validate.sh` (SHA-256 `c8570fee932912ba16366df464670491001e78a0f2cdc4a3eedc5cea6d1cd239`). The earlier 183558Z backup remains the one with an explicit restore round-trip. Neither backup contains `.env`.
 
 No full-machine reboot was required; actual service/process restart persistence was exercised directly.
 
@@ -104,6 +104,6 @@ The only remaining fresh VPS1 client proof is a V31 floor click that produces a 
 
 Detailed proof: `habbo-linux-checkpoint/VPS1_CLIENT_VALIDATION_20260923.md`.
 
-The remaining manual step is prepared by `/srv/habbo/ops/v31-final-validate.sh`. `start` launches the validated V31 stack plus VNC/noVNC bound only to `127.0.0.1:59031/60831`; `ticket` is intentionally user-run in an authorized SSH terminal so the one-use SSO never passes through ChatGPT; `check` captures state/events/framebuffer; `cleanup` clears the session, restores packet logging and runs smoke. The versioned helper is `habbo-linux-checkpoint/vps1-overlay/v31-final-validate.sh` at commit `128d34898fb576c092318d24b51de4ce7e69afd3`.
+The remaining manual step is prepared by `/srv/habbo/ops/v31-final-validate.sh`. `start` launches the validated V31 stack plus VNC/noVNC bound only to `127.0.0.1:59031/60831`; `ticket` is intentionally user-run in an authorized SSH terminal so the one-use SSO never passes through ChatGPT; `check` captures state/events/framebuffer; `cleanup` clears the session, restores packet logging and runs smoke. The versioned helper is `habbo-linux-checkpoint/vps1-overlay/v31-final-validate.sh`, hardened at commit `42ff551237a44079b8891de795d64c5826447485`. It uses a per-session UTC marker so `check` cannot mistake an older WALK for the current validation, and `status` exposes any stale validation listeners/processes.
 
 Server/persistence/recovery and fresh R39 gameplay are PASS. Fresh V31 authentication/room rendering is PASS; fresh V31 WALK remains the only unclaimed acceptance item.

@@ -17,7 +17,7 @@ All VPS-specific configuration is outside the immutable FINAL-v2 bundle.
 - MariaDB: `127.0.0.1:13307 -> 3306`.
 - Havana: `127.0.0.1:12321` Shockwave, `12322` MUS, `12323` Flash, `12309` RCON.
 - Havana web: `127.0.0.1:18081`.
-- `habbo-static.service`: `127.0.0.1:18080`, serving `/srv/habbo/web`.
+- `habbo-static.service`: `127.0.0.1:18080`, serving `/srv/habbo/web` through `/srv/habbo/ops/static-server.py`; request logs strip URL query strings.
 - `habbo-websockify.service`: `127.0.0.1:18082 -> 127.0.0.1:12323`.
 - `habbo-stack.service`: enabled oneshot supervisor for Compose with backend readiness check.
 - Compose services use `restart: unless-stopped`; static/websockify use systemd restart policies.
@@ -47,7 +47,7 @@ PASS results:
 - V31 deployment `vars.txt` CRLF and loopback targets;
 - Docker and all three Habbo systemd units active + enabled.
 
-The final backup `/srv/habbo/backups/manual-20260923T182147Z` passed `gzip -t` and `sha256sum -c SHA256SUMS`. It contains the DB dump, sanitized operational overlay, systemd units and deployment context. It does not contain `.env`.
+The final post-change backup `/srv/habbo/backups/manual-20260923T182720Z` passed `gzip -t` and `sha256sum -c SHA256SUMS`. It contains the DB dump, sanitized operational overlay, systemd units and deployment context. It does not contain `.env`.
 
 No full-machine reboot was required; actual service/process restart persistence was exercised directly.
 
@@ -62,6 +62,7 @@ R39 runtime remains Adobe Flash Player Linux x86_64 32.0.0.465. Ruffle remains d
 - Local variables overlay: `/srv/habbo/web/client/v39/gamedata/external_variables_vps1.txt`, pointing required data to loopback static assets.
 - The smoke test now verifies this config and the local figure/furnidata endpoints.
 - The probe's one-use SSO was cleared; current RogerVideo SSO length is 0.
+- Static request logging was hardened after the probe: query strings are now removed from journald request lines; a synthetic query-marker test passed.
 
 This is a deployment regression fix, not a change to the FINAL-v2 bundle or to the selected R39 runtime.
 

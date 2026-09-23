@@ -1,0 +1,30 @@
+name: Habbo Linux32 runtime libs
+on:
+  push:
+    branches: [lab/habbo-deps-20260922]
+    paths: [.github/workflows/habbo-linux32-runtime-libs.yml]
+jobs:
+  fetch:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Fetch exact 2020 Arch multilib packages
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p pkgs out
+          base=https://archive.archlinux.org/packages
+          curl -fL "$base/l/lib32-libxcb/lib32-libxcb-1.14-1-x86_64.pkg.tar.zst" -o pkgs/libxcb.pkg.tar.zst
+          curl -fL "$base/l/lib32-zlib/lib32-zlib-1.2.11-2-x86_64.pkg.tar.zst" -o pkgs/zlib.pkg.tar.zst
+          curl -fL "$base/l/lib32-systemd/lib32-systemd-245.5-1-x86_64.pkg.tar.zst" -o pkgs/systemd.pkg.tar.zst
+          for p in pkgs/*.zst; do tar --zstd -xf "$p" -C out; done
+          mkdir -p artifact
+          cp -a out/usr/lib32/libxcb.so* artifact/
+          cp -a out/usr/lib32/libz.so* artifact/
+          cp -a out/usr/lib32/libudev.so* artifact/
+          sha256sum artifact/* > artifact/SHA256SUMS
+      - uses: actions/upload-artifact@v4
+        with:
+          name: habbo-linux32-runtime-libs
+          path: artifact
+          if-no-files-found: error
+          retention-days: 7

@@ -1,61 +1,102 @@
 # VPS1 deployment — FINAL-v2 — 2026-09-23
 
-## Scope
-Deploy the already-validated immutable FINAL-v2 release to VPS1/OLD. No R39/V31 reinvestigation and no mutation of the canonical ZIP.
+## Scope and canonical source
+This branch records deployment of the already-validated immutable FINAL-v2 to VPS1/OLD. It does not reopen R39/V31 runtime research and it does not modify the canonical ZIP.
 
-## Target and source
 - VPS1/OLD: SSH alias `bridge-old`, host `85.208.23.189`, hostname `secureme`.
 - Canonical asset: `habbo-2009-dual-linux-FINAL-v2-20260923.zip`.
 - Size: `3476825` bytes.
 - SHA-256: `f80bbefc5a486fd0f9cce058a39462ef3925c563253dc2f69ebe647f6a6630ec`.
-- VPS1 copy: `/srv/habbo/releases/final-v2/habbo-2009-dual-linux-FINAL-v2-20260923.zip`.
-- The ZIP passed exact size/hash, `unzip -t`, internal `EVIDENCE_SHA256.txt`, and embedded QEMU 9.2.4 verification on VPS1.
+- VPS1 path: `/srv/habbo/releases/final-v2/habbo-2009-dual-linux-FINAL-v2-20260923.zip`.
+- On VPS1 the ZIP passed exact size/hash, `unzip -t`, internal `EVIDENCE_SHA256.txt`, and embedded QEMU 9.2.4 verification.
 
-## VPS1 overlay architecture
-The immutable release remains untouched. VPS-specific runtime/configuration lives under `/srv/habbo`.
+## VPS1 architecture
+All VPS-specific configuration is outside the immutable FINAL-v2 bundle.
 
-- Docker Compose: MariaDB 11.5.2, Havana server, Havana web.
-- MariaDB host binding: `127.0.0.1:13307 -> 3306`.
+- Docker Compose: MariaDB 11.5.2 + Havana server + Havana web.
+- MariaDB: `127.0.0.1:13307 -> 3306`.
 - Havana: `127.0.0.1:12321` Shockwave, `12322` MUS, `12323` Flash, `12309` RCON.
 - Havana web: `127.0.0.1:18081`.
-- systemd `habbo-static.service`: `127.0.0.1:18080`.
-- systemd `habbo-websockify.service`: `127.0.0.1:18082 -> 127.0.0.1:12323`.
-- Docker restart policy: `unless-stopped`.
-- Docker, habbo-static and habbo-websockify are enabled for boot.
-- No public UFW rule was added. Existing Stremio, WireGuard, Cloudflare and nginx services were not changed.
-
-## Validation performed
-A pre-change backup was created at `/srv/habbo/backups/deploy-final-v2-20260923-195330`, including sanitized operational config copies and a compressed DB dump.
-
-A real restart of the Docker stack and both Habbo systemd units was performed. After settling:
-- MariaDB: healthy.
-- Schema: 88 tables and 40 navigator_styles.
-- RogerVideo: id 1, offline, selected room 1000.
-- Room 1000: RogerVideo Lab.
-- Expected listeners 12309/12321/12322/12323/13307/18080/18081/18082: PASS.
-- Static HTTP 18080 and Havana web 18081: PASS.
-- No fatal application errors observed after restart; transient DB connection warnings occurred only during the forced restart window.
-- Persistent smoke test: `/srv/habbo/bin/habbo-smoke-test` -> PASS.
+- `habbo-static.service`: `127.0.0.1:18080`, serving `/srv/habbo/web`.
+- `habbo-websockify.service`: `127.0.0.1:18082 -> 127.0.0.1:12323`.
+- `habbo-stack.service`: enabled oneshot supervisor for Compose with backend readiness check.
+- Compose services use `restart: unless-stopped`; static/websockify use systemd restart policies.
+- No Habbo firewall opening was added. DB, game and admin listeners remain loopback-only.
+- Existing Stremio, nginx and Cloudflare services were regression-checked after the final Habbo restart and remained active.
+- Root filesystem was about 96% used during deployment; avoid unnecessary large copies.
 
 ## Operations
-`/srv/habbo/bin/habbo-control {start|stop|restart|status|logs|smoke}`
+- Control: `/srv/habbo/ops/control.sh {start|stop|restart|status|logs|smoke|backup}`
+- Smoke: `/srv/habbo/ops/smoke-test.sh`
+- Backup: `/srv/habbo/ops/backup.sh`
+- VPS-local runbook: `/srv/habbo/PROJECT_CONTEXT.md`
 
-Backup:
-`/srv/habbo/bin/habbo-backup`
+Secrets remain only in root-owned local runtime configuration. Do not copy passwords, active SSO tickets, tokens, PATs or private keys into Git, knowledge, backups or logs.
 
-VPS-local runbook:
-`/srv/habbo/docs/VPS1_FINAL_V2_DEPLOYMENT.md`
+## Final server validation
+A controlled restart of `habbo-stack`, `habbo-static` and `habbo-websockify` was followed by the final extended smoke test.
 
-## Recovery
-Before risky changes, run `habbo-backup`. Validate the selected backup's `SHA256SUMS`, restore compose/.env/systemd unit files as needed, then restore `havana.sql.gz` into the MariaDB container using the credentials already held locally in the deployment environment. Do not copy those credentials into Git or knowledge.
+PASS results:
+- canonical ZIP identity, unzip integrity and internal evidence manifest;
+- MariaDB healthy, 88 schema tables, 40 `navigator_styles`;
+- RogerVideo id 1 offline, selected room 1000, active SSO length 0;
+- room 1000 = `RogerVideo Lab`;
+- expected listeners `12309/12321/12322/12323/13307/18080/18081/18082`, all loopback;
+- static HTTP and Havana web readiness;
+- critical R39 and V31 assets;
+- V31 deployment `vars.txt` CRLF and loopback targets;
+- Docker and all three Habbo systemd units active + enabled.
 
-## Remaining validation boundary
-The backend/persistence deployment is validated. Historical R39 and V31 gameplay evidence in Release v1.1 remains PASS. This deployment record does **not** claim a new graphical avatar/WALK run on VPS1 because that requires an external graphical client path. A fresh gameplay check, if required for the VPS1 deployment gate, should use fresh one-use SSO credentials and verify room/avatar/WALK without persisting the ticket.
+The final backup `/srv/habbo/backups/manual-20260923T182147Z` passed `gzip -t` and `sha256sum -c SHA256SUMS`. It contains the DB dump, sanitized operational overlay, systemd units and deployment context. It does not contain `.env`.
 
-## Fresh R39 validation preparation on VPS1
-- Official Adobe Flash Player 32.0.0.465 was fetched using the immutable FINAL-v2 helper and verified: archive SHA-256 `883f7aa23301fc80de879501157533a4acdbfee0721ed7c57676dc032fdf96c3`, player SHA-256 `0bdd5116aa4e8dc88fb9e705c85c1f7ef4a29415ffb9b2132a3eb1aeafaae7b0`.
-- Runtime path: `/srv/habbo/r39/runtime/flashplayer`.
-- VPS1 already has Xvfb, xdotool, ImageMagick, ffmpeg and x11vnc, so headless graphical validation is technically possible.
-- A first native Flash probe successfully created an Adobe Flash Player 32.0.0.465 X11 window, but did not establish TCP 12323 or authenticate. This is recorded as a probe failure, not gameplay PASS.
-- The probe's temporary SSO was cleared afterwards and the canonical backend smoke test returned PASS again.
-- V31 assets on VPS1 include the hiperesp launcher, PRoot 5.4, explicit QEMU i386 9.2.4 and Wine32 5.11. The live `vars.txt` is intentionally absent after credential hygiene; only `vars.example.txt` remains, so a fresh local CRLF vars file must be generated for the next V31 validation run.
+No full-machine reboot was required; actual service/process restart persistence was exercised directly.
+
+## Deployment-specific R39 overlay
+R39 runtime remains Adobe Flash Player Linux x86_64 32.0.0.465. Ruffle remains diagnostic only.
+
+- Runtime: `/srv/habbo/r39/runtime/flashplayer`.
+- Official archive/player hashes were verified by the canonical helper.
+- A fresh native VPS1 probe launched Adobe Flash but initially stayed at `client.starting` and did not authenticate.
+- That probe revealed a reproducible VPS1 asset issue: the Gordon RELEASE39 directory was missing `config_habbo.xml`, while the active variable set referenced stale external CDN assets.
+- Overlay fix: the Gordon directory links `config_habbo.xml` to the local validated v39 config.
+- Local variables overlay: `/srv/habbo/web/client/v39/gamedata/external_variables_vps1.txt`, pointing required data to loopback static assets.
+- The smoke test now verifies this config and the local figure/furnidata endpoints.
+- The probe's one-use SSO was cleared; current RogerVideo SSO length is 0.
+
+This is a deployment regression fix, not a change to the FINAL-v2 bundle or to the selected R39 runtime.
+
+## V31 overlay
+The validated runtime decision remains: PRoot 5.4 for filesystem/binds only, explicit QEMU i386 9.2.4, Wine32 5.11 and the hiperesp launcher. Never use `proot -q`.
+
+`/srv/habbo/v31/client/vars.txt` now exists as a VPS deployment overlay:
+- CRLF line endings;
+- loopback Shockwave/MUS targets `12321/12322`;
+- loopback static/Havana web URLs;
+- no password or SSO ticket.
+
+## Backup and restore
+Create a backup:
+`/srv/habbo/ops/backup.sh`
+
+Verify one:
+`cd <backup-dir> && gzip -t havana.sql.gz && sha256sum -c SHA256SUMS`
+
+Database restore sequence:
+1. `cd /srv/habbo && docker compose stop havana-server havana-web`
+2. Keep MariaDB running and healthy.
+3. `gzip -cd <backup-dir>/havana.sql.gz | docker exec -i habbo-mariadb-1 sh -lc 'mariadb -u"$MARIADB_USER" -p"$MARIADB_PASSWORD" "$MARIADB_DATABASE"'`
+4. Restore verified unit/overlay files if required.
+5. `systemctl daemon-reload && systemctl restart habbo-stack habbo-static habbo-websockify`
+6. `/srv/habbo/ops/smoke-test.sh`
+
+## Remaining graphical validation boundary
+Historical FINAL-v2 R39 and V31 room/avatar/WALK evidence remains PASS and is not being reinvestigated. This VPS1 deployment record does **not** claim a fresh graphical gameplay PASS on VPS1.
+
+`habbo.gamemodai.pro` was not resolving from VPS1 during deployment and nginx had no Habbo vhost. Public ports were deliberately not opened merely to make the graphical test convenient.
+
+The only remaining acceptance proof is one authorized client E2E validation session, using fresh one-use SSO credentials and a secure tunnel/forward path:
+- R39: authenticate through port 12323, load room 1000, avatar visible, perform a real WALK received by Havana.
+- V31: authenticate through port 12321, load room 1000, avatar visible, perform a real WALK received by Havana.
+- Clear the temporary SSO afterwards.
+
+Until that session is executed, server/persistence/recovery is PASS but fresh VPS1 graphical gameplay remains unclaimed.

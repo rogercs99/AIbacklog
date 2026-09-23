@@ -50,7 +50,7 @@ PASS results:
 - Docker and all three Habbo systemd units active + enabled;
 - final backup restore round-trip into temporary MariaDB: PASS (`88 / 40 / RogerVideo / room 1000`).
 
-Restore-tested backup `/srv/habbo/backups/manual-20260923T183558Z` passed `gzip -t` and `sha256sum -c SHA256SUMS` and completed a temporary-MariaDB restore round-trip verifying 88 tables, 40 `navigator_styles`, `RogerVideo`, and room 1000. The latest complete operational backup is tracked by `/srv/habbo/LATEST_PUBLIC_WEB_BACKUP`; the current pointer is `/srv/habbo/backups/manual-20260923T213136Z`. The current backup format also includes the Cloudflare ingress configuration and `web-static-overlay.tar.gz`, in addition to the DB, ops and existing deployment overlays. The earlier 183558Z backup remains the one with an explicit database restore round-trip. No tunnel credentials are copied into documentation.
+Restore-tested backup `/srv/habbo/backups/manual-20260923T183558Z` passed `gzip -t` and `sha256sum -c SHA256SUMS` and completed a temporary-MariaDB restore round-trip verifying 88 tables, 40 `navigator_styles`, `RogerVideo`, and room 1000. The latest complete operational backup is always tracked by `/srv/habbo/LATEST_PUBLIC_WEB_BACKUP`. The current backup format includes the Cloudflare ingress configuration and `web-static-overlay.tar.gz`, in addition to the DB, ops and existing deployment overlays. The earlier 183558Z backup remains the one with an explicit database restore round-trip. No tunnel credentials are copied into documentation.
 
 No full-machine reboot was required; actual service/process restart persistence was exercised directly.
 

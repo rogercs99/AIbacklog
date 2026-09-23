@@ -57,12 +57,14 @@ R39 runtime remains Adobe Flash Player Linux x86_64 32.0.0.465. Ruffle remains d
 
 - Runtime: `/srv/habbo/r39/runtime/flashplayer`.
 - Official archive/player hashes were verified by the canonical helper.
-- A fresh native VPS1 probe launched Adobe Flash but initially stayed at `client.starting` and did not authenticate.
+- The first native VPS1 probe launched Adobe Flash but initially stayed at `client.starting`; that probe exposed the asset regression documented below.
 - That probe revealed a reproducible VPS1 asset issue: the Gordon RELEASE39 directory was missing `config_habbo.xml`, while the active variable set referenced stale external CDN assets.
 - Overlay fix: the Gordon directory links `config_habbo.xml` to the local validated v39 config.
 - Local variables overlay: `/srv/habbo/web/client/v39/gamedata/external_variables_vps1.txt`, pointing static assets to loopback and Havana web routes to `127.0.0.1:18081`; SHA-256 `902bb2a88ca0a02d23a4ee6342a96405aeb19932203479ec44494d89af7327b3`.
 - This local overlay contains no `habbo.gamemodai.pro` or `cdn.classichabbo.com` references. The smoke test verifies the Gordon config, local figure/furnidata endpoints, correct web-route target, explicit room-1000 identity, and absence of those stale hosts.
-- The probe's one-use SSO was cleared; current RogerVideo SSO length is 0.
+- After the overlay fix, a fresh native VPS1 R39 session authenticated `RogerVideo`, held TCP 12323 ESTABLISHED, entered room 1000, rendered the avatar and produced a real Havana `WALK` at `2026-09-23T18:56:12.915Z`. Before/after framebuffer diff: 3732 pixels.
+- Sanitized fresh R39 evidence is under `/srv/habbo/validation/final-evidence-20260923/` and is documented in `habbo-linux-checkpoint/VPS1_CLIENT_VALIDATION_20260923.md`.
+- The one-use SSO was consumed/cleared; current RogerVideo SSO length is 0.
 - Static request logging was hardened after the probe: query strings are now removed from journald request lines; a synthetic query-marker test passed.
 
 This is a deployment regression fix, not a change to the FINAL-v2 bundle or to the selected R39 runtime.
@@ -92,13 +94,14 @@ Database restore sequence:
 6. `/srv/habbo/ops/smoke-test.sh`
 
 ## Remaining graphical validation boundary
-Historical FINAL-v2 R39 and V31 room/avatar/WALK evidence remains PASS and is not being reinvestigated. This VPS1 deployment record does **not** claim a fresh graphical gameplay PASS on VPS1.
+Historical FINAL-v2 R39 and V31 room/avatar/WALK evidence remains PASS and is not being reinvestigated.
 
-`habbo.gamemodai.pro` was not resolving from VPS1 during deployment and nginx had no Habbo vhost. Public ports were deliberately not opened merely to make the graphical test convenient.
+Fresh VPS1 R39 is now PASS: real authentication, TCP 12323, room 1000, visible avatar and Havana WALK were observed with sanitized before/after framebuffer evidence.
 
-The only remaining acceptance proof is one authorized client E2E validation session, using fresh one-use SSO credentials and a secure tunnel/forward path:
-- R39: authenticate through port 12323, load room 1000, avatar visible, perform a real WALK received by Havana.
-- V31: authenticate through port 12321, load room 1000, avatar visible, perform a real WALK received by Havana.
-- Clear the temporary SSO afterwards.
+Fresh VPS1 V31 also reached real authentication, hotel UI and room 1000 through the validated hiperesp + PRoot 5.4 + QEMU 9.2.4 + Wine32 5.11 path. Havana recorded GET_INFO, ROOM_DIRECTORY, TRYFLAT and GOTOFLAT, and the framebuffer rendered RogerVideo inside RogerVideo Lab.
 
-Until that session is executed, server/persistence/recovery is PASS but fresh VPS1 graphical gameplay remains unclaimed.
+The only remaining fresh VPS1 client proof is a V31 floor click that produces a Havana WALK and visible displacement. The previous room session was interrupted by the Havana restart used to restore temporary packet logging. A subsequent credential transfer into the GUI was blocked by the available tool safety layer, so no bypass was attempted and no historical SSO was reused.
+
+Detailed proof: `habbo-linux-checkpoint/VPS1_CLIENT_VALIDATION_20260923.md`.
+
+Server/persistence/recovery and fresh R39 gameplay are PASS. Fresh V31 authentication/room rendering is PASS; fresh V31 WALK remains unclaimed.

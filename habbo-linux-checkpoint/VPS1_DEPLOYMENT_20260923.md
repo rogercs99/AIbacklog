@@ -21,13 +21,15 @@ All VPS-specific configuration is outside the immutable FINAL-v2 bundle.
 - `habbo-websockify.service`: `127.0.0.1:18082 -> 127.0.0.1:12323`.
 - `habbo-stack.service`: enabled oneshot supervisor for Compose with backend readiness check.
 - Compose services use `restart: unless-stopped`; static/websockify use systemd restart policies.
-- No Habbo firewall opening was added. DB, game and admin listeners remain loopback-only.
+- Public website: `https://habbo.gamemodai.pro` through the existing Cloudflare Tunnel. Dynamic routes remain on loopback `18081`; static web/game assets remain on loopback `18080`.
+- No Habbo firewall opening was added. DB, game and admin listeners remain loopback-only; only the HTTP website is published through Cloudflare.
 - Existing Stremio, nginx and Cloudflare services were regression-checked after the final Habbo restart and remained active.
 - Root filesystem was about 96% used during deployment; avoid unnecessary large copies.
 
 ## Operations
 - Control: `/srv/habbo/ops/control.sh {start|stop|restart|status|logs|smoke|backup}`
 - Smoke: `/srv/habbo/ops/smoke-test.sh`
+- Public web smoke: `/srv/habbo/ops/public-web-smoke.sh`
 - Backup: `/srv/habbo/ops/backup.sh`
 - VPS-local runbook: `/srv/habbo/PROJECT_CONTEXT.md`
 
@@ -48,9 +50,25 @@ PASS results:
 - Docker and all three Habbo systemd units active + enabled;
 - final backup restore round-trip into temporary MariaDB: PASS (`88 / 40 / RogerVideo / room 1000`).
 
-Restore-tested backup `/srv/habbo/backups/manual-20260923T183558Z` passed `gzip -t` and `sha256sum -c SHA256SUMS` and completed a temporary-MariaDB restore round-trip verifying 88 tables, 40 `navigator_styles`, `RogerVideo`, and room 1000. The final post-acceptance operational backup is `/srv/habbo/backups/manual-20260923T205014Z`; it passes gzip/SHA256 verification and its ops overlay contains the final hardened `ops/v31-final-validate.sh` with SHA-256 `0617f96a50d06f2c8bab612d5a5ea73acdcccf571c8e2382107591f3da097d88`, matching the live VPS copy. The earlier 183558Z backup remains the one with an explicit restore round-trip. Neither backup contains `.env`.
+Restore-tested backup `/srv/habbo/backups/manual-20260923T183558Z` passed `gzip -t` and `sha256sum -c SHA256SUMS` and completed a temporary-MariaDB restore round-trip verifying 88 tables, 40 `navigator_styles`, `RogerVideo`, and room 1000. The latest complete operational backup is tracked by `/srv/habbo/LATEST_PUBLIC_WEB_BACKUP`; the current pointer is `/srv/habbo/backups/manual-20260923T213136Z`. The current backup format also includes the Cloudflare ingress configuration and `web-static-overlay.tar.gz`, in addition to the DB, ops and existing deployment overlays. The earlier 183558Z backup remains the one with an explicit database restore round-trip. No tunnel credentials are copied into documentation.
 
 No full-machine reboot was required; actual service/process restart persistence was exercised directly.
+
+## Public web publication
+
+The iPhone/Safari failure was reproduced from VPS2 as a DNS failure: `habbo.gamemodai.pro` had no public record and requests failed before reaching TLS. A Cloudflare Tunnel CNAME was created for the hostname using the existing VPS1 tunnel.
+
+Ingress now routes:
+- static prefixes `/c_images`, `/client`, `/gordon`, `/dcr`, `/flash`, `/web-gallery`, `/styles`, `/js` to `127.0.0.1:18080`;
+- all other `habbo.gamemodai.pro` web routes to Havana Web on `127.0.0.1:18081`.
+
+Havana's templates depend on a separately distributed legacy web package. The official `havana_www_10_09_2024.7z` archive used for the overlay was 508016467 bytes with SHA-256 `877273abddab946849aed3d5d2416185fe175a7207a602890fd08ebe7e376ed0`. Only the required `web-gallery` tree (about 25 MB / 1030 files) was retained, plus the empty local compatibility overrides expected by the templates. The large archive and extraction scratch tree were deleted after installation.
+
+External validation from VPS2 with an iPhone Safari user agent returned HTTP 200 for the homepage, registration page, favicon, `landing.js`, `frontpage.css`, front-page GIF, R39 variables and V31 DCR. TLS verifies normally. Public DNS was separately confirmed through Cloudflare and Google DoH.
+
+VPS2 itself exhibited one intermittent local DNS resolver timeout during repeated tests, but the retrying public smoke passes from VPS1 and VPS2 and public resolvers continue to return the Cloudflare record.
+
+Detailed proof and recovery notes: `habbo-linux-checkpoint/VPS1_PUBLIC_WEB_20260923.md`.
 
 ## Deployment-specific R39 overlay
 R39 runtime remains Adobe Flash Player Linux x86_64 32.0.0.465. Ruffle remains diagnostic only.
@@ -90,8 +108,9 @@ Database restore sequence:
 2. Keep MariaDB running and healthy.
 3. `gzip -cd <backup-dir>/havana.sql.gz | docker exec -i habbo-mariadb-1 sh -lc 'mariadb -u"$MARIADB_USER" -p"$MARIADB_PASSWORD" "$MARIADB_DATABASE"'`
 4. Restore verified unit/overlay files if required.
-5. `systemctl daemon-reload && systemctl restart habbo-stack habbo-static habbo-websockify`
-6. `/srv/habbo/ops/smoke-test.sh`
+5. Restore public web assets with `tar -C /srv/habbo/web -xzf <backup-dir>/web-static-overlay.tar.gz` and restore `<backup-dir>/cloudflared-stremio-legacy-config.yml` to `/etc/cloudflared-stremio-legacy/config.yml` if that ingress was lost.
+6. `systemctl daemon-reload && systemctl restart habbo-stack habbo-static habbo-websockify cloudflared-stremio-legacy`
+7. `/srv/habbo/ops/smoke-test.sh && /srv/habbo/ops/public-web-smoke.sh`
 
 ## Fresh VPS1 client acceptance
 

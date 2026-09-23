@@ -56,3 +56,16 @@ After client testing:
 - `/srv/habbo/ops/smoke-test.sh` passes.
 
 Server persistence, backup/restore and R39 fresh gameplay are PASS. V31 fresh authentication/room rendering is PASS; only a fresh V31 WALK remains as the final client-side acceptance item.
+
+
+## Prepared final V31 human step
+
+Because the available ChatGPT tool safety layer must not transfer an active SSO value from the database into the GUI, VPS1 now has a root-only helper at `/srv/habbo/ops/v31-final-validate.sh`.
+
+Subcommands:
+- `start`: launches Xvfb :104, validated V31 runtime, loopback x11vnc `127.0.0.1:59031` and loopback noVNC `127.0.0.1:60831`; it does not add a firewall/public listener.
+- `ticket`: user-run only in an authorized SSH terminal; generates and prints a fresh one-use RogerVideo SSO without routing the value through ChatGPT.
+- `check`: reports state/recent room+WALK packets and captures the framebuffer.
+- `cleanup`: stops validation processes, clears SSO/online state, restores packet logging to false, restarts Havana and runs the normal smoke test.
+
+The final manual action is therefore reduced to: connect to noVNC through an SSH local tunnel, obtain the one-use ticket in that same SSH terminal, paste it into the V31 prompt, enter `RogerVideo Lab` and click one floor tile. ChatGPT can then run `check`, persist the fresh V31 WALK evidence and run `cleanup`.

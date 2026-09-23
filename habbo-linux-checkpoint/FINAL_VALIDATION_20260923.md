@@ -29,10 +29,19 @@ Both historical clients passed the real Linux-sandbox gameplay gate and both now
 
 ## Preferred evidence bundle
 
-`/Habbo 2009 Dual Linux/habbo-2009-dual-linux-FINAL-v2-20260923.zip`
+Primary source: GitHub Release v1.1
+`https://github.com/rogercs99/AIbacklog/releases/tag/habbo-2009-dual-linux-v1.1.0-20260923`
+
+Release asset:
+`habbo-2009-dual-linux-FINAL-v2-20260923.zip`
+Asset id: `584208609`
+Size: `3476825` bytes
 
 SHA-256:
 `f80bbefc5a486fd0f9cce058a39462ef3925c563253dc2f69ebe647f6a6630ec`
+
+Fallback copy:
+`/Habbo 2009 Dual Linux/habbo-2009-dual-linux-FINAL-v2-20260923.zip`
 
 R39 evidence:
 - `evidence/r39-room-before-move.png`

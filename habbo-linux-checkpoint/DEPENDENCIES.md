@@ -1,16 +1,23 @@
-# Dependency inventory
+# Dependency inventory — final
 
-Do not commit proprietary/large runtime binaries into Git. Rehydrate them into `/mnt/data/habbo_local_lab` when needed and verify with the saved SHA-256 manifest.
+Do not commit live credentials, SSO tickets, or unnecessary large runtime binaries.
 
-Known public project/source references used in this work:
+Public project/source references:
 - Havana server: `Quackster/Havana`, v1.5.4
-- Dual-client launcher/projectors: `Palsternakka/HabboLauncher`
-- Dedicated V31 projector: `hiperesp/Habbo-v31-Projector`, v2.0.0
+- Havana migration used: `tools/migrations/update.1.2.sql`
+- Dedicated V31 projector: `hiperesp/Habbo-v31-Projector`
 - V31 modified cast: `hiperesp/Habbo-v31-Projector/dcr/fuse_client.cct`
-- Shockwave SPRD reference used during diagnosis: `Webbanditten/kepler-docker`
+- Launcher/projector reference: `Palsternakka/HabboLauncher`
 
-Local dependency bundle hashes are in `manifests/local-sha256.txt`.
+Final runtime facts:
+- V31: PRoot 5.4 filesystem-only + explicit QEMU i386 **9.2.4** + Wine32 5.11.
+- QEMU 9.2.4 binary SHA-256: `47851b37911b1c76f1784a807cbb6592efb6166d0a27b39f7447dd0ec7c48384`.
+- R39: native Linux Adobe Flash Player x86_64.
 
-A large MariaDB 11.5.2 x64 Linux package is currently present locally as:
-`/mnt/data/habbo_local_lab/deps/mariadb-linux.zip`
-It is deliberately not committed to Git due to size. Current extracted server lives under `runtime/mariadb-x64/linux/`.
+Large artifacts remain in ChatGPT Library under `/Habbo 2009 Dual Linux`.
+Final closure bundle:
+`habbo-2009-dual-linux-FINAL-20260923.zip`
+SHA-256:
+`38e8175373094130e27202d65aef2be9406dbfcd08e23f3bd87ea95e40afc97f`
+
+The package includes QEMU 9.2.4, final runbooks, sanitized proof logs, V31 framebuffer evidence/video, and a restore script.

@@ -1,0 +1,31 @@
+name: Habbo i386 X11 libs
+on:
+  push:
+    branches:
+      - tmp-habbo-i386-libs-20260923
+jobs:
+  pack:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - name: Download i386 runtime libs
+        shell: bash
+        run: |
+          set -euo pipefail
+          sudo dpkg --add-architecture i386
+          sudo apt-get update
+          mkdir -p out/debs
+          cd out/debs
+          apt-get download             libxcb1:i386 libx11-6:i386 libxext6:i386 libxrender1:i386             libxrandr2:i386 libxcursor1:i386 libxi6:i386 libxinerama1:i386             libxcomposite1:i386 libxfixes3:i386 libxdamage1:i386             libxau6:i386 libxdmcp6:i386 libfreetype6:i386 libfontconfig1:i386             libudev1:i386 libbsd0:i386 libmd0:i386
+          cd ..
+          mkdir root
+          for f in debs/*.deb; do dpkg-deb -x "$f" root; done
+          find root -type f -o -type l | sort > FILES.txt
+          find debs -type f -maxdepth 1 -print0 | sort -z | xargs -0 sha256sum > SHA256SUMS.txt
+      - name: Upload i386 bundle
+        uses: actions/upload-artifact@v4
+        with:
+          name: habbo-i386-x11-libs
+          path: out/
+          if-no-files-found: error
+          retention-days: 1

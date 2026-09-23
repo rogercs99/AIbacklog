@@ -1,0 +1,32 @@
+name: Habbo 2009 Dual Linux release
+
+on:
+  push:
+    tags:
+      - 'habbo-2009-dual-linux-v*'
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Create GitHub Release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          cat > release-notes.md <<'EOF'
+          Dual-client Linux gameplay milestone completed.
+
+          Validated:
+          - R39 / Flash: real Havana login, TCP 12323, avatar visible, click-to-move proven.
+          - V31 / Shockwave: PRoot filesystem-only + QEMU i386 9.2.4 + Wine32 5.11, TCP 12321, room 1000 loaded, avatar visible, two WALK paths proven by framebuffer/video.
+
+          Recovery package:
+          - ChatGPT Library: /Habbo 2009 Dual Linux/habbo-2009-dual-linux-FINAL-20260923.zip
+          - SHA-256: 38e8175373094130e27202d65aef2be9406dbfcd08e23f3bd87ea95e40afc97f
+
+          Full validation and restore documentation live in habbo-linux-checkpoint/.
+          EOF
+          gh release create "$GITHUB_REF_NAME"             --repo "$GITHUB_REPOSITORY"             --title "Habbo 2009 Dual Linux — Final gameplay PASS"             --notes-file release-notes.md

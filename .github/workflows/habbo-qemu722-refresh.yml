@@ -1,0 +1,23 @@
+name: Habbo QEMU 7.2.22 refresh
+on:
+  push:
+    branches: [lab/habbo-deps-20260922]
+    paths: [.github/workflows/habbo-qemu722-refresh.yml]
+permissions:
+  contents: read
+jobs:
+  fetch:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Fetch verified QEMU 7.2.22 i386 dependency
+        run: |
+          set -euo pipefail
+          curl -fL --retry 5 --retry-delay 2 \
+            'https://github.com/hermeticbuild/qemu-user-prebuilt/releases/download/7.2.22/qemu-user-linux-amd64-i386.tar.gz' \
+            -o qemu-user-linux-amd64-i386-7.2.22.tar.gz
+          echo '5f358b2236cb4681d12c48704a429ec562fda149b77a2f99c9dfc5f8da91baae  qemu-user-linux-amd64-i386-7.2.22.tar.gz' | sha256sum -c -
+      - uses: actions/upload-artifact@v4.6.2
+        with:
+          name: qemu-user-linux-amd64-i386-7.2.22
+          path: qemu-user-linux-amd64-i386-7.2.22.tar.gz
+          retention-days: 7

@@ -3,6 +3,9 @@
 Checkpoint date: 2026-09-23
 Status: **DUAL CLIENT REAL GAMEPLAY PASS WITH BINARY EVIDENCE FOR BOTH CLIENTS**
 
+Canonical closure index:
+`habbo-linux-checkpoint/CLOSURE_INDEX_20260923.md`
+
 ## Hard validation result
 
 - **R39 / Flash:** freshly revalidated with native Adobe Flash Player Linux x86_64 32.0.0.465. Real Havana login, TCP 12323 ESTABLISHED, `RogerVideo` online in room 1000, avatar rendered, two fresh server-side `WALK` packets, visible framebuffer displacement and a clean 10-second movement video.

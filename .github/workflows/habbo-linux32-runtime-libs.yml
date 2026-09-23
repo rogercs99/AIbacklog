@@ -16,7 +16,8 @@ jobs:
           curl -fL "$base/l/lib32-libxcb/lib32-libxcb-1.14-1-x86_64.pkg.tar.zst" -o pkgs/libxcb.pkg.tar.zst
           (curl -fL "$base/l/lib32-zlib/lib32-zlib-1.2.11-2-x86_64.pkg.tar.zst" -o pkgs/zlib.pkg.tar.zst || curl -fL "$base/l/lib32-zlib/lib32-zlib-1.2.11-2-x86_64.pkg.tar.xz" -o pkgs/zlib.pkg.tar.xz)
           curl -fL "$base/l/lib32-systemd/lib32-systemd-245.5-1-x86_64.pkg.tar.zst" -o pkgs/systemd.pkg.tar.zst
-          for p in pkgs/*.zst; do [ -e "$p" ] && tar --zstd -xf "$p" -C out; done\n          for p in pkgs/*.xz; do [ -e "$p" ] && tar -xJf "$p" -C out; done
+          for p in pkgs/*.zst; do [ -e "$p" ] && tar --zstd -xf "$p" -C out; done
+          for p in pkgs/*.xz; do [ -e "$p" ] && tar -xJf "$p" -C out; done
           mkdir -p artifact
           cp -a out/usr/lib32/libxcb.so* artifact/
           cp -a out/usr/lib32/libz.so* artifact/

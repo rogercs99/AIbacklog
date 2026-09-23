@@ -1,0 +1,30 @@
+name: Habbo QEMU matrix refresh
+on:
+  push:
+    branches: [lab/habbo-deps-20260922]
+    paths: [.github/workflows/habbo-qemu-matrix-refresh.yml]
+permissions:
+  contents: read
+jobs:
+  fetch:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Fetch verified QEMU i386 matrix
+        run: |
+          set -euo pipefail
+          mkdir qemu-matrix
+          curl -fL --retry 5 --retry-delay 2 'https://github.com/hermeticbuild/qemu-user-prebuilt/releases/download/8.2.10/qemu-user-linux-amd64-i386.tar.gz' -o qemu-matrix/qemu-8.2.10.tar.gz
+          curl -fL --retry 5 --retry-delay 2 'https://github.com/hermeticbuild/qemu-user-prebuilt/releases/download/9.2.4/qemu-user-linux-amd64-i386.tar.gz' -o qemu-matrix/qemu-9.2.4.tar.gz
+          curl -fL --retry 5 --retry-delay 2 'https://github.com/hermeticbuild/qemu-user-prebuilt/releases/download/10.2.2/qemu-user-linux-amd64-i386.tar.gz' -o qemu-matrix/qemu-10.2.2.tar.gz
+          printf '%s\n' \
+            '6c009e1b25ec81f64bcc8afb3ca6405b3f3ad53122ff4e3b6304174fc6e6ab04  qemu-matrix/qemu-8.2.10.tar.gz' \
+            '5c72b741d7411f2610de59cb30838bb00cad28af7c1c678ba7bf76f9d9dfc653  qemu-matrix/qemu-9.2.4.tar.gz' \
+            '9d3735e20df12b7881eb6847420e7835e52d8127a3e238ae3f0ac560eeadad00  qemu-matrix/qemu-10.2.2.tar.gz' > SHA256SUMS
+          sha256sum -c SHA256SUMS
+      - uses: actions/upload-artifact@v4.6.2
+        with:
+          name: qemu-i386-version-matrix
+          path: |
+            qemu-matrix/
+            SHA256SUMS
+          retention-days: 7

@@ -30,6 +30,7 @@ force_stop_validation_processes(){
   stop_pidfile "$V/xvfb.pid"
   pkill -f '/client/launcher.exe' 2>/dev/null || true
   pkill -f '/bin/wineserver' 2>/dev/null || true
+  pkill -f '^/srv/habbo/v31/runtime/proot-5.4.0 ' 2>/dev/null || true
   pkill -f '^Xvfb :104 ' 2>/dev/null || true
   pkill -f 'x11vnc.*-rfbport 59031' 2>/dev/null || true
   pkill -f 'websockify.*127.0.0.1:60831' 2>/dev/null || true

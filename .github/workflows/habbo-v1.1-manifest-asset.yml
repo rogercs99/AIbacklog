@@ -1,0 +1,33 @@
+name: Habbo v1.1 manifest asset
+
+on:
+  push:
+    branches:
+      - project/habbo-2009-dual-linux
+    paths:
+      - '.github/workflows/habbo-v1.1-manifest-asset.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  upload-manifest:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Build canonical bundle manifest
+        shell: bash
+        run: |
+          cat > HABBO_FINAL_V2_SHA256.txt <<'EOF'
+          Habbo 2009 Dual Linux — canonical final v2 bundle
+          Filename: habbo-2009-dual-linux-FINAL-v2-20260923.zip
+          SHA-256: f80bbefc5a486fd0f9cce058a39462ef3925c563253dc2f69ebe647f6a6630ec
+          Size: 3476825 bytes
+          ChatGPT Library: /Habbo 2009 Dual Linux/habbo-2009-dual-linux-FINAL-v2-20260923.zip
+          Git release tag: habbo-2009-dual-linux-v1.1.0-20260923
+          Validation: R39 + V31 real Linux gameplay PASS; clean restore from compressed ZIP PASS.
+          EOF
+      - name: Attach manifest to v1.1 release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release upload habbo-2009-dual-linux-v1.1.0-20260923             HABBO_FINAL_V2_SHA256.txt             --repo "$GITHUB_REPOSITORY"             --clobber

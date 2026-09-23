@@ -1,0 +1,49 @@
+{
+  "schema_version": "1.0",
+  "generated_at": "2026-09-23",
+  "project": "Habbo 2009 Dual Linux",
+  "milestone": "dual-client real gameplay PASS with binary evidence for R39 and V31",
+  "release": {
+    "id": 394785116,
+    "tag": "habbo-2009-dual-linux-v1.1.0-20260923",
+    "title": "Habbo 2009 Dual Linux — Dual evidence bundle v2",
+    "published_at": "2026-09-23T15:10:49Z",
+    "tagged_commit": "8f36707169ed4a9b49af06df05949db6e31ab7cf"
+  },
+  "canonical_bundle": {
+    "filename": "habbo-2009-dual-linux-FINAL-v2-20260923.zip",
+    "asset_id": 584208609,
+    "size_bytes": 3476825,
+    "sha256": "f80bbefc5a486fd0f9cce058a39462ef3925c563253dc2f69ebe647f6a6630ec",
+    "upload_workflow_run": 35892499049,
+    "roundtrip_workflow_run": 35894941442
+  },
+  "checksum_manifest": {
+    "filename": "HABBO_FINAL_V2_SHA256.txt",
+    "asset_id": 584097161,
+    "size_bytes": 427,
+    "sha256": "9a16bdb999471ef6577aea813f9e049c858cff70892d642ecea7834c7c0b6b48",
+    "upload_workflow_run": 35885192804
+  },
+  "validation": {
+    "r39": "PASS",
+    "v31": "PASS",
+    "clean_restore": "PASS",
+    "release_roundtrip": "PASS",
+    "internal_bundle_audit": "PASS"
+  },
+  "durable_evidence": {
+    "release_manifest": "habbo-linux-checkpoint/RELEASE_20260923.md",
+    "release_roundtrip": "habbo-linux-checkpoint/RELEASE_ROUNDTRIP_20260923.md",
+    "internal_bundle_audit": "habbo-linux-checkpoint/BUNDLE_INTERNAL_AUDIT_20260923.md",
+    "final_validation": "habbo-linux-checkpoint/FINAL_VALIDATION_20260923.md",
+    "recovery": "habbo-linux-checkpoint/RECOVERY.md",
+    "current_state": "habbo-linux-checkpoint/CURRENT_STATE.md"
+  },
+  "generated_from_documentation_commit": "ea71179e5edd2e1056e1d6ad18bea65fc948738b",
+  "notes": [
+    "GitHub Release v1.1 is the primary recovery source.",
+    "ChatGPT Library copy is fallback and must match the same size and SHA-256.",
+    "Temporary transfer branches, drafts and chunk files were removed after verification."
+  ]
+}

@@ -1,91 +1,103 @@
-# VPS1 public web publication — 2026-09-23
+# VPS1 public web publication and iPhone connectivity — 2026-09-23
 
-## Symptom and root cause
+## Symptom sequence and root cause
 
-An iPhone Safari request to `https://habbo.gamemodai.pro` showed that Safari could not find the server. The failure was reproduced from VPS2/control host `ES217221`: `habbo.gamemodai.pro` did not resolve, and HTTP/HTTPS failed before reaching TLS.
+The first Safari failure was caused by a missing public DNS record for `habbo.gamemodai.pro`; that was corrected through the existing Cloudflare Tunnel.
 
-The root cause was a missing public DNS record for `habbo.gamemodai.pro`. The Habbo deployment itself was healthy but intentionally loopback-only.
+After DNS publication, the user still reported that the site would not load correctly from iPhone. Reproduction from VPS2/control host `ES217221` then showed a second, independent problem: the dynamic HTML returned HTTP 200, but core Havana frontend files such as `landing.js` and `frontpage.css` returned HTTP 404.
 
-## Public architecture
+Two deployment details caused the remaining problem:
+1. the Havana checkout had an incomplete `tools/www` tree; Havana distributes the legacy web assets separately;
+2. Cloudflare still routed `/web-gallery`, `/styles` and `/js` to the static server on port 18080, bypassing the completed Havana web tree on port 18081.
 
-The website is now published through the existing Cloudflare Tunnel without exposing MariaDB, Shockwave, MUS, Flash or RCON directly.
+## Final public architecture
 
 Cloudflare ingress on VPS1:
-- dynamic Habbo website routes -> `http://127.0.0.1:18081`;
-- static prefixes `/c_images`, `/client`, `/gordon`, `/dcr`, `/flash`, `/web-gallery`, `/styles`, `/js` -> `http://127.0.0.1:18080`;
-- existing Stremio ingress remains in the same connector and was regression-tested.
+- `/c_images`, `/client`, `/gordon`, `/dcr`, `/flash` -> `http://127.0.0.1:18080` (`habbo-static`);
+- all other `habbo.gamemodai.pro` traffic, including `/web-gallery`, `/styles`, `/js` and dynamic pages -> `http://127.0.0.1:18081` (Havana web).
 
-The DNS hostname is routed to the existing tunnel through a Cloudflare Tunnel CNAME. Public DNS was independently verified with Cloudflare and Google DNS-over-HTTPS.
+MariaDB, Shockwave, MUS, Flash and RCON remain loopback-only. No Habbo firewall opening was added. The existing Stremio ingress continues to use the same Cloudflare connector.
 
-No Habbo firewall opening was added. The game/database/admin ports remain bound to loopback.
+## Frontend overlay
 
-## Static website overlay
+Upstream Havana documentation requires the separate `havana_www` bundle to populate `tools/www`.
 
-Havana's HTML templates require legacy web assets that are distributed separately from the Havana repository and were not present in FINAL-v2.
-
-The official Havana documentation references `havana_www_10_09_2024.7z`. The downloaded archive used for the deployment had:
-
+Verified source bundle:
+- file: `havana_www_10_09_2024.7z`;
 - size: 508016467 bytes;
 - SHA-256: `877273abddab946849aed3d5d2416185fe175a7207a602890fd08ebe7e376ed0`;
-- archive integrity test: PASS.
+- archive integrity: PASS.
 
-Only the required `web-gallery` tree was retained in the VPS1 overlay:
-- approximately 25 MB;
-- 1030 files;
-- deployed under `/srv/habbo/web/web-gallery`.
+Only the required `web-gallery` tree was retained: 1030 files, approximately 24 MB.
 
-Compatibility paths `/srv/habbo/web/styles/local/uk.css` and `/srv/habbo/web/js/local/uk.js` were also created as empty local overrides, matching the empty equivalents in the official static package.
+Persistent VPS1 overlay:
+`/srv/habbo/web-frontend-assets`
 
-The approximately 485 MB downloaded archive and temporary extraction tree were deleted after deployment. The canonical FINAL-v2 ZIP was not modified.
+`docker-compose.yml` bind-mounts:
+- `web-gallery` -> `/havana-web/tools/www/web-gallery`;
+- `styles` -> `/havana-web/tools/www/styles`;
+- `js` -> `/havana-web/tools/www/js`;
+- `images` -> `/havana-web/tools/www/images`.
 
-## External validation
+Core file hashes:
+- `landing.js`: `3eb27fe0dd38e96b743c02f8e36a161cae84c593c8022f508facb154a5be2a99`;
+- `frontpage.css`: `fe15fb858023252f0acdb4b049bef4046c4c67bd833c05633004d635abbe587a`;
+- `favicon.ico`: `ec6b2907037b7bd4e7ac7fbc0c9be8b1106999f5a15534b66d8af0a68c4098a4`.
 
-From VPS2 using an iPhone Safari user agent:
-- `/`: HTTP 200, title `Habbo 2009 ~ Home`;
-- `/register`: HTTP 200;
-- favicon: HTTP 200;
-- `landing.js`: HTTP 200;
-- `frontpage.css`: HTTP 200;
-- front-page GIF: HTTP 200;
-- R39 external variables: HTTP 200;
-- V31 DCR: HTTP 200.
+Compatibility:
+- `/web-gallery/v2/images/dialogs` links to the official legacy dialogs tree;
+- `/images/progress_bubbles.gif` is exposed from the official bundle;
+- `/styles/local/uk.css` and `/js/local/uk.js` are harmless empty compatibility paths; the upstream local UK JS is itself empty.
 
-TLS validation passes without disabling certificate verification.
+A few old CSS selectors still reference decorative image names absent from both the verified `havana_www` archive and the current Quackster Havana-www/Kepler-www trees. They are not critical page payload.
 
-The VPS2 local resolver showed an occasional DNS timeout during repeated requests. Direct Cloudflare and Google DoH queries continued to return valid answers, and the retrying public smoke passes from VPS1 and VPS2. This is distinct from the original missing-DNS-record failure.
+## Validation and CDN cache
 
-Legacy footer URLs `/papers/disclaimer` and `/papers/privacy` are referenced by Havana templates but are not implemented by this build. They are not required for home, registration or login connectivity.
+The live origin is validated by `/srv/habbo/ops/public-web-smoke.sh`. It uses an iPhone Safari user agent, retries transient VPS2 resolver/network errors and sends `Cache-Control: no-cache` plus `Pragma: no-cache` so stale CDN objects cannot hide the current origin state.
+
+Final result:
+- public web smoke from VPS1: PASS;
+- public web smoke from VPS2: PASS;
+- `/` and `/register`: HTTP 200;
+- core JS/CSS/favicon: HTTP 200;
+- compatibility dialog/progress assets: HTTP 200 when revalidated against origin;
+- R39 variables and V31 DCR: HTTP 200;
+- backend Habbo smoke: PASS.
+
+Cloudflare had retained some pre-fix decorative 404 responses with `max-age=14400`. A normal cached request could temporarily return the old 404 while the same URL with no-cache or a cache-busting query reached the repaired origin and returned HTTP 200. This is CDN cache state, not an origin connectivity failure.
+
+VPS2 also showed isolated resolver/network timeouts during repeated tests; retrying succeeded and independent requests continued resolving the hostname.
 
 ## Operations and recovery
 
 Public smoke:
 `/srv/habbo/ops/public-web-smoke.sh`
 
-The smoke uses an iPhone Safari UA, retries transient network/DNS errors and validates the homepage plus critical dynamic/static resources.
+Backup workflow:
+`/srv/habbo/ops/backup.sh`
 
-The backup workflow now includes:
-- `cloudflared-stremio-legacy-config.yml`;
-- `web-static-overlay.tar.gz` containing `web-gallery`, `styles` and `js`;
-- the existing database, ops, units and deployment overlays;
-- `SHA256SUMS` covering the backup.
+The backup now stores the persistent frontend overlay as:
+`web-frontend-overlay.tar.gz`
 
-Stable latest-backup pointer:
-`/srv/habbo/LATEST_PUBLIC_WEB_BACKUP`
+Latest verified post-fix backup:
+`/srv/habbo/backups/manual-20260923T215347Z`
 
-Use `/srv/habbo/LATEST_PUBLIC_WEB_BACKUP` to locate the newest verified full operational backup. This avoids baking a stale timestamp into the runbook as later documentation-only backups are produced.
+That backup passes `gzip -t` and every entry in `SHA256SUMS`, and contains the frontend overlay, Cloudflare configuration, compose file, ops helpers, project context and DB dump.
 
-The database restore-roundtrip-tested backup remains:
+The earlier database restore-roundtrip-tested backup remains:
 `/srv/habbo/backups/manual-20260923T183558Z`
-
-For a full recovery, restore the DB and normal overlays, extract `web-static-overlay.tar.gz` into `/srv/habbo/web`, restore the backed-up Cloudflare ingress config if required, restart the Habbo units and Cloudflare connector, then run both the internal and public smoke tests.
 
 ## Regression status
 
-After publishing Habbo and restarting the shared Cloudflare connector:
-- `cloudflared-stremio-legacy.service`: active;
+After the final Cloudflare routing correction:
+- `habbo-stack`: active;
+- `habbo-static`: active;
+- `habbo-websockify`: active;
+- `cloudflared-stremio-legacy`: active;
+- Docker: active;
+- nginx: active;
 - Stremio public endpoint: expected HTTP 307;
 - Habbo backend smoke: PASS;
-- public Habbo web smoke from VPS1: PASS;
-- public Habbo web smoke from VPS2: PASS.
+- public smoke from VPS1 and VPS2: PASS.
 
-This is a VPS1 deployment/publication overlay. No new canonical Habbo bundle or release was created.
+The canonical FINAL-v2 ZIP remains unchanged with SHA-256 `f80bbefc5a486fd0f9cce058a39462ef3925c563253dc2f69ebe647f6a6630ec`. This repair is a VPS1 deployment/publication overlay, so no new canonical release is created.

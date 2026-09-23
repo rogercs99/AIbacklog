@@ -51,3 +51,11 @@ Before risky changes, run `habbo-backup`. Validate the selected backup's `SHA256
 
 ## Remaining validation boundary
 The backend/persistence deployment is validated. Historical R39 and V31 gameplay evidence in Release v1.1 remains PASS. This deployment record does **not** claim a new graphical avatar/WALK run on VPS1 because that requires an external graphical client path. A fresh gameplay check, if required for the VPS1 deployment gate, should use fresh one-use SSO credentials and verify room/avatar/WALK without persisting the ticket.
+
+## Fresh R39 validation preparation on VPS1
+- Official Adobe Flash Player 32.0.0.465 was fetched using the immutable FINAL-v2 helper and verified: archive SHA-256 `883f7aa23301fc80de879501157533a4acdbfee0721ed7c57676dc032fdf96c3`, player SHA-256 `0bdd5116aa4e8dc88fb9e705c85c1f7ef4a29415ffb9b2132a3eb1aeafaae7b0`.
+- Runtime path: `/srv/habbo/r39/runtime/flashplayer`.
+- VPS1 already has Xvfb, xdotool, ImageMagick, ffmpeg and x11vnc, so headless graphical validation is technically possible.
+- A first native Flash probe successfully created an Adobe Flash Player 32.0.0.465 X11 window, but did not establish TCP 12323 or authenticate. This is recorded as a probe failure, not gameplay PASS.
+- The probe's temporary SSO was cleared afterwards and the canonical backend smoke test returned PASS again.
+- V31 assets on VPS1 include the hiperesp launcher, PRoot 5.4, explicit QEMU i386 9.2.4 and Wine32 5.11. The live `vars.txt` is intentionally absent after credential hygiene; only `vars.example.txt` remains, so a fresh local CRLF vars file must be generated for the next V31 validation run.

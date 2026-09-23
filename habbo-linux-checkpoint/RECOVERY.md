@@ -1,52 +1,48 @@
-# Immediate recovery procedure — final
+# Immediate recovery procedure — final v2
 
-Do not restart the investigation. Gameplay validation is complete.
+Do not restart the investigation. Dual gameplay validation is complete.
 
-## 1. Rehydrate the final context
+## Preferred bundle
 
-Use Library artifact:
-`/Habbo 2009 Dual Linux/habbo-2009-dual-linux-FINAL-20260923.zip`
+Use:
+`/Habbo 2009 Dual Linux/habbo-2009-dual-linux-FINAL-v2-20260923.zip`
 
-Verify SHA-256:
-`38e8175373094130e27202d65aef2be9406dbfcd08e23f3bd87ea95e40afc97f`
+Verify:
+`f80bbefc5a486fd0f9cce058a39462ef3925c563253dc2f69ebe647f6a6630ec`
 
-Keep the previously saved large Library artifacts next to it and run the included `restore-habbo-final.sh` with `ASSET_DIR` pointing at that artifact directory.
+Keep the previously persisted large Library artifacts available and run the included `restore-habbo-final.sh` with `ASSET_DIR` pointing at them. The restore copies the complete dual evidence directory as well as runbooks/logs.
 
-## 2. Critical runtime invariants
+## V31 invariants
 
-V31:
 - PRoot 5.4 is filesystem/binds only.
-- Do not use PRoot `-q`.
-- Use explicit QEMU i386 9.2.4.
-- Use Wine32 5.11 and the initialized prefix.
-- Use the hiperesp V31 launcher, not a generic Director projector.
-- `vars.txt` must be CRLF.
+- Never use PRoot `-q`.
+- Explicit QEMU i386 9.2.4.
+- Wine32 5.11 initialized prefix.
+- hiperesp V31 launcher, not generic Director.
+- `vars.txt` CRLF.
+- QEMU 7.2 is known-bad for this path: `sendmsg: Message too long`.
 
-R39:
-- Final gameplay path is native Linux Adobe Flash Player x86_64.
-- Do not substitute Ruffle as final gameplay evidence.
+## R39 invariants
 
-## 3. Backend
+- Final runtime is native Adobe Flash Player Linux x86_64 32.0.0.465.
+- Run `fetch-r39-flashplayer.sh` to download the official Adobe/Macromedia tar and verify both archive and player hashes.
+- Do not use Ruffle as final gameplay proof.
+- Launch R39 `Habbo.swf` with the FlashVars shape from `Palsternakka/HabboLauncher`, host 127.0.0.1, port 12323 and a fresh local SSO ticket.
 
-Expected loopback ports:
-- MariaDB 3307
-- Shockwave 12321
-- MUS 12322
-- Flash 12323
-- RCON 12309
-- historical WWW 18080
+## Backend
 
-Import Havana v1.5.4 schema and the official `tools/migrations/update.1.2.sql` migration so `navigator_styles` exists.
+Expected loopback ports: MariaDB 3307, Shockwave 12321, MUS 12322, Flash 12323, RCON 12309.
+Apply the official Havana `tools/migrations/update.1.2.sql` migration.
 
-Use fresh local credentials and generate a fresh SSO ticket for each restored run. Never commit passwords or tickets.
+Always create fresh local credentials and one-use SSO tickets after restore; never persist them.
 
-## 4. Smoke validation after restore
+## Validation after restore
 
-For V31, authenticate `RogerVideo`, enter room 1000 `RogerVideo Lab`, click another tile, and require both:
-- real framebuffer displacement
-- Havana `WALK` packet plus movement path
-
-Known failure fingerprints:
-- `c0000018`: PRoot/QEMU launch chain regressed; check for `-q`.
-- `sendmsg: Message too long`: QEMU 7.2 accidentally reintroduced.
-- `Where is ""?`: `vars.txt` line endings are wrong; restore CRLF.
+For each client require all of:
+1. real authentication;
+2. ESTABLISHED socket;
+3. room 1000 loaded;
+4. visible avatar;
+5. real tile click;
+6. Havana `WALK`;
+7. visible framebuffer displacement.

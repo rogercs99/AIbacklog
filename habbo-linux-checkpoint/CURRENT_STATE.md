@@ -1,64 +1,50 @@
 # Habbo 2009 Dual Client — Linux sandbox checkpoint
 
 Checkpoint date: 2026-09-23
-Status: **DUAL CLIENT GAMEPLAY PASS**
+Status: **DUAL CLIENT REAL GAMEPLAY PASS WITH BINARY EVIDENCE FOR BOTH CLIENTS**
 
 ## Hard validation result
 
-Both historical clients have real Linux-sandbox gameplay validation against the same Havana hotel.
+- **R39 / Flash:** freshly revalidated with native Adobe Flash Player Linux x86_64 32.0.0.465. Real Havana login, TCP 12323 ESTABLISHED, `RogerVideo` online in room 1000, avatar rendered, two fresh server-side `WALK` packets, visible framebuffer displacement and a clean 10-second movement video.
+- **V31 / Shockwave:** real Havana login, TCP 12321 ESTABLISHED, room 1000 loaded, avatar rendered, and two independent tile clicks produced server-side `WALK` plus visible framebuffer displacement.
 
-- **R39 / Flash:** PASS from the prior native Adobe Flash Player Linux x86_64 validation. Real Havana login, real socket on 12323, `RogerVideo` visible in `RogerVideo Lab`, tile click and visible movement. Ruffle was diagnostic only.
-- **V31 / Shockwave:** PASS on 2026-09-23. Real Havana login, established socket on 12321, room 1000 loaded, avatar rendered, and two independent tile clicks produced server-side `WALK` plus visible framebuffer displacement.
+## Passing runtimes
 
-## V31 runtime that passed
+R39:
+- Native Adobe Flash Player Linux x86_64 32.0.0.465.
+- Player SHA-256: `0bdd5116aa4e8dc88fb9e705c85c1f7ef4a29415ffb9b2132a3eb1aeafaae7b0`.
+- Official tar SHA-256: `883f7aa23301fc80de879501157533a4acdbfee0721ed7c57676dc032fdf96c3`.
+- Ruffle remains diagnostic only.
 
-- PRoot 5.4 for filesystem/binds only. **Never use PRoot `-q`.**
-- Explicit QEMU i386 **9.2.4**.
-- Wine32 **5.11** with the initialized checkpoint prefix.
-- Correct launcher: `hiperesp/Habbo-v31-Projector`.
-- `vars.txt` must use **CRLF**.
-- Havana v1.5.4.
-- MariaDB 11.5.2 on loopback 3307.
-- Static historical WWW on loopback 18080.
-
-QEMU 7.2 is not the final V31 runtime: it reproduced Wine IPC `sendmsg: Message too long`. The stable path is QEMU 9.2.4.
+V31:
+- PRoot 5.4 for filesystem/binds only; never use `-q`.
+- Explicit QEMU i386 9.2.4.
+- Wine32 5.11 with initialized prefix.
+- hiperesp V31 launcher.
+- `vars.txt` CRLF.
 
 ## Backend / room
 
+- MariaDB: 127.0.0.1:3307
 - Shockwave: 12321
 - MUS: 12322
 - Flash: 12323
 - RCON: 12309
-- Test user: `RogerVideo` (id 1)
-- Test room: `RogerVideo Lab` (id 1000, `model_a`)
-- Schema: 88 tables plus 40 `navigator_styles` rows after the official Havana migration.
+- User: `RogerVideo` id 1
+- Room: `RogerVideo Lab` id 1000, `model_a`
+- Schema: 88 tables + 40 `navigator_styles` rows.
 
-## V31 proof
+## Preferred recovery package
 
-Successful authentication progressed through:
-`INIT_CRYPTO -> GENERATEKEY -> VERSIONCHECK -> UNIQUEID -> GET_SESSION_PARAMETERS -> SSO -> RIGHTS -> LOGIN -> GET_INFO -> NAVIGATE`.
-
-Room entry progressed through `GETFLATINFO`, `TRYFLAT`, `GOTOFLAT`, `G_USRS`, and `G_STAT`.
-
-Movement proof 1:
-`8,6 -> 7,7 -> 7,8 -> 7,9 -> 6,10 -> 6,11`.
-
-Movement proof 2:
-`7,10 -> 8,9 -> 9,8 -> 10,7 -> 11,6`.
-
-During the proof, `RogerVideo` was online, selected room 1000, and TCP 12321 was ESTABLISHED.
-
-## Recovery package
-
-Persistent Library artifact:
-`/Habbo 2009 Dual Linux/habbo-2009-dual-linux-FINAL-20260923.zip`
+Preferred v2 Library artifact:
+`/Habbo 2009 Dual Linux/habbo-2009-dual-linux-FINAL-v2-20260923.zip`
 
 SHA-256:
-`38e8175373094130e27202d65aef2be9406dbfcd08e23f3bd87ea95e40afc97f`
+`f80bbefc5a486fd0f9cce058a39462ef3925c563253dc2f69ebe647f6a6630ec`
 
-The restore script inside the package was executed in a clean target directory and verified:
-- QEMU 9.2.4 hash
-- MariaDB reconstructed archive hash
-- historical WWW reconstructed archive hash
+The v2 ZIP itself was extracted into a clean directory and its restore script was executed successfully. It restored all eight binary evidence files plus R39/V31 runbooks, verified QEMU 9.2.4, reconstructed MariaDB and historical WWW with the canonical hashes.
+
+The v1 package remains valid and immutable:
+`38e8175373094130e27202d65aef2be9406dbfcd08e23f3bd87ea95e40afc97f`.
 
 No live SSO ticket or database password is committed.

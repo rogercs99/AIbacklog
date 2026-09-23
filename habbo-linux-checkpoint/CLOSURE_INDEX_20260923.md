@@ -70,6 +70,25 @@ Machine-readable provenance:
 - canonical FINAL-v2 ZIP publication: `35892499049`
 - release ZIP/checksum round-trip: `35894941442`
 - provenance publication + round-trip: `35896374327`
+- permanent canonical-release verifier initial PASS: `35897132975`
+
+## On-demand revalidation
+
+Permanent read-only verifier:
+`.github/workflows/habbo-verify-release.yml`
+
+Trigger:
+- `workflow_dispatch` for manual/on-demand verification;
+- a one-time path-scoped push trigger validated the workflow when it was introduced.
+
+Checks:
+- downloads all three Release v1.1 assets;
+- verifies exact size + SHA-256 for ZIP, checksum manifest and provenance JSON;
+- cross-checks manifest ↔ ZIP identity;
+- cross-checks provenance semantic fields and PASS states;
+- runs `unzip -t` on the downloaded canonical ZIP.
+
+Initial verified run: `35897132975` — success.
 
 ## Git state
 

@@ -798,3 +798,71 @@ Git commits:
 - VPS2 pull: `88d106200d1de9f9db7aea5db4cae83ff0b8c53b`
 - VPS2 service: `a42bd37602335127aee81b8739c000c85949a355`
 - VPS2 timer: `c998d01ea0b176d334fb366bd269dd0820b70cc2`
+
+## Off-host mutable-state backup on VPS2 2026-09-24
+
+The remaining single-host failure mode was the current mutable state: VPS1 local backups contained current DB state and current secrets, while the ChatGPT Library independently protected the large historical assets.
+
+VPS2 now pulls promoted VPS1 backups to a separate host:
+- destination: `/var/backups/habbo-vps1`, mode `0700 root:root`;
+- archive files + checksum files: `0600 root:root`;
+- service: `habbo-vps1-offsite-pull.service` on VPS2;
+- timer: `habbo-vps1-offsite-pull.timer`, daily 05:25 local, Persistent=true, up to 60 seconds randomized delay;
+- retention: three newest complete tar.gz archives;
+- the source backup is verified on VPS1 before transfer;
+- VPS2 extracts the received archive into `/dev/shm`, rewrites the absolute SHA256SUMS paths to local basenames, and re-verifies every archived file before promotion;
+- a verified archive gets its own SHA-256 sidecar and becomes `/var/backups/habbo-vps1/LATEST`.
+
+Successful off-host proof is written back to VPS1 as `/srv/habbo/OFFSITE_BACKUP_STATUS` (`0600 root:root`) and mirrored to `/run/habbo-offsite-backup`.
+The marker contains only timestamp, source backup path, archive SHA-256, archive size, offsite host and offsite archive path.
+
+Initial implementation caught two safe failures before promotion:
+- local verification originally attempted to use VPS1 absolute paths from SHA256SUMS on VPS2; no archive/LATEST/marker was promoted;
+- marker writing originally had fragile nested shell quoting; it was replaced by `ssh ... bash -s --` with positional arguments.
+
+First successful off-host copy:
+- source `manual-20260924T040336Z`;
+- archive size 19,331,570 bytes;
+- archive SHA-256 `4940fa2c7f64493d841bde139dbd9e860f3462ccb095f6c8c1017664c1f18ed0`;
+- VPS2 service Result=success / ExecMainStatus=0.
+
+End-to-end lag behavior was explicitly tested:
+- a new VPS1 backup `manual-20260924T040928Z` was promoted;
+- runtime health was refreshed, but offsite still referenced the prior backup;
+- `habbo-status.sh` correctly reported `offsite latest match FAIL` and `OVERALL DEGRADED`;
+- `offsite-backup-smoke.sh` correctly failed with `offsite backup does not match latest backup`;
+- after the VPS2 pull, the offsite archive verified successfully and VPS1 returned `offsite latest match OK` / `OVERALL READY` without touching Habbo services.
+
+Second successful off-host copy:
+- source `manual-20260924T040928Z`;
+- archive size 19,332,483 bytes;
+- archive SHA-256 `8bb53fea1fdad37381167fd4041de09cdc6c8bee042585919f5556be64165e8b`;
+- final aggregate validator PASS.
+
+`offsite-backup-smoke.sh` requires:
+- durable marker mode 0600 root:root;
+- proof age <=36 hours;
+- offsite source backup equals current LATEST_PUBLIC_WEB_BACKUP;
+- valid archive SHA-256 and positive size;
+- offsite host exactly VPS2;
+- archive path matches the backup name.
+
+`habbo-status.sh` reports offsite age and latest-match state. The aggregate final validator runs the offsite smoke.
+
+Live hashes:
+- VPS2 pull script: `85bd9f9f0026119b18a4842129ede08ac6509da11ae287062aebd012a739ff23`
+- VPS2 service: `54f55d6f437e981761d124f23d90f838ee1b8f09f96fd632812c879987e66ab0`
+- VPS2 timer: `e748fafaf8121226e4852513b0f28f174a89d8f99ce6b7ec4429e1268ff54c58`
+- VPS1 offsite smoke: `484ed1a8c643597b3aa9740302dde7ca2b50d40d8cbfad813fb963bbf5354c6b`
+- verifier: `5f08495b7c6720e829dbbc8446216fe1df0c12cdf60853b2ad58b0e98a1f16ba`
+- final validator: `1d9f4d1eab61d2932120c68fe365477949b8a88cf080a22c45ac20f6a6f6dd96`
+- status: `2a47e967f4425273ed62b367a342b4ff525f9d53917dbb7fb422a0bc9d919762`
+
+Git commits:
+- VPS2 pull: `b778e89375e27caf61dd1755a836bd175fd4bb35`
+- VPS2 service: `488b19d7837746fca7a8e27998662405ed243ba0`
+- VPS2 timer: `fda2b2480c4c0bed90abdf093cc3e6869791903f`
+- VPS1 offsite smoke: `608b0ca7be0f890da3413ae8db49813df8ce925d`
+- verifier: `ca797bd909fba4696c2496d7b73262043ec42995`
+- final validator: `12422fd56adf2a178c27fe2fa508fd47f68f7cc8`
+- status: `0a72a8ce01a3162136257518fb60697ec4366178`

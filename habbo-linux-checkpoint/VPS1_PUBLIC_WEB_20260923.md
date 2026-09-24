@@ -2123,3 +2123,46 @@ Latest-generation proof:
 - aggregate deployment validator passed on `095158Z` with isolated local restore and live DB untouched.
 
 Heartbeat service retains `TimeoutStartSec=120` to leave margin for legitimate offsite-lock waiting plus deep scrub/bootstrap work. Its live unit is byte-identical to the Git branch.
+
+## Deterministic three-generation VPS2 recovery closure 2026-09-24
+
+The strict 3-generation live-current policy exposed a self-reference in the offsite verifier itself: changing `habbo-vps1-offsite-store-smoke.sh` changes one of the 22 files captured in the VPS2 recovery kit.
+
+Final verifier behavior:
+- retained archive outer SHA/gzip is verified;
+- complete internal backup manifest is verified;
+- all 22 VPS2 recovery artifacts must hash-match the live VPS2 control plane;
+- each recovery overlay is unpacked and validated semantically;
+- bootstrap prereqs + rehearsal run for each generation;
+- a canonical fingerprint is computed from every rehearsal tree including file hashes, modes, ownership, directories and symlink targets;
+- all three retained generations must produce the exact same canonical recovery fingerprint.
+
+The final scrub implementation was frozen and versioned before rebuilding the recovery kit.
+- live store scrub SHA-256 after deterministic support: `ad0bfbf90860d525fdffeb45e5aece7c2b55b268117ae678f35ba027e0a3f422`;
+- Git commit: `26698747cc0c0e88605f6aff5038547ecb1cd0e6`.
+
+Final canonical VPS2 kit refresh:
+- 22 files / 10 scripts / 12 units;
+- staging recovery smoke PASS;
+- bootstrap rehearsal PASS;
+- disaster-recovery-source smoke PASS;
+- overlay SHA-256 `d240d61ec984d17b66f6541c36abba101acc70017283c385ac701b984e5005f4`;
+- manifest SHA-256 `5ba6e5b0eba9670b05a3851061ef46ed2ff8fb71d71fe47e9ff8d0ddda79bde2`.
+
+Final strict rotation:
+- `manual-20260924T100102Z`;
+- `manual-20260924T100136Z`;
+- `manual-20260924T100206Z`;
+- VPS2 retention became exactly those three generations;
+- 3/3 scrub PASS with `semantic+live+bootstrap+deterministic`;
+- canonical recovery fingerprint `541dab34be881f0568aedc4f3b1748cb924d520135c18fc50c5edca04507e8ff`;
+- private permissions and zero temporary residue.
+
+Latest recovery proof:
+- offsite restore of `100206Z` passed with manifest=complete, workspace tmpfs, network=none, DB datadir tmpfs;
+- 88 tables / 40 navigator_styles / RogerVideo=1 / room1000=1;
+- archive SHA-256 `062f405ca6cfe464ccc68e5afc455b94fe1bcf53a23185de7c097be3c496cba7`;
+- test MariaDB image removed afterward;
+- heartbeat returned success, no failed Habbo units, control-plane 4/4 and deterministic recovery OK;
+- VPS1 returned OVERALL READY;
+- deployment final validator exited 0 on `100206Z`.

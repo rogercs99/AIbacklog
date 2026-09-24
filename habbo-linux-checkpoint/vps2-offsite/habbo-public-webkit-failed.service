@@ -1,0 +1,7 @@
+[Unit]
+Description=Record Habbo WebKit regression failure on VPS1
+
+[Service]
+Type=oneshot
+ExecStart=/usr/local/sbin/habbo-public-webkit-failed.sh
+TimeoutStartSec=30

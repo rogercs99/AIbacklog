@@ -1,0 +1,29 @@
+name: Habbo V31 legacy runtime export
+on:
+  push:
+    branches: [project/habbo-2009-dual-linux-vps1-deploy-20260923]
+    paths:
+      - '.github/workflows/habbo-v31-legacy-runtime-export.yml'
+permissions:
+  contents: read
+jobs:
+  export:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Fetch legacy runtime
+        shell: bash
+        run: |
+          set -euxo pipefail
+          git clone --depth 1 --filter=blob:none --sparse https://github.com/808x/portable-apps.git src
+          git -C src sparse-checkout set 'Adobe Shockwave Player/bin'
+          mkdir -p legacy-runtime
+          cp -a 'src/Adobe Shockwave Player/bin/.' legacy-runtime/
+          find legacy-runtime -type f -print0 | sort -z | xargs -0 sha256sum > legacy-runtime/SHA256SUMS.txt
+          du -sh legacy-runtime
+      - uses: actions/upload-artifact@v4
+        with:
+          name: habbo-v31-legacy-runtime
+          path: legacy-runtime/
+          retention-days: 7
+          compression-level: 9

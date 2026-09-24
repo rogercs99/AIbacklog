@@ -7,6 +7,7 @@ mapfile -t dirs < <(find "$ROOT/backups" -mindepth 1 -maxdepth 1 -type d -name '
 echo "backup_count=${#dirs[@]} keep_recent=$KEEP_RECENT latest=$latest"
 keep=()
 for ((i=0;i<${#dirs[@]} && i<KEEP_RECENT;i++)); do keep+=("${dirs[$i]}"); done
+# Preserve known restore milestone and current latest regardless of age.
 keep+=("$ROOT/backups/manual-20260923T183558Z")
 [[ -n "$latest" ]] && keep+=("$latest")
 for d in "${dirs[@]}"; do
@@ -15,7 +16,9 @@ for d in "${dirs[@]}"; do
   if $preserve; then
     printf 'KEEP %s\n' "$d"
   else
-    size=$(du -sh "$d" | awk '{print $1}')
-    printf 'CANDIDATE %s %s\n' "$size" "$d"
+    apparent=$(du -sh "$d" | awk '{print $1}')
+    reclaim_bytes=$(find "$d" -type f -printf '%b %n\n' | awk '$2==1 {s += $1 * 512} END {print s+0}')
+    reclaim_mib=$(awk -v b="$reclaim_bytes" 'BEGIN {printf "%.2f", b/1048576}')
+    printf 'CANDIDATE apparent=%s reclaim_if_deleted_alone=%sMiB %s\n' "$apparent" "$reclaim_mib" "$d"
   fi
 done

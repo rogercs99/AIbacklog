@@ -23,6 +23,8 @@ test -f "$B/.env"
 test -f "$B/DISASTER_RECOVERY_MANIFEST.md"
 test -f "$B/HOST_PREREQUISITES.md"
 test -f "$B/cloudflared-stremio-legacy.service"
+test -f "$B/bridge-reverse-ssh.service"
+grep -F -- '-R 127.0.0.1:22022:127.0.0.1:22 bridge-new' "$B/bridge-reverse-ssh.service" >/dev/null
 grep -q "cloudflared.*--config /etc/cloudflared-stremio-legacy/config.yml tunnel run" "$B/cloudflared-stremio-legacy.service"
 test -f "$B/havana-source-b550f00.bundle"
 test -f "$B/habbo-library-chunks-sha256.txt"
@@ -38,7 +40,7 @@ git bundle list-heads "$B/havana-source-b550f00.bundle" | grep '^b550f00f2778814
 unzip -tqq "$B/habbo-2009-dual-linux-FINAL-v2-20260923.zip" || { echo 'FAIL: backed-up FINAL-v2 ZIP is unreadable' >&2; exit 1; }
 [[ "$(wc -l < "$B/habbo-library-chunks-sha256.txt")" -eq 15 ]] || { echo 'FAIL: Library backend/WWW manifest line count mismatch' >&2; exit 1; }
 [[ "$(wc -l < "$B/habbo-runtime-prefix-parts-sha256.txt")" -eq 7 ]] || { echo 'FAIL: Library runtime/prefix manifest line count mismatch' >&2; exit 1; }
-[[ "$(wc -l < "$B/vps2-control-plane-files-sha256.txt")" -eq 21 ]] || { echo 'FAIL: VPS2 control-plane recovery manifest line count mismatch' >&2; exit 1; }
+[[ "$(wc -l < "$B/vps2-control-plane-files-sha256.txt")" -eq 22 ]] || { echo 'FAIL: VPS2 control-plane recovery manifest line count mismatch' >&2; exit 1; }
 "$ROOT/ops/vps2-control-plane-recovery-smoke.sh" "$B" >/dev/null || { echo 'FAIL: backed-up VPS2 control-plane recovery kit verification failed' >&2; exit 1; }
 tar -tzf "$B/ops-overlay.tar.gz" | grep -Fx 'ops/vps2-control-plane-recovery-smoke.sh' >/dev/null || { echo 'FAIL: ops overlay missing VPS2 recovery smoke' >&2; exit 1; }
 mkdir -p "$WORK/havana-bundle-verify"
@@ -100,6 +102,7 @@ test -x "$WORK/ops/offsite-backup-smoke.sh"
 test -x "$WORK/ops/offsite-restore-drill-smoke.sh"
 test -x "$WORK/ops/public-webkit-remote-smoke.sh"
 test -x "$WORK/ops/vps2-control-plane-smoke.sh"
+test -x "$WORK/ops/refresh-vps2-control-plane-kit.sh"
 test -x "$WORK/ops/habbo-backup-daily.sh"
 test -f "$B/habbo-backup-daily.service"
 test -f "$B/habbo-backup-daily.timer"

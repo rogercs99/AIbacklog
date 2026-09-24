@@ -11,11 +11,32 @@ journal_before_kb=0
 [[ -d /var/log/journal ]] && journal_before_kb=$(du -sk /var/log/journal 2>/dev/null | awk '{print $1}')
 cleanup=none
 if [[ "$root_before" -lt "$CLEAN_BELOW_KB" ]]; then
-  apt_locked=false
-  for lock in /var/lib/dpkg/lock-frontend /var/lib/dpkg/lock /var/lib/apt/lists/lock /var/cache/apt/archives/lock; do
-    [[ -e "$lock" ]] || continue
-    if fuser "$lock" >/dev/null 2>&1; then apt_locked=true; break; fi
-  done
+  apt_locked=$(python3 - <<'PYLOCK'
+import fcntl, os
+paths=(
+    '/var/lib/dpkg/lock-frontend',
+    '/var/lib/dpkg/lock',
+    '/var/lib/apt/lists/lock',
+    '/var/cache/apt/archives/lock',
+)
+locked=False
+for path in paths:
+    if not os.path.exists(path):
+        continue
+    fd=os.open(path, os.O_RDWR)
+    try:
+        try:
+            fcntl.lockf(fd, fcntl.LOCK_EX | fcntl.LOCK_NB)
+        except BlockingIOError:
+            locked=True
+            break
+        else:
+            fcntl.lockf(fd, fcntl.LOCK_UN)
+    finally:
+        os.close(fd)
+print('true' if locked else 'false')
+PYLOCK
+)
   if $apt_locked; then
     cleanup=skipped-apt-locked
   else

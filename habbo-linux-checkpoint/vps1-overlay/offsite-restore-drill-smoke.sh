@@ -12,6 +12,10 @@ ts=$(get validated_at_utc)
 backup=$(get backup)
 sha=$(get archive_sha256)
 host=$(get offsite_host)
+manifest=$(get manifest)
+workspace=$(get workspace)
+network=$(get network)
+db_datadir=$(get db_datadir)
 tables=$(get tables)
 nav=$(get navigator_styles)
 user=$(get RogerVideo)
@@ -23,9 +27,13 @@ age=$(( $(date -u +%s) - $(date -u -d "$ts" +%s) ))
 [[ -d "$backup" ]] || fail 'offsite restore drill source backup no longer exists on VPS1'
 [[ "$sha" =~ ^[0-9a-f]{64}$ ]] || fail 'offsite restore drill archive SHA-256 malformed'
 [[ "$host" == VPS2 ]] || fail 'unexpected offsite restore drill host'
+[[ "$manifest" == complete ]] || fail "offsite restore manifest proof invalid: $manifest"
+[[ "$workspace" == tmpfs ]] || fail "offsite restore workspace proof invalid: $workspace"
+[[ "$network" == none ]] || fail "offsite restore network proof invalid: $network"
+[[ "$db_datadir" == tmpfs ]] || fail "offsite restore DB datadir proof invalid: $db_datadir"
 [[ "$tables" == 88 ]] || fail "restored table count mismatch: $tables"
 [[ "$nav" == 40 ]] || fail "restored navigator_styles mismatch: $nav"
 [[ "$user" == 1 ]] || fail "restored RogerVideo mismatch: $user"
 [[ "$room" == 1 ]] || fail "restored room1000 mismatch: $room"
 echo 'PASS: Habbo offsite restore drill smoke'
-echo "age_seconds=$age backup=$backup host=$host tables=$tables navigator_styles=$nav RogerVideo=$user room1000=$room sha256=$sha"
+echo "age_seconds=$age backup=$backup host=$host tables=$tables navigator_styles=$nav RogerVideo=$user room1000=$room sha256=$sha manifest=complete workspace=tmpfs network=none db_datadir=tmpfs"

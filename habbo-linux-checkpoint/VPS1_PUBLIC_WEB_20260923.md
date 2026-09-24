@@ -1792,3 +1792,45 @@ Git commits:
 - stale drill workdir guard: 9ee09aea0122ce1692f00ca0dc5d49a8110c012d
 
 Explicit live↔Git comparison after promotion: both artifacts matched byte-for-byte.
+
+## Offsite restore isolation proof contract 2026-09-24
+
+The VPS2 offsite restore drill is now self-contained with the same complete-manifest contract as the deep store scrub, and its proof marker records the isolation properties that were actually checked.
+
+Restore drill hardening:
+- archive SHA sidecar is still verified before extraction;
+- extracted SHA256SUMS is checked directly with `sha256sum -c`;
+- actual top-level files and manifest entries must have identical sorted-set digests;
+- `.env` must be present in the internal manifest;
+- the temporary MariaDB container is explicitly inspected after creation;
+- NetworkMode must be `none`;
+- `docker port` must be empty;
+- /var/lib/mysql must be the expected 384 MiB tmpfs.
+
+Both the local VPS2 status file and the proof copied to VPS1 now include:
+- `manifest=complete`;
+- `workspace=tmpfs`;
+- `network=none`;
+- `db_datadir=tmpfs`.
+
+VPS1 offsite-restore-drill-smoke.sh requires all four fields in addition to archive SHA, host, age and restored DB invariants.
+
+Real proof on manual-20260924T074228Z:
+- restore service Result=success / ExecMainStatus=0;
+- archive SHA-256 a9609475c50304930d34e2c34c12fe334fa0ed8c882bcf7d1fee17222d7261e1;
+- manifest=complete;
+- workspace=tmpfs;
+- network=none;
+- db_datadir=tmpfs;
+- restored DB 88 tables / 40 navigator_styles / RogerVideo=1 / room1000=1;
+- VPS1 offsite restore smoke returned PASS with the same isolation fields.
+
+Live hashes:
+- VPS2 restore drill: 3ef71dfcd4344823ad018043560aff6b6f8b7684f45cfb4b51a7ad22f96a2d53
+- VPS1 restore proof smoke: bed008a1b282709d3422b1976b82690a8f7bf2c950d2ac3ca7741ac0f352ecca
+
+Git commits:
+- isolated restore proof: 870e45fd38e6c16dd7265d4d2414cc62ac27ba04
+- VPS1 proof contract: e4ee318c9fdf68d61287d081e41825dfb687c4b8
+
+Explicit live↔Git comparison after promotion: both artifacts matched byte-for-byte.

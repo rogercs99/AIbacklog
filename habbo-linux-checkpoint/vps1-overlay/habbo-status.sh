@@ -116,17 +116,20 @@ webkit_ok=true
 if [[ -f /srv/habbo/WEBKIT_STATUS ]]; then
   webkit_ts=$(awk -F= '$1=="validated_at_utc" {print $2}' /srv/habbo/WEBKIT_STATUS)
   webkit_result=$(awk -F= '$1=="result" {print $2}' /srv/habbo/WEBKIT_STATUS)
+  webkit_attempts=$(awk -F= '$1=="attempts" {print $2}' /srv/habbo/WEBKIT_STATUS)
   webkit_age=$(( $(date -u +%s) - $(date -u -d "$webkit_ts" +%s) ))
 else
-  webkit_age=999999999; webkit_result=missing; webkit_ok=false
+  webkit_age=999999999; webkit_result=missing; webkit_attempts=0; webkit_ok=false
 fi
 [[ "$webkit_age" -le 129600 ]] || webkit_ok=false
 [[ "$webkit_result" == success ]] || webkit_ok=false
+[[ "$webkit_attempts" =~ ^[12]$ ]] || webkit_ok=false
 [[ ! -e /srv/habbo/WEBKIT_FAILED ]] || webkit_ok=false
 $webkit_ok || ok=false
 printf '%-28s %ss\n' 'WebKit proof age' "$webkit_age"
 printf '%-28s %s\n' 'WebKit failure latch' "$([[ -e /srv/habbo/WEBKIT_FAILED ]] && echo FAILED || echo clear)"
 printf '%-28s %s\n' 'WebKit iPhone proof' "$($webkit_ok && echo OK || echo FAIL)"
+printf '%-28s %s\n' 'WebKit attempts' "$webkit_attempts"
 vps2cp_ok=true
 if [[ -f /srv/habbo/VPS2_CONTROL_PLANE_STATUS ]]; then
   vps2cp_ts=$(awk -F= '$1=="validated_at_utc" {print $2}' /srv/habbo/VPS2_CONTROL_PLANE_STATUS)

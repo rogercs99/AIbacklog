@@ -16,7 +16,7 @@ b81882a29c57a645ab2ca70adb066152ec7929cfafa3d9560bdaf50275453a54  usr/local/sbin
 065a20b72e3e309bd36e63f235695916c3278eef49e34a77fb5872c0643db986  usr/local/sbin/habbo-vps1-offsite-failed.sh
 3a354ffc974118bde8b0f1a827d71807ff43b703cf280bff64500b45cc633c97  usr/local/sbin/habbo-vps1-offsite-pull.sh
 3ef71dfcd4344823ad018043560aff6b6f8b7684f45cfb4b51a7ad22f96a2d53  usr/local/sbin/habbo-vps1-offsite-restore-drill.sh
-cd28d32d2c71f734e3c972d87419d133bea576fe1a4957b8b95dde1d15f6705a  usr/local/sbin/habbo-vps1-offsite-store-smoke.sh
+9242918838cf84dd423e921e0402f3c5f6152847d0ca9b635252a62aa70311ba  usr/local/sbin/habbo-vps1-offsite-store-smoke.sh
 5e907f7b82c5e762c971196794463b340ea193b4e1735b95410c616bab8689ea  usr/local/sbin/habbo-vps2-control-plane-bootstrap.sh
-da2dd76bfa4ef39889d03e02577ccd75a3b3537529d0e33c38569fbdcf9be660  usr/local/sbin/habbo-vps2-control-plane-heartbeat.sh
+e69fccf455676da59616bab96ba80d6a3bd8b3a3f858dc49d37228098b9136e3  usr/local/sbin/habbo-vps2-control-plane-heartbeat.sh
 d44967c9f7b1bf22bc4958e36364cc07986e5db411fb165aa8804c85f8602f39  usr/local/sbin/habbo-vps2-space-preflight.sh

@@ -85,11 +85,12 @@ units=("$R/etc/systemd/system"/*.service "$R/etc/systemd/system"/*.timer)
 required_units=(
   habbo-stack.service habbo-static.service habbo-websockify.service habbo-postboot-validate.service
   habbo-runtime-healthcheck.service habbo-runtime-healthcheck-failed.service habbo-runtime-healthcheck.timer
-  habbo-backup-daily.service habbo-backup-daily.timer cloudflared-stremio-legacy.service
+  habbo-backup-daily.service habbo-backup-daily.timer cloudflared-stremio-legacy.service bridge-reverse-ssh.service
 )
 for u in "${required_units[@]}"; do
   [[ -f "$R/etc/systemd/system/$u" ]] || fail "required systemd unit missing: $u"
 done
+grep -F -- '-R 127.0.0.1:22022:127.0.0.1:22 bridge-new' "$R/etc/systemd/system/bridge-reverse-ssh.service" >/dev/null || fail 'reverse SSH route contract missing'
 systemd-analyze verify "${units[@]}" >"$TMP/systemd-verify.log" 2>&1 || { cat "$TMP/systemd-verify.log" >&2; fail 'restored systemd unit verification failed'; }
 
 # Verify backup DB through the existing isolated temporary-DB verifier.

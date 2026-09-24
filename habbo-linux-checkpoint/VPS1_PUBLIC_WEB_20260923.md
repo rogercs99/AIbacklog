@@ -460,3 +460,32 @@ SHA-256:
 Git commits:
 - status command: `6521df10dabe956bffac92aa75e7ec632270a2ad`
 - verifier requirement: `432adb1e4c1fa36c6d256b622fdd1037881f8ffd`
+
+## Runtime stamp/latest-backup consistency 2026-09-24
+
+The operator status and aggregate validator now require the runtime health stamp to reference the current `LATEST_PUBLIC_WEB_BACKUP`.
+
+Reason:
+- a fresh backup can be promoted after the previous healthcheck ran;
+- without this check, a recent runtime stamp with the correct FINAL-v2 hash could still refer to the previous backup and misleadingly report READY.
+
+Validation:
+- after promoting `manual-20260924T025424Z`, the old runtime stamp still referenced `manual-20260924T025022Z`;
+- `habbo-status.sh` correctly reported `runtime backup match FAIL` and `OVERALL DEGRADED`;
+- after running `habbo-runtime-healthcheck.service`, the stamp moved to `manual-20260924T025424Z`;
+- status then reported `runtime backup match OK` and `OVERALL READY`.
+
+The post-boot stamp is intentionally not required to match every later backup because it certifies boot readiness rather than each subsequent backup promotion.
+
+Live hashes:
+- `habbo-status.sh`: `6b0835df516ace213d7b1d73a3cbebe3b9e6eaf3c3c5177403b6a0621f428182`
+- `deployment-final-validate.sh`: `3fde5c5bec70b680f41172166212526ec7894d6c3415343e1805e343d2fa7657`
+
+Git commits:
+- status consistency: `907b76e72b77d123e34a7d760089c2a057af7a26`
+- aggregate validator consistency: `86d46f61e23e59c39f87c681c7838359da2371bf`
+
+Second hardlink-dedupe proof:
+- `manual-20260924T025022Z` increased physical backup storage by only 904 KiB;
+- `manual-20260924T025424Z` increased it by only 908 KiB;
+- the 10,664,307-byte frontend overlay shares inode `251960` and reached link count 4.

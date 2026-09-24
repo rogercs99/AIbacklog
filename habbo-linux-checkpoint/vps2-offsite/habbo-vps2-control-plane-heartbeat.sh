@@ -22,7 +22,7 @@ for t in "${TIMERS[@]}"; do
     [[ "$active" == active ]] || issues+=("$t active=$active")
   fi
 done
-mapfile -t failed < <(systemctl --failed --no-legend 2>/dev/null | awk '{print $1}' | grep -E '^habbo-(vps1-offsite|public-webkit)' || true)
+mapfile -t failed < <(systemctl --failed --no-legend 2>/dev/null | awk '{print $1}' | grep -E '^habbo-(vps1-offsite|public-webkit|vps2-control-plane)' || true)
 ((${#failed[@]}==0)) || issues+=("failed_units=${failed[*]}")
 if ((${#issues[@]}==0)); then
   result=success

@@ -583,3 +583,45 @@ First fully automatic daily backup proof:
 - runtime stamp advanced automatically to that backup;
 - next daily run scheduled for the following day at 05:10;
 - restore verifier, status and aggregate validator all passed against the automatic backup.
+
+## Secret permissions and self-contained recovery 2026-09-24
+
+A recovery audit found that live secret permissions were good, but previous backups were not self-contained for a total VPS loss.
+
+Live permission findings:
+- `/srv/habbo/.env`, `docker-compose.yml`, `PROJECT_CONTEXT.md` and Cloudflare config are `0600 root:root`;
+- Cloudflare tunnel credential JSON is `0600 root:root`;
+- systemd unit files are normal `0644 root:root` and do not embed password/token assignments;
+- no world-writable regular files exist under `/srv/habbo`;
+- MariaDB datadir contains expected group-writable container-managed files and was left unchanged.
+
+Recovery gaps found and fixed:
+- Compose depends on `HABBO_DB_PASSWORD` and `HABBO_DB_ROOT_PASSWORD` from `/srv/habbo/.env`;
+- previous backups did not include `.env`, so Compose on a fresh VPS would silently default those variables to blank;
+- previous backups stored Cloudflare `config.yml` but not the credential JSON referenced by `credentials-file`, so a fresh VPS could not bring the public tunnel back.
+
+Fixes:
+- backup root `/srv/habbo/backups` hardened to `0700 root:root`;
+- each backup now includes `.env` as `0600`;
+- each backup now includes `cloudflared-tunnel-credentials.json` as `0600`;
+- restore verifier requires non-empty DB password variables and runs `docker compose config` using only the backed-up `.env` + compose file;
+- restore verifier parses the Cloudflare config/credential JSON and requires the backed-up `TunnelID` to match without printing sensitive values;
+- added `secret-permissions-smoke.sh`, which checks live secret modes, backup modes, Cloudflare credential permissions, absence of world-writable files and absence of embedded secrets in Habbo systemd units.
+
+Validation:
+- first `.env`-complete backup: `manual-20260924T032252Z`, Compose offline config PASS, restore PASS;
+- first `.env` + Cloudflare-credential-complete backup: `manual-20260924T032502Z`, physical growth 884 KiB, restore PASS;
+- secret permissions smoke PASS with `live_secrets=0600 backups=0700/0600 cloudflare_credential=0600 world_writable=0 systemd_embedded_secrets=0`;
+- aggregate validator PASS against `032502Z`.
+
+Live hashes:
+- `secret-permissions-smoke.sh`: `4ba542f925205f16496630a079567a7644e680e2f2bf96e23e82d258853ed99d`
+- `backup.sh`: `0ba435723044acc637cd3cd175a0c976c8898d3659874803213b362e33e0415f`
+- `verify-latest-backup.sh`: `8df690118cd8acbf36c1228fddcfcab7dccb0e5b03a7a5d3384f1fdf3fe5e6f4`
+- `deployment-final-validate.sh`: `f1e1104863784ccaef11ba78b824215d0dfc35673ab92821db9ad8480e461269`
+
+Git commits:
+- secret guard: `36d2ca82be8defc28e7fafd312cc6b61f6a6e9f0`
+- backup recovery secrets: `3d7dc3c3ff52bba86f62c971185e5969a05338eb`
+- restore verifier: `49076ffe8a004da705eb1fb647002063f0de4166`
+- aggregate validator: `cad0c886bbead9d753976657a6de8e6bfbcd8c06`

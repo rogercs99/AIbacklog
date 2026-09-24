@@ -15,6 +15,10 @@ trap cleanup EXIT
 
 cd "$B"
 sha256sum -c SHA256SUMS
+find "$B" -maxdepth 1 -mindepth 1 -type f ! -name SHA256SUMS -printf '%f\n' | sort > "$WORK/top-files.list"
+awk '{print $2}' "$B/SHA256SUMS" | sed 's#^\./##' | sort > "$WORK/manifest-files.list"
+cmp -s "$WORK/top-files.list" "$WORK/manifest-files.list" || { echo 'FAIL: SHA256SUMS does not cover every top-level backup file exactly once' >&2; diff -u "$WORK/top-files.list" "$WORK/manifest-files.list" >&2 || true; exit 1; }
+grep -Fxq '.env' "$WORK/manifest-files.list" || { echo 'FAIL: .env is not covered by SHA256SUMS' >&2; exit 1; }
 test -f "$B/.env"
 test -f "$B/DISASTER_RECOVERY_MANIFEST.md"
 test -f "$B/HOST_PREREQUISITES.md"

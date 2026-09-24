@@ -40,6 +40,19 @@ actual_digest=$(find "$work" -maxdepth 1 -mindepth 1 -type f ! -name SHA256SUMS 
 manifest_digest=$(awk '{print $2}' "$work/SHA256SUMS" | sed 's#^\./##' | sort | sha256sum | awk '{print $1}')
 [[ "$actual_digest" == "$manifest_digest" ]] || { echo 'FAIL: internal manifest coverage mismatch' >&2; exit 1; }
 grep -Eq '^[0-9a-f]{64}  (\./)?\.env$' "$work/SHA256SUMS" || { echo 'FAIL: .env missing from internal manifest' >&2; exit 1; }
+[[ -f "$work/db-backup-contract.txt" ]] || { echo 'FAIL: DB backup contract missing from offsite archive' >&2; exit 1; }
+[[ "$(stat -c '%a %U:%G' "$work/db-backup-contract.txt")" == '600 root:root' ]] || { echo 'FAIL: DB backup contract permissions invalid' >&2; exit 1; }
+grep -Fxq 'contract_version=1' "$work/db-backup-contract.txt" || { echo 'FAIL: DB backup contract version mismatch' >&2; exit 1; }
+grep -Fxq 'consistency=global-read-lock' "$work/db-backup-contract.txt" || { echo 'FAIL: DB consistency contract mismatch' >&2; exit 1; }
+db_flags=$(awk -F= '$1=="dump_flags" {sub(/^[^=]*=/,""); print; exit}' "$work/db-backup-contract.txt")
+for required_flag in --lock-all-tables --routines --triggers --events --hex-blob; do
+  grep -qw -- "$required_flag" <<<"$db_flags" || { echo "FAIL: DB contract missing flag $required_flag" >&2; exit 1; }
+done
+expected_engines=$(awk -F= '$1=="engine_counts" {sub(/^[^=]*=/,""); print; exit}' "$work/db-backup-contract.txt")
+expected_objects=$(awk -F= '$1=="object_counts" {sub(/^[^=]*=/,""); print; exit}' "$work/db-backup-contract.txt")
+expected_binary=$(awk -F= '$1=="binary_columns" {print $2; exit}' "$work/db-backup-contract.txt")
+[[ "$expected_engines" =~ (^|,)MyISAM:[1-9][0-9]*($|,) ]] || { echo 'FAIL: DB contract lost MyISAM inventory' >&2; exit 1; }
+[[ "$expected_binary" =~ ^[0-9]+$ ]] || { echo 'FAIL: DB contract binary column count invalid' >&2; exit 1; }
 
 echo "$EXPECTED_FINAL  $work/habbo-2009-dual-linux-FINAL-v2-20260923.zip" | sha256sum -c - >/dev/null
 echo "$EXPECTED_BUNDLE  $work/havana-source-b550f00.bundle" | sha256sum -c - >/dev/null
@@ -101,21 +114,27 @@ done
 gzip -cd "$work/havana.sql.gz" | docker exec -i "$CONTAINER" mariadb --protocol=tcp -h127.0.0.1 -uroot -pdrill-root restore_verify
 read -r tables nav user room < <(docker exec "$CONTAINER" mariadb --protocol=tcp -h127.0.0.1 -N -B -uroot -pdrill-root restore_verify -e "SELECT (SELECT COUNT(*) FROM information_schema.tables WHERE table_schema='restore_verify'),(SELECT COUNT(*) FROM navigator_styles),(SELECT COUNT(*) FROM users WHERE username='RogerVideo'),(SELECT COUNT(*) FROM rooms WHERE id=1000);")
 [[ "$tables" -eq 88 && "$nav" -eq 40 && "$user" -eq 1 && "$room" -eq 1 ]] || { echo "FAIL: restored DB invariants tables=$tables nav=$nav user=$user room=$room" >&2; exit 1; }
+restored_engines=$(docker exec "$CONTAINER" mariadb --protocol=tcp -h127.0.0.1 -N -B -uroot -pdrill-root restore_verify -e "SELECT CONCAT(COALESCE(ENGINE,'NULL'),':',COUNT(*)) FROM information_schema.tables WHERE table_schema=DATABASE() GROUP BY ENGINE ORDER BY ENGINE;" | tr '\n' ',' | sed 's/,$//')
+restored_objects=$(docker exec "$CONTAINER" mariadb --protocol=tcp -h127.0.0.1 -N -B -uroot -pdrill-root restore_verify -e "SELECT CONCAT('triggers:',(SELECT COUNT(*) FROM information_schema.triggers WHERE trigger_schema=DATABASE()),',routines:',(SELECT COUNT(*) FROM information_schema.routines WHERE routine_schema=DATABASE()),',events:',(SELECT COUNT(*) FROM information_schema.events WHERE event_schema=DATABASE()));")
+restored_binary=$(docker exec "$CONTAINER" mariadb --protocol=tcp -h127.0.0.1 -N -B -uroot -pdrill-root restore_verify -e "SELECT COUNT(*) FROM information_schema.columns WHERE table_schema=DATABASE() AND DATA_TYPE IN ('binary','varbinary','tinyblob','blob','mediumblob','longblob','bit');")
+[[ "$restored_engines" == "$expected_engines" ]] || { echo "FAIL: restored engine inventory mismatch: $restored_engines != $expected_engines" >&2; exit 1; }
+[[ "$restored_objects" == "$expected_objects" ]] || { echo "FAIL: restored SQL object inventory mismatch: $restored_objects != $expected_objects" >&2; exit 1; }
+[[ "$restored_binary" == "$expected_binary" ]] || { echo "FAIL: restored binary-column inventory mismatch: $restored_binary != $expected_binary" >&2; exit 1; }
 
 docker rm -f "$CONTAINER" >/dev/null
 
 now=$(date -u +%Y-%m-%dT%H:%M:%SZ)
 sha=$(sha256sum "$archive" | awk '{print $1}')
-printf 'validated_at_utc=%s\narchive=%s\narchive_sha256=%s\nmanifest=complete\nworkspace=tmpfs\nnetwork=none\ndb_datadir=tmpfs\ntables=%s\nnavigator_styles=%s\nRogerVideo=%s\nroom1000=%s\n' "$now" "$archive" "$sha" "$tables" "$nav" "$user" "$room" >/var/backups/habbo-vps1/OFFSITE_RESTORE_DRILL_STATUS
+printf 'validated_at_utc=%s\narchive=%s\narchive_sha256=%s\nmanifest=complete\nworkspace=tmpfs\nnetwork=none\ndb_datadir=tmpfs\ndb_contract=global-read-lock\ndb_engines=%s\ndb_objects=%s\ndb_binary_columns=%s\ntables=%s\nnavigator_styles=%s\nRogerVideo=%s\nroom1000=%s\n' "$now" "$archive" "$sha" "$restored_engines" "$restored_objects" "$restored_binary" "$tables" "$nav" "$user" "$room" >/var/backups/habbo-vps1/OFFSITE_RESTORE_DRILL_STATUS
 chmod 600 /var/backups/habbo-vps1/OFFSITE_RESTORE_DRILL_STATUS
 name=${archive##*/}
 name=${name%.tar.gz}
 source_backup=/srv/habbo/backups/$name
-ssh -o BatchMode=yes bridge-old bash -s -- "$now" "$source_backup" "$sha" "$tables" "$nav" "$user" "$room" <<'REMOTE_DRILL_MARKER'
+ssh -o BatchMode=yes bridge-old bash -s -- "$now" "$source_backup" "$sha" "$tables" "$nav" "$user" "$room" "$restored_engines" "$restored_objects" "$restored_binary" <<'REMOTE_DRILL_MARKER'
 set -euo pipefail
-now=$1; backup=$2; sha=$3; tables=$4; nav=$5; user=$6; room=$7
+now=$1; backup=$2; sha=$3; tables=$4; nav=$5; user=$6; room=$7; engines=$8; objects=$9; binary=${10}
 tmp=/srv/habbo/.OFFSITE_RESTORE_DRILL_STATUS.tmp
-printf 'validated_at_utc=%s\nbackup=%s\narchive_sha256=%s\noffsite_host=VPS2\nmanifest=complete\nworkspace=tmpfs\nnetwork=none\ndb_datadir=tmpfs\ntables=%s\nnavigator_styles=%s\nRogerVideo=%s\nroom1000=%s\n' "$now" "$backup" "$sha" "$tables" "$nav" "$user" "$room" >"$tmp"
+printf 'validated_at_utc=%s\nbackup=%s\narchive_sha256=%s\noffsite_host=VPS2\nmanifest=complete\nworkspace=tmpfs\nnetwork=none\ndb_datadir=tmpfs\ndb_contract=global-read-lock\ndb_engines=%s\ndb_objects=%s\ndb_binary_columns=%s\ntables=%s\nnavigator_styles=%s\nRogerVideo=%s\nroom1000=%s\n' "$now" "$backup" "$sha" "$engines" "$objects" "$binary" "$tables" "$nav" "$user" "$room" >"$tmp"
 chmod 600 "$tmp"
 mv "$tmp" /srv/habbo/OFFSITE_RESTORE_DRILL_STATUS
 cp /srv/habbo/OFFSITE_RESTORE_DRILL_STATUS /run/habbo-offsite-restore-drill
@@ -124,4 +143,4 @@ rm -f /srv/habbo/OFFSITE_RESTORE_DRILL_FAILED /run/habbo-offsite-restore-drill-f
 REMOTE_DRILL_MARKER
 
 echo 'PASS: Habbo VPS1 offsite restore drill on VPS2'
-echo "archive=$archive havana=$EXPECTED_HAVANA compose=resolved cloudflare=coherent units=${#required[@]} manifest=complete workspace=tmpfs network=none db_datadir=tmpfs db_tables=$tables navigator_styles=$nav RogerVideo=$user room1000=$room"
+echo "archive=$archive havana=$EXPECTED_HAVANA compose=resolved cloudflare=coherent units=${#required[@]} manifest=complete workspace=tmpfs network=none db_datadir=tmpfs db_contract=global-read-lock db_engines=$restored_engines db_objects=$restored_objects db_binary_columns=$restored_binary db_tables=$tables navigator_styles=$nav RogerVideo=$user room1000=$room"

@@ -1,7 +1,10 @@
 #!/usr/bin/env bash
 set -euo pipefail
 ROOT=/srv/habbo
+LOCK=/run/lock/habbo-backup.lock
 install -d -m 700 "$ROOT/backups"
+exec 9>"$LOCK"
+flock -n 9 || { echo "FAIL: another Habbo backup is already running" >&2; exit 1; }
 PREV=$(cat "$ROOT/LATEST_PUBLIC_WEB_BACKUP" 2>/dev/null || true)
 MIN_FREE_KB=1048576
 free_kb=$(df -Pk "$ROOT" | awk 'NR==2 {print $4}')
@@ -10,7 +13,15 @@ if [[ "$free_kb" -lt "$MIN_FREE_KB" ]]; then
   exit 1
 fi
 TS="$(date -u +%Y%m%dT%H%M%SZ)"
-OUT="$ROOT/backups/manual-$TS"
+FINAL="$ROOT/backups/manual-$TS"
+OUT="$ROOT/backups/.manual-$TS.incomplete"
+[[ ! -e "$FINAL" && ! -e "$OUT" ]] || { echo "FAIL: backup target already exists for $TS" >&2; exit 1; }
+cleanup_stage() {
+  rc=$?
+  if [[ $rc -ne 0 && -d "$OUT" ]]; then rm -rf -- "$OUT"; fi
+  exit $rc
+}
+trap cleanup_stage EXIT
 install -d -m 700 "$OUT"
 install -m 600 "$ROOT/docker-compose.yml" "$OUT/docker-compose.yml"
 install -m 600 "$ROOT/.env" "$OUT/.env"
@@ -59,11 +70,16 @@ if [[ -n "$PREV" && -d "$PREV" && "$PREV" != "$OUT" ]]; then
   done
   echo "dedup_hardlinks=$deduped previous=$PREV"
 fi
-sha256sum "$OUT"/* > "$OUT/SHA256SUMS"
+(cd "$OUT" && sha256sum -- * > SHA256SUMS)
 chmod 600 "$OUT/SHA256SUMS"
 if [[ -x "$ROOT/ops/verify-latest-backup.sh" ]]; then
   "$ROOT/ops/verify-latest-backup.sh" "$OUT"
 fi
-printf "%s\n" "$OUT" > "$ROOT/LATEST_PUBLIC_WEB_BACKUP"
-chmod 600 "$ROOT/LATEST_PUBLIC_WEB_BACKUP"
-echo "$OUT"
+# Publish only after complete verification. OUT and FINAL live on the same filesystem.
+mv -- "$OUT" "$FINAL"
+LATEST_TMP="$ROOT/.LATEST_PUBLIC_WEB_BACKUP.tmp.$$"
+printf "%s\n" "$FINAL" > "$LATEST_TMP"
+chmod 600 "$LATEST_TMP"
+mv -f -- "$LATEST_TMP" "$ROOT/LATEST_PUBLIC_WEB_BACKUP"
+trap - EXIT
+echo "$FINAL"

@@ -33,6 +33,7 @@ cleanup(){
 }
 trap cleanup EXIT
 
+/usr/local/sbin/habbo-offsite-tar-safety.py "$archive" >/dev/null || { echo 'FAIL: offsite archive structural safety check failed' >&2; exit 1; }
 tar -xzf "$archive" -C "$work"
 ( cd "$work" && sha256sum -c SHA256SUMS --status ) || { echo 'FAIL: internal SHA256SUMS verification failed' >&2; exit 1; }
 actual_digest=$(find "$work" -maxdepth 1 -mindepth 1 -type f ! -name SHA256SUMS -printf '%f\n' | sort | sha256sum | awk '{print $1}')

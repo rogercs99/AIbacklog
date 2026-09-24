@@ -13,6 +13,11 @@ archive=${1:-$(cat "$ROOT/LATEST")}
 [[ -f "$archive.sha256" ]] || { echo "FAIL: offsite archive checksum missing" >&2; exit 1; }
 sha256sum -c "$archive.sha256" --status || { echo 'FAIL: offsite archive SHA-256 mismatch' >&2; exit 1; }
 
+ROOT_FREE_KB=$(df -Pk / | awk 'NR==2 {print $4}')
+SHM_FREE_KB=$(df -Pk /dev/shm | awk 'NR==2 {print $4}')
+[[ "$ROOT_FREE_KB" -ge 819200 ]] || { echo "FAIL: VPS2 root free space below 800 MiB (${ROOT_FREE_KB} KiB)" >&2; exit 1; }
+[[ "$SHM_FREE_KB" -ge 524288 ]] || { echo "FAIL: VPS2 /dev/shm free space below 512 MiB (${SHM_FREE_KB} KiB)" >&2; exit 1; }
+
 work=$(mktemp -d /dev/shm/habbo-offsite-drill.XXXXXX)
 pulled_image=false
 cleanup(){
@@ -22,7 +27,7 @@ cleanup(){
     docker logs "$CONTAINER" 2>&1 | tail -80 >&2 || true
   fi
   docker rm -f "$CONTAINER" >/dev/null 2>&1 || true
-  docker image rm "$MARIADB_REF" >/dev/null 2>&1 || true
+  if $pulled_image; then docker image rm "$MARIADB_REF" >/dev/null 2>&1 || true; fi
   rm -rf "$work"
   exit $rc
 }
@@ -109,6 +114,7 @@ chmod 600 "$tmp"
 mv "$tmp" /srv/habbo/OFFSITE_RESTORE_DRILL_STATUS
 cp /srv/habbo/OFFSITE_RESTORE_DRILL_STATUS /run/habbo-offsite-restore-drill
 chmod 0644 /run/habbo-offsite-restore-drill
+rm -f /srv/habbo/OFFSITE_RESTORE_DRILL_FAILED /run/habbo-offsite-restore-drill-failed
 REMOTE_DRILL_MARKER
 
 echo 'PASS: Habbo VPS1 offsite restore drill on VPS2'

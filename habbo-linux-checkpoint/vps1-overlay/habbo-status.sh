@@ -143,11 +143,14 @@ printf '%-28s %s\n' 'Cloudflare HA connections' "${ha:-missing}"
 
 free_kb=$(df -Pk "$ROOT" | awk 'NR==2 {print $4}')
 backup_kb=$(du -sk "$ROOT/backups" | awk '{print $1}')
+backup_count=$(find "$ROOT/backups" -mindepth 1 -maxdepth 1 -type d -name 'manual-*' | wc -l)
+[[ "$backup_count" -le 20 ]] || ok=false
 free_gib=$(awk -v x="$free_kb" 'BEGIN{printf "%.2f",x/1048576}')
 backups_mib=$(awk -v x="$backup_kb" 'BEGIN{printf "%.1f",x/1024}')
 [[ "$free_kb" -ge 1048576 ]] || ok=false
 printf '%-28s %s GiB\n' 'filesystem free' "$free_gib"
 printf '%-28s %s MiB\n' 'backup physical usage' "$backups_mib"
+printf '%-28s %s\n' 'local backup count' "$backup_count"
 
 habbo=$(curl -sS -o /dev/null -w '%{http_code}' --connect-timeout 3 --max-time 8 https://habbo.gamemodai.pro/ 2>/dev/null || echo ERR)
 stremio=$(curl -sS -o /dev/null -w '%{http_code}' --connect-timeout 3 --max-time 8 https://stremio-server.gamemodai.pro/ 2>/dev/null || echo ERR)

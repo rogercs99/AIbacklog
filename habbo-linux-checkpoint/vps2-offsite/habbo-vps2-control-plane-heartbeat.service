@@ -7,4 +7,4 @@ OnFailure=habbo-vps2-control-plane-heartbeat-failed.service
 [Service]
 Type=oneshot
 ExecStart=/usr/local/sbin/habbo-vps2-control-plane-heartbeat.sh
-TimeoutStartSec=60
+TimeoutStartSec=120

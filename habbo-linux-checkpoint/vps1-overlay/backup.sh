@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
 set -euo pipefail
 ROOT=/srv/habbo
+PREV=$(cat "$ROOT/LATEST_PUBLIC_WEB_BACKUP" 2>/dev/null || true)
 MIN_FREE_KB=1048576
 free_kb=$(df -Pk "$ROOT" | awk 'NR==2 {print $4}')
 if [[ "$free_kb" -lt "$MIN_FREE_KB" ]]; then
@@ -27,6 +28,20 @@ install -m 600 "$ROOT/web/client/v39/gamedata/external_variables_vps1.txt" "$OUT
 readlink "$ROOT/web/gordon/RELEASE39-22643-22891-200911110035_07c3a2a30713fd5bea8a8caf07e33438/config_habbo.xml" > "$OUT/r39-config_habbo-symlink.txt"
 docker exec habbo-mariadb-1 sh -lc 'mariadb-dump -u"$MARIADB_USER" -p"$MARIADB_PASSWORD" --single-transaction --routines --triggers "$MARIADB_DATABASE"' | gzip -9 > "$OUT/havana.sql.gz"
 chmod 600 "$OUT"/*
+if [[ -n "$PREV" && -d "$PREV" && "$PREV" != "$OUT" ]]; then
+  deduped=0
+  for new in "$OUT"/*; do
+    [[ -f "$new" ]] || continue
+    name=${new##*/}
+    [[ "$name" == "SHA256SUMS" ]] && continue
+    old="$PREV/$name"
+    if [[ -f "$old" ]] && cmp -s "$old" "$new"; then
+      ln -f "$old" "$new"
+      ((deduped+=1))
+    fi
+  done
+  echo "dedup_hardlinks=$deduped previous=$PREV"
+fi
 sha256sum "$OUT"/* > "$OUT/SHA256SUMS"
 chmod 600 "$OUT/SHA256SUMS"
 if [[ -x "$ROOT/ops/verify-latest-backup.sh" ]]; then

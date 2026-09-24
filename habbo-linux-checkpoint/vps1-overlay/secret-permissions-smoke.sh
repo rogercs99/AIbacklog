@@ -32,7 +32,7 @@ fi
 if find "$ROOT" -xdev -type f -perm -0002 -print -quit | grep -q .; then
   fail 'world-writable regular file exists under /srv/habbo'
 fi
-if grep -RqiE '(PASSWORD|TOKEN|SECRET|API[_-]?KEY)[[:space:]]*=' /etc/systemd/system/habbo-*.service /etc/systemd/system/habbo-*.timer 2>/dev/null; then
+if grep -qiE '(PASSWORD|TOKEN|SECRET|API[_-]?KEY)[[:space:]]*=' /etc/systemd/system/habbo-*.service /etc/systemd/system/habbo-*.timer /etc/systemd/system/cloudflared-stremio-legacy.service 2>/dev/null; then
   fail 'secret-like assignment found in Habbo systemd unit'
 fi
 

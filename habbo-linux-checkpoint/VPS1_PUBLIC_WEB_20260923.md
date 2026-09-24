@@ -625,3 +625,56 @@ Git commits:
 - backup recovery secrets: `3d7dc3c3ff52bba86f62c971185e5969a05338eb`
 - restore verifier: `49076ffe8a004da705eb1fb647002063f0de4166`
 - aggregate validator: `cad0c886bbead9d753976657a6de8e6bfbcd8c06`
+
+## Disaster-recovery source closure 2026-09-24
+
+The FINAL-v2 ZIP was confirmed to be a validation/recovery bundle, not a complete copy of the ~756 MB web tree and ~1.3 GB V31 tree.
+Its restore script explicitly requires the historical core, MariaDB chunks, Havana WWW chunks, runtime and Wine prefix.
+
+Independent source inventory was re-verified in ChatGPT Library folder `/Habbo 2009 Dual Linux`:
+- FINAL-v2 + SHA file;
+- combined runtime ZIP and Wine prefix archive;
+- `habbo-core-small.zip`;
+- six MariaDB chunk ZIPs;
+- eight WWW chunk ZIPs;
+- five runtime chunk ZIPs;
+- two Wine-prefix chunk ZIPs;
+- chunk hash manifests and restore scripts.
+
+To remove GitHub as a restore dependency, a complete offline Git bundle of the clean Havana checkout was created:
+- commit `b550f00f27788145d26723fd19e943aa63504a63`;
+- bundle SHA-256 `77672bee2a6b8f879aa8cb0acbac41b7bc203b4487e1464ebacbc1848564bcb5`;
+- bundle size 4,304,844 bytes;
+- bundle records complete history.
+
+Each promoted backup now includes:
+- canonical FINAL-v2 ZIP;
+- offline Havana Git bundle;
+- `DISASTER_RECOVERY_MANIFEST.md`;
+- Library backend/WWW chunk hash manifest;
+- Library runtime/prefix chunk hash manifest.
+
+`disaster-recovery-source-smoke.sh` pins FINAL-v2, Havana commit/bundle, clean live checkout and MariaDB 11.5.2 registry digest.
+`verify-latest-backup.sh` now additionally opens FINAL-v2, validates manifest line counts, verifies the Git bundle and performs a real offline clone from the promoted backup.
+
+Offline clone proof from promoted backup `manual-20260924T033517Z`:
+- `git bundle verify`: complete history, exact HEAD;
+- offline clone HEAD: `b550f00f27788145d26723fd19e943aa63504a63`;
+- restored and live tree object both `e61e788980d5240bcfdc97cbb2a1ebddc7d80045`;
+- `Dockerfile-Server` and `Dockerfile-Web` byte-identical to live checkout.
+
+Dedupe proof:
+- first disaster-source backup `manual-20260924T033517Z` added 8,500 KiB because FINAL-v2 and the Havana bundle were new to the chain;
+- second backup `manual-20260924T034656Z` added only 880 KiB;
+- FINAL-v2 shares inode `252027` across both backups;
+- Havana bundle shares inode `252022` across both backups.
+
+Git commits:
+- disaster source guard: `e17630809bee7cb930123e5edd6749644f8d1a64`
+- backup integration: `eca18ed56b7b4ba87b9c6fec47d6ff12418cf015`
+- restore verifier integration: `1637c75bd8ed1f7632dc9f0f5a3eff1863cd443a`
+- final validator integration: `77bc4e8dda149a8fa0a2c1a9e86c9394e486e61d`
+- disaster manifest: `6ca447ee671eefe678cf46987b91ad86a1e62683`
+- Library chunk hashes: `f7e2b39d876dfdb2056d182c24f023be77e6d43e`
+- runtime/prefix hashes: `ac8bbf738e264316272a22a4ba9637a277dc71a1`
+- offline-clone verifier: `ce3ef3fa075f75cc57e416b5ae6b8cd1ef0dad16`

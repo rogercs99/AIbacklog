@@ -18,6 +18,8 @@ shm_free=$(get shm_free_kb)
 offsite_store=$(get offsite_store_healthy)
 offsite_deep=$(get offsite_deep_verified)
 offsite_bootstrap=$(get offsite_bootstrap_verified)
+offsite_deterministic=$(get offsite_recovery_deterministic)
+offsite_fingerprint=$(get offsite_recovery_fingerprint)
 offsite_archives=$(get offsite_archives)
 [[ -n "$ts" ]] || fail 'VPS2 control-plane timestamp missing'
 age=$(( $(date -u +%s) - $(date -u -d "$ts" +%s) ))
@@ -31,6 +33,8 @@ age=$(( $(date -u +%s) - $(date -u -d "$ts" +%s) ))
 [[ "$offsite_store" == 1 ]] || fail "VPS2 offsite store unhealthy: $offsite_store"
 [[ "$offsite_deep" == 1 ]] || fail "VPS2 offsite deep scrub missing: $offsite_deep"
 [[ "$offsite_bootstrap" == 1 ]] || fail "VPS2 offsite bootstrap rehearsal missing: $offsite_bootstrap"
+[[ "$offsite_deterministic" == 1 ]] || fail "VPS2 recovery determinism proof missing: $offsite_deterministic"
+[[ "$offsite_fingerprint" =~ ^[0-9a-f]{64}$ ]] || fail "VPS2 recovery fingerprint invalid: $offsite_fingerprint"
 [[ "$offsite_archives" == 3 ]] || fail "VPS2 offsite archive count mismatch: $offsite_archives"
 echo 'PASS: Habbo VPS2 control-plane smoke'
-echo "age_seconds=$age timers=4/4 failed_units=0 root_free_kb=$root_free shm_free_kb=$shm_free offsite_store=$offsite_archives/3-deep-bootstrap latch=clear"
+echo "age_seconds=$age timers=4/4 failed_units=0 root_free_kb=$root_free shm_free_kb=$shm_free offsite_store=$offsite_archives/3-deep-bootstrap-deterministic recovery_fingerprint=$offsite_fingerprint latch=clear"

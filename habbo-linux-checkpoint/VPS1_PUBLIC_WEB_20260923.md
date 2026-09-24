@@ -1192,3 +1192,65 @@ Git commits:
 - verifier integration: `632c2a2eab1931e46f524f03bf7771d235e8d8ea`
 - final validator integration: `348b2de6dfcb33e7a571e36767e94b87f3228971`
 - status integration: `21090bb1462a8ee7178030aae155012adefc9b11`
+
+## Guarded local backup retention 2026-09-24
+
+Local backup accumulation is now actively bounded rather than merely reported.
+
+Policy:
+- keep 14 most recent local generations;
+- always preserve current `LATEST_PUBLIC_WEB_BACKUP`;
+- preserve backup referenced by `/run/habbo-disaster-drill`;
+- preserve backup referenced by `/srv/habbo/OFFSITE_RESTORE_DRILL_STATUS`;
+- preserve historical restore milestones `manual-20260923T183558Z` and `manual-20260923T205014Z`;
+- use the same exclusive `/run/lock/habbo-backup.lock` as backup publication;
+- refuse symlink directories or candidates missing `SHA256SUMS` / `havana.sql.gz`;
+- dry-run by default; deletion only with `APPLY=1`.
+
+Initial dry-run:
+- total local generations: 63;
+- KEEP: 16;
+- DELETE candidates: 47;
+- all current dynamic references were in KEEP.
+
+First applied prune:
+- 47 candidate directories removed;
+- local backup count: 63 -> 16;
+- backup physical usage: about 342 MiB -> 35.1 MiB;
+- exact reclaimed backup blocks: 313,848 KiB (~306.5 MiB);
+- root free space rose from ~1.73 GiB to ~2.03 GiB;
+- both historical milestones, local disaster-drill source and current offsite-restore source remained present;
+- publication, disk, offsite-backup and offsite-restore guards all remained PASS.
+
+Automation:
+- `habbo-backup-daily.sh` now runs retention only after the new backup is atomically published, restore-verified and the runtime stamp has advanced;
+- it then verifies the newly-created backup still exists;
+- `disk-health-smoke.sh` fails if more than 20 local backup generations accumulate;
+- `habbo-status.sh` reports local backup count;
+- `verify-latest-backup.sh` requires the prune tool to be included in the backup ops overlay.
+
+Real systemd daily-service proof:
+- `habbo-backup-daily.service` manually started at 07:39:10 CEST;
+- completed at 07:39:27 CEST with Result=success / ExecMainStatus=0;
+- created `manual-20260924T053910Z`;
+- retention saw 17 backups, kept 16 and deleted exactly 1 candidate;
+- runtime stamp advanced to `053910Z`;
+- local backup count returned to 16;
+- VPS2 copied and verified `053910Z`;
+- independent VPS2 restore drill on `053910Z` succeeded with 88 tables / 40 navigator_styles / RogerVideo=1 / room1000=1.
+
+Live hashes:
+- `backup-retention-prune.sh`: `1e0f1bf001a492ea5af11c0c72727aa21e1662f2f150611a3e631f9e74d25605`
+- `backup-retention-report.sh`: `1bd7243d3ca827615c583ffbefbffccd85f1024a2a7d8967ca5bcabfba68ee32`
+- `habbo-backup-daily.sh`: `4d0088805d234b7a5da270c68b44753f6d1060b58b3d4545d60b8e0c162a7995`
+- `disk-health-smoke.sh`: `855c5decd4dd976a3e058dfe59d152abcd8e309e645cab923ac179ed39654e0b`
+- `verify-latest-backup.sh`: `6143daa0f38db77094d8da7770098e79fb3149eb1501112db9538646093363dc`
+- `habbo-status.sh`: `333ae7a600bd05650ffea433946a704e8ff716b5bd027e29b3e6f985f753c248`
+
+Git commits:
+- prune tool: `858582305612885c99073a9227da7bbcac66dcb0`
+- report alignment: `687a3f3b7336fe45dc1f7c889ef8842939dfe69e`
+- daily integration: `3c0d440f3f4a43060fc626ea321c9b80f45b9085`
+- disk count guard: `c3c1caebf8faedc26c2d1870382108b925da285a`
+- verifier integration: `5783419a4b2883411bd27c76cd166b061bd235cc`
+- status count: `202cd41dd6368b93dfc41b3e4721ca0c346ee972`

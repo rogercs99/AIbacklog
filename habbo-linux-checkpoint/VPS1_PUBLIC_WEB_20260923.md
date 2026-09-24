@@ -2039,3 +2039,56 @@ Offsite migration:
 Durable Git state:
 - store scrub commit: `ee27fdc2f200e2caebdb3fe13fea0bb6acd3d928`;
 - refreshed 21-file recovery manifest commit: `07a9c35e64b5aa347b1998426c2305246f0140a5`.
+
+## Executable VPS2 bootstrap rehearsal from retained backups 2026-09-24
+
+The VPS2 recovery contract now proves that each retained recovery kit can actually reconstruct the control-plane filesystem tree, rather than only passing hashes/syntax/semantic inspection.
+
+Initial retained-kit proof against then-LATEST `manual-20260924T090134Z.tar.gz`:
+- bootstrap `--check-prereqs` from the retained kit passed Docker, Playwright 1.55.0, WebKit 2203, bridge-old SSH identity/fingerprint and VPS1 host fingerprint;
+- bootstrap `--rehearsal` reconstructed a clean tmpfs target;
+- source and target recovery manifests both verified 22/22;
+- reconstructed inventory: 10 scripts, 12 systemd units, 4 offline timer enable symlinks;
+- systemd unit verification passed after correctly combining the rehearsal unit path with the host's standard systemd unit paths;
+- rehearsal workspace was removed afterward.
+
+Hourly retained-store integration:
+- `habbo-vps1-offsite-store-smoke.sh` now executes `--check-prereqs` plus `--rehearsal` for every one of the three retained generations;
+- each rehearsal must verify the 22-file manifest, 10 scripts, 12 units, 4 timer links and `systemd-analyze verify`;
+- production store output now reports `vps2-recovery=semantic+live+bootstrap`;
+- three-generation candidate run completed successfully in about 6 seconds.
+
+Canonical VPS1 recovery-source integration:
+- `vps2-control-plane-recovery-smoke.sh` now executes the embedded bootstrap in rehearsal mode against a clean tmpfs target;
+- canonical recovery smoke reports `bootstrap=rehearsed`.
+
+Controlled rollout:
+- VPS1 received a root-only `VPS2_CONTROL_PLANE_FAILED` maintenance latch before live changes, forcing OVERALL DEGRADED throughout migration;
+- store smoke + heartbeat were installed together on VPS2; control/status/recovery-smoke were installed together on VPS1;
+- one early rebuild attempt aborted before modification because of shell quoting; another ambiguous no-output run was explicitly audited and found to have left the canonical kit unchanged;
+- a fresh local rebuild then verified all 22 live files before upload, including store-smoke hash `9242918838cf84dd423e921e0402f3c5f6152847d0ca9b635252a62aa70311ba` and heartbeat hash `e69fccf455676da59616bab96ba80d6a3bd8b3a3f858dc49d37228098b9136e3`;
+- staged recovery smoke passed before promotion;
+- canonical kit promotion was performed under `/run/lock/habbo-backup.lock` with rollback copies;
+- post-promotion canonical recovery smoke and disaster-recovery-source smoke both passed.
+
+Canonical recovery artifacts after promotion:
+- overlay SHA-256: `3f4d64abb4862125ce823eb98bba6b64545199aa436ccd3d4b324af931cefe62`;
+- manifest SHA-256: `026ed24857cc8b860af9d6f187a4fd4fd9aff429d6824059b9b608d56cb58aa4`.
+
+Offsite migration:
+- created/synchronized `093257Z`, `093323Z`, `093345Z`;
+- VPS2 retention became exactly those three generations;
+- strict 3/3 scrub passed with `semantic+live+bootstrap`;
+- heartbeat published `offsite_bootstrap_verified=1`, `offsite_archives=3`, timers 4/4 and failed_units=0;
+- maintenance latch cleared automatically only after the healthy heartbeat;
+- VPS1 returned to OVERALL READY.
+
+Git commits:
+- store scrub bootstrap rehearsal: `195eb77383d4e3eec59b569a4fba16154203e37f`;
+- heartbeat bootstrap proof: `bf49bd568e312a8a9a24f3831a0673d5d424db17`;
+- VPS1 control-plane guard: `00a7e0cd09d99168ed71abbaabead4d2dc543f5a`;
+- VPS1 status: `b3c8d41208cf64d225b3a5d1dd9ba1891562841f`;
+- canonical recovery smoke rehearsal: `303a24fe11f71bf2c8262753bb95294b27494ac4`;
+- refreshed 22-file recovery manifest: `ed82b53357476fe75613543f15aecbaca052aef9`.
+
+Live/Git identity after rollout: all six updated artifacts matched byte-for-byte.

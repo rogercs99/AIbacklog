@@ -50,6 +50,57 @@ for f in "${archives[@]}"; do
   echo 'f80bbefc5a486fd0f9cce058a39462ef3925c563253dc2f69ebe647f6a6630ec  '"$work"'/habbo-2009-dual-linux-FINAL-v2-20260923.zip' | sha256sum -c - --status || { rm -rf "$work"; fail "internal FINAL-v2 hash mismatch: $f"; }
   gzip -t "$work/havana.sql.gz" || { rm -rf "$work"; fail "internal DB dump gzip failure: $f"; }
   tar -tzf "$work/ops-overlay.tar.gz" >/dev/null || { rm -rf "$work"; fail "internal ops overlay unreadable: $f"; }
+  [[ -f "$work/vps2-control-plane-overlay.tar.gz" ]] || { rm -rf "$work"; fail "VPS2 recovery overlay missing inside backup: $f"; }
+  [[ -f "$work/vps2-control-plane-files-sha256.txt" ]] || { rm -rf "$work"; fail "VPS2 recovery manifest missing inside backup: $f"; }
+  [[ "$(wc -l < "$work/vps2-control-plane-files-sha256.txt")" -eq 21 ]] || { rm -rf "$work"; fail "VPS2 recovery manifest file count mismatch: $f"; }
+  kit="$work/.vps2-kit"
+  install -d -m 700 "$kit"
+  tar -xzf "$work/vps2-control-plane-overlay.tar.gz" -C "$kit" || { rm -rf "$work"; fail "VPS2 recovery overlay extraction failed: $f"; }
+  (cd "$kit" && sha256sum -c "$work/vps2-control-plane-files-sha256.txt" --status) || { rm -rf "$work"; fail "VPS2 recovery kit hash verification failed: $f"; }
+  kit_tar_digest=$(tar -tzf "$work/vps2-control-plane-overlay.tar.gz" | sed 's#^\./##' | sort | sha256sum | awk '{print $1}')
+  kit_manifest_digest=$(awk '{print $2}' "$work/vps2-control-plane-files-sha256.txt" | sed 's#^\./##' | sort | sha256sum | awk '{print $1}')
+  [[ "$kit_tar_digest" == "$kit_manifest_digest" ]] || { rm -rf "$work"; fail "VPS2 recovery kit inventory mismatch: $f"; }
+  mapfile -t kit_scripts < <(find "$kit/usr/local/sbin" -maxdepth 1 -type f -name 'habbo-*' -printf '%p\n' | sort)
+  mapfile -t kit_units < <(find "$kit/etc/systemd/system" -maxdepth 1 -type f -name 'habbo-*' -printf '%p\n' | sort)
+  [[ "${#kit_scripts[@]}" -eq 9 ]] || { rm -rf "$work"; fail "VPS2 recovery script count mismatch (${#kit_scripts[@]}): $f"; }
+  [[ "${#kit_units[@]}" -eq 12 ]] || { rm -rf "$work"; fail "VPS2 recovery unit count mismatch (${#kit_units[@]}): $f"; }
+  for sf in "${kit_scripts[@]}"; do
+    case "$sf" in
+      *.sh) bash -n "$sf" || { rm -rf "$work"; fail "VPS2 recovery Bash syntax invalid (${sf#$kit/}): $f"; } ;;&
+      *.py) python3 - "$sf" <<'PYKIT'
+import pathlib,sys
+p=pathlib.Path(sys.argv[1])
+compile(p.read_text(encoding='utf-8'), str(p), 'exec')
+PYKIT
+        ;;
+    esac
+  done
+  for unit in "$kit"/etc/systemd/system/*.service; do
+    while IFS= read -r cmd; do
+      [[ -n "$cmd" ]] || continue
+      cmd=${cmd#-}; cmd=${cmd#+}; cmd=${cmd#!}; cmd=${cmd#@}
+      exe=${cmd%% *}
+      case "$exe" in
+        /usr/local/sbin/habbo-*) [[ -f "$kit$exe" ]] || { rm -rf "$work"; fail "VPS2 recovery unit ${unit##*/} references missing $exe: $f"; } ;;&
+      esac
+    done < <(sed -n 's/^ExecStart=//p' "$unit")
+  done
+  for timer in "$kit"/etc/systemd/system/*.timer; do
+    target=$(sed -n 's/^Unit=//p' "$timer" | tail -1)
+    if [[ -z "$target" ]]; then target=${timer##*/}; target=${target%.timer}.service; fi
+    [[ -f "$kit/etc/systemd/system/$target" ]] || { rm -rf "$work"; fail "VPS2 recovery timer ${timer##*/} references missing $target: $f"; }
+  done
+  for required in \
+    usr/local/sbin/habbo-vps1-offsite-pull.sh \
+    usr/local/sbin/habbo-vps1-offsite-restore-drill.sh \
+    usr/local/sbin/habbo-vps2-control-plane-heartbeat.sh \
+    usr/local/sbin/habbo-public-webkit-smoke.py \
+    etc/systemd/system/habbo-vps1-offsite-pull.timer \
+    etc/systemd/system/habbo-vps1-offsite-restore-drill.timer \
+    etc/systemd/system/habbo-public-webkit.timer \
+    etc/systemd/system/habbo-vps2-control-plane-heartbeat.timer; do
+    [[ -f "$kit/$required" ]] || { rm -rf "$work"; fail "required VPS2 recovery artifact missing ($required): $f"; }
+  done
   rm -rf "$work"
   current_work=
 done
@@ -59,4 +110,4 @@ fi
 newest=${archives[-1]##*/}
 [[ "$latest_name" == "$newest" ]] || fail "LATEST is not newest archive: $latest_name vs $newest"
 echo 'PASS: Habbo VPS1 offsite store smoke'
-echo "archives=${#archives[@]} latest=$latest_name integrity=external-sha256+gzip+internal-manifest-full critical=verified permissions=private temp_residue=0"
+echo "archives=${#archives[@]} latest=$latest_name integrity=external-sha256+gzip+internal-manifest-full critical=verified vps2-recovery=semantic permissions=private temp_residue=0"

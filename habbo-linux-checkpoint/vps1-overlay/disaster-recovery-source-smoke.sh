@@ -13,7 +13,7 @@ bundle="$ROOT/releases/disaster/havana-source-b550f00.bundle"
 [[ -f "$ROOT/DISASTER_RECOVERY_MANIFEST.md" ]] || fail 'disaster recovery manifest missing'
 [[ "$(sha "$final")" == "$EXPECTED_FINAL" ]] || fail 'FINAL-v2 hash mismatch'
 [[ "$(sha "$bundle")" == "$EXPECTED_BUNDLE" ]] || fail 'Havana source bundle hash mismatch'
-git bundle list-heads "$bundle" | grep -q "^$EXPECTED_COMMIT " || fail 'Havana bundle commit mismatch'
+git bundle list-heads "$bundle" | grep "^$EXPECTED_COMMIT " >/dev/null || fail 'Havana bundle commit mismatch'
 [[ "$(git -C "$ROOT/Havana" rev-parse HEAD)" == "$EXPECTED_COMMIT" ]] || fail 'live Havana checkout commit mismatch'
 [[ -z "$(git -C "$ROOT/Havana" status --porcelain)" ]] || fail 'live Havana checkout is dirty'
 

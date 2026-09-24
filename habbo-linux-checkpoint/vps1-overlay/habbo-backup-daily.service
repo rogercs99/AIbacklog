@@ -1,0 +1,9 @@
+[Unit]
+Description=Habbo daily guarded backup
+After=docker.service habbo-stack.service habbo-static.service habbo-websockify.service cloudflared-stremio-legacy.service
+Requires=habbo-stack.service
+
+[Service]
+Type=oneshot
+ExecStart=/srv/habbo/ops/habbo-backup-daily.sh
+TimeoutStartSec=180

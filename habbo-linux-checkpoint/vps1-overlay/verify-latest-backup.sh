@@ -4,12 +4,11 @@ ROOT=/srv/habbo
 B=${1:-$(cat "$ROOT/LATEST_PUBLIC_WEB_BACKUP")}
 [[ -d "$B" ]]
 WORK=$(mktemp -d /dev/shm/habbo-restore-verify.XXXXXX)
-DB="habbo_restore_verify_$(date +%s)_$$"
-root_sql() {
-  docker exec habbo-mariadb-1 sh -lc "mariadb -uroot -p\"\$MARIADB_ROOT_PASSWORD\" $*"
-}
+VERIFY_CONTAINER="habbo-backup-restore-verify-$$"
+EXPECTED_MARIADB_DIGEST='mariadb@sha256:2d50fe0f77dac919396091e527e5e148a9de690e58f32875f113bef6506a17f5'
+VERIFY_IMAGE=$(docker inspect habbo-mariadb-1 --format '{{.Image}}')
 cleanup() {
-  docker exec habbo-mariadb-1 sh -lc "mariadb -uroot -p\"\$MARIADB_ROOT_PASSWORD\" -e 'DROP DATABASE IF EXISTS $DB'" >/dev/null 2>&1 || true
+  docker rm -f "$VERIFY_CONTAINER" >/dev/null 2>&1 || true
   rm -rf "$WORK"
 }
 trap cleanup EXIT
@@ -100,12 +99,36 @@ test -f "$B/habbo-runtime-healthcheck.timer"
 test -f "$WORK/web-frontend-assets/templates/index_v32.tpl"
 grep -q 'static/js/libs2.js' "$WORK/web-frontend-assets/templates/index_v32.tpl"
 
-docker exec habbo-mariadb-1 sh -lc "mariadb -uroot -p\"\$MARIADB_ROOT_PASSWORD\" -e 'CREATE DATABASE $DB CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci'"
-gzip -cd "$B/havana.sql.gz" | docker exec -i habbo-mariadb-1 sh -lc "mariadb -uroot -p\"\$MARIADB_ROOT_PASSWORD\" $DB"
-mapfile -t vals < <(docker exec habbo-mariadb-1 sh -lc "mariadb -N -B -uroot -p\"\$MARIADB_ROOT_PASSWORD\" $DB -e \"SELECT COUNT(*) FROM information_schema.tables WHERE table_schema='$DB'; SELECT COUNT(*) FROM navigator_styles; SELECT COUNT(*) FROM users WHERE username='RogerVideo'; SELECT COUNT(*) FROM rooms WHERE id=1000;\"")
-tables=${vals[0]:-0}; nav=${vals[1]:-0}; user=${vals[2]:-0}; room=${vals[3]:-0}
-[[ "$tables" -ge 80 ]]
-[[ "$nav" -ge 1 ]]
-[[ "$user" -ge 1 ]]
-[[ "$room" -ge 1 ]]
-printf 'PASS: backup restore verifier\nbackup=%s\ntables=%s navigator_styles=%s RogerVideo=%s room1000=%s\n' "$B" "$tables" "$nav" "$user" "$room"
+digests=$(docker image inspect "$VERIFY_IMAGE" --format '{{range .RepoDigests}}{{println .}}{{end}}')
+grep -Fxq "$EXPECTED_MARIADB_DIGEST" <<<"$digests" || { echo 'FAIL: live MariaDB image does not match pinned digest' >&2; exit 1; }
+
+docker run -d --name "$VERIFY_CONTAINER" \
+  --network none \
+  --tmpfs /var/lib/mysql:rw,nosuid,nodev,size=320m \
+  -e MARIADB_ROOT_PASSWORD=verify-root \
+  -e MARIADB_DATABASE=restore_verify \
+  "$VERIFY_IMAGE" >/dev/null
+
+[[ "$(docker inspect "$VERIFY_CONTAINER" --format '{{.HostConfig.NetworkMode}}')" == none ]] || { echo 'FAIL: isolated restore container has unexpected network mode' >&2; exit 1; }
+[[ -z "$(docker port "$VERIFY_CONTAINER")" ]] || { echo 'FAIL: isolated restore container unexpectedly publishes ports' >&2; exit 1; }
+tmpfs_spec=$(docker inspect "$VERIFY_CONTAINER" --format '{{index .HostConfig.Tmpfs "/var/lib/mysql"}}')
+[[ "$tmpfs_spec" == *'size=320m'* ]] || { echo 'FAIL: isolated restore datadir is not tmpfs' >&2; exit 1; }
+
+ready=false
+for i in $(seq 1 60); do
+  if docker exec "$VERIFY_CONTAINER" mariadb-admin --protocol=tcp -h127.0.0.1 -uroot -pverify-root ping --silent >/dev/null 2>&1; then
+    ready=true
+    break
+  fi
+  sleep 1
+done
+$ready || { docker logs "$VERIFY_CONTAINER" >&2 || true; echo 'FAIL: isolated MariaDB did not become ready' >&2; exit 1; }
+
+gzip -cd "$B/havana.sql.gz" | docker exec -i "$VERIFY_CONTAINER" mariadb --protocol=tcp -h127.0.0.1 -uroot -pverify-root restore_verify
+read -r tables nav user room < <(docker exec "$VERIFY_CONTAINER" mariadb --protocol=tcp -h127.0.0.1 -N -B -uroot -pverify-root restore_verify -e "SELECT (SELECT COUNT(*) FROM information_schema.tables WHERE table_schema='restore_verify'),(SELECT COUNT(*) FROM navigator_styles),(SELECT COUNT(*) FROM users WHERE username='RogerVideo'),(SELECT COUNT(*) FROM rooms WHERE id=1000);")
+[[ "$tables" == 88 ]] || { echo "FAIL: restored table count mismatch: $tables" >&2; exit 1; }
+[[ "$nav" == 40 ]] || { echo "FAIL: restored navigator_styles mismatch: $nav" >&2; exit 1; }
+[[ "$user" == 1 ]] || { echo "FAIL: restored RogerVideo mismatch: $user" >&2; exit 1; }
+[[ "$room" == 1 ]] || { echo "FAIL: restored room1000 mismatch: $room" >&2; exit 1; }
+
+printf 'PASS: backup restore verifier\nbackup=%s\ntables=%s navigator_styles=%s RogerVideo=%s room1000=%s\nrestore_isolation=network-none tmpfs-datadir no-published-ports live-db-untouched\n' "$B" "$tables" "$nav" "$user" "$room"

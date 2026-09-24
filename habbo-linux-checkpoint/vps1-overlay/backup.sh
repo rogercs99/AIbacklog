@@ -28,7 +28,7 @@ tar -C "$ROOT" -czf "$OUT/web-frontend-overlay.tar.gz" web-frontend-assets
 install -m 600 "$ROOT/v31/client/vars.txt" "$OUT/v31-vars.txt"
 install -m 600 "$ROOT/web/client/v39/gamedata/external_variables_vps1.txt" "$OUT/r39-external_variables_vps1.txt"
 readlink "$ROOT/web/gordon/RELEASE39-22643-22891-200911110035_07c3a2a30713fd5bea8a8caf07e33438/config_habbo.xml" > "$OUT/r39-config_habbo-symlink.txt"
-docker exec habbo-mariadb-1 sh -lc 'mariadb-dump -u"$MARIADB_USER" -p"$MARIADB_PASSWORD" --single-transaction --routines --triggers "$MARIADB_DATABASE"' | gzip -9 > "$OUT/havana.sql.gz"
+docker exec habbo-mariadb-1 sh -lc 'mariadb-dump -uroot -p"$MARIADB_ROOT_PASSWORD" --lock-all-tables --routines --triggers "$MARIADB_DATABASE"' | gzip -9 > "$OUT/havana.sql.gz"
 chmod 600 "$OUT"/*
 if [[ -n "$PREV" && -d "$PREV" && "$PREV" != "$OUT" ]]; then
   deduped=0

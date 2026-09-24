@@ -2362,3 +2362,91 @@ Git commits:
 - 23-line backup verifier: `9674d682b476c4c3713800652ed16c6a70b77458`
 
 Explicit live↔Git comparison after promotion: 8/8 artifacts matched byte-for-byte.
+
+## Transactionally consistent DB backup contract 2026-09-24
+
+The database backup path was audited and strengthened without changing its consistency model.
+
+Source DB inventory at validation time:
+- 84 InnoDB tables;
+- 3 MyISAM tables: `cms_stickers`, `cms_stickers_catalogue`, `games_ranks`;
+- 1 view/object with NULL engine;
+- 0 triggers, 0 routines, 0 events;
+- 1 binary/BLOB column: `items_photos.photo_data`;
+- `items_photos` currently had 0 rows / 0 binary bytes.
+
+Consistency decision:
+- `--lock-all-tables` remains mandatory because MyISAM is present;
+- `--single-transaction` remains explicitly forbidden while MyISAM exists;
+- measured locked dump duration to `/dev/null`: about 0.73 s;
+- dump flags now also include `--events` and `--hex-blob`, in addition to `--routines` and `--triggers`.
+
+Every new backup now contains root-only `db-backup-contract.txt` with:
+- contract_version=1;
+- consistency=global-read-lock;
+- dump tool + exact flags + mariadb-dump version;
+- engine inventory;
+- SQL object inventory;
+- binary-column count.
+
+Local verifier:
+- requires the DB contract in the complete top-level manifest;
+- validates required dump flags;
+- restores the dump in isolated MariaDB (`network=none`, tmpfs datadir, no published ports);
+- compares restored engine inventory, SQL object inventory and binary-column inventory exactly against the backup contract;
+- still requires 88 tables / 40 navigator_styles / RogerVideo=1 / room1000=1.
+
+First real contract generation:
+- `manual-20260924T110348Z`;
+- contract engines `NULL:1,InnoDB:84,MyISAM:3`;
+- objects `triggers:0,routines:0,events:0`;
+- binary columns `1`;
+- local isolated restore PASS with `db_contract=global-read-lock engines+objects+binary-columns-exact`.
+
+Offsite restore was aligned with the same contract:
+- VPS2 parses and validates the archived DB contract before restore;
+- after restore it compares engines/objects/binary-columns exactly;
+- VPS1 offsite restore smoke compares the returned proof against the source backup's own contract rather than hardcoding future schema counts.
+
+Changing the VPS2 restore drill correctly caused strict live-current recovery-kit drift. The system was intentionally left OVERALL DEGRADED while the kit was refreshed from the 23 live VPS2 files.
+
+Refreshed recovery kit:
+- overlay SHA256 `cf344b13f18e2d88212cab36a88c342bdb732d8e66f6826ff62bf828f1bf0d7b`;
+- manifest SHA256 `820432bf6434c9ce17faab0d9c2c8cad8347e7ed10c556df2347b74e4208dd14`;
+- recovery smoke PASS: 23 files / 11 scripts / 12 units / exact hashes / bootstrap rehearsal;
+- disaster recovery source smoke PASS.
+
+Strict three-generation rotation after refresh:
+- `manual-20260924T111032Z`;
+- `manual-20260924T111101Z`;
+- `manual-20260924T111123Z`;
+- deep offsite scrub PASS for all 3;
+- deterministic recovery fingerprint `b9b99516b6cffdd7086d6da95647065a3e093a17ed2863f006564abcd343d12b`.
+
+Final offsite restore proof on `111123Z`:
+- archive SHA256 `b925eddcc5e2be3e7ce474aff8339f2d1633cf797827be28b13beeb2c1b1ee15`;
+- manifest=complete, workspace=tmpfs, network=none, db_datadir=tmpfs;
+- db_contract=global-read-lock;
+- db_engines=`NULL:1,InnoDB:84,MyISAM:3`;
+- db_objects=`triggers:0,routines:0,events:0`;
+- db_binary_columns=1;
+- 88/40/1/1 restored invariants;
+- VPS1 offsite restore smoke PASS.
+
+Live hashes:
+- backup.sh `bb818bd1cbff0bfaefcbbe1a6c5881774b89945751fee0d4ff4cd8cb76bde48b`;
+- verify-latest-backup.sh `a48934af5932a719caf2b8c84d007034a89fea7d4a9dc8effa82655b3cdf847c`;
+- db-backup-consistency-smoke.sh `864b19a2a8d1c4503fe90ce58b30e93e47d41bd3b263f0321e45b98f712c7ea2`;
+- VPS2 offsite restore drill `1668ec3b62f5c17700e590c818cbd9be28ab156b4f9bc7b21f61f76a547d8b35`;
+- VPS1 offsite restore smoke `64e20a7ee5bd76a6c4fb89356866e75fb7c2fc4add0f1a9ba7a19417b994249a`;
+- VPS2 recovery manifest `820432bf6434c9ce17faab0d9c2c8cad8347e7ed10c556df2347b74e4208dd14`.
+
+Git commits:
+- backup contract `f27ecca2fec50dfba718868f5b7f10931e037c03`;
+- local restore structural comparison `8843c070499ba731b1ef2e7efd0ed13b6c090031`;
+- live DB consistency smoke `ab1e8f0d0f13def566474387f74ea8aaec0a2ff7`;
+- offsite restore DB contract `63289a92597582af02253c0478383edd53823f07`;
+- offsite restore proof guard `0157a8c40cf961c8684d2c159f90f05206b03dd4`;
+- refreshed VPS2 recovery manifest `8a98ecb25ab3b9da4e4167ac6cb7a6b3c816a67f`.
+
+Live↔Git identity for these six artifacts: 6/6 exact match.

@@ -1755,3 +1755,40 @@ Git commits:
 - VPS1 deep status: `dd8f3739defbcf0e69d30841a9f7eab81dbbd3b2`
 
 Explicit live↔Git comparison after promotion: all seven artifacts matched byte-for-byte.
+
+## Disaster restore drill tmpfs isolation 2026-09-24
+
+The local non-destructive disaster restore drill no longer builds its temporary reconstructed root under /tmp on the VPS1 root filesystem.
+
+Changes:
+- disaster-restore-drill.sh requires at least 512 MiB free in /dev/shm;
+- its workspace is now /dev/shm/habbo-drill.<random>;
+- the existing EXIT trap removes the workspace;
+- successful output explicitly reports workspace=tmpfs;
+- disk-health-smoke.sh fails on stale /dev/shm/habbo-drill.* workdirs older than 10 minutes.
+
+Sizing before migration:
+- VPS1 root free: about 2.1 GiB;
+- /dev/shm free: about 2.0 GiB;
+- Havana source bundle: ~4.2 MiB;
+- FINAL-v2 ZIP: ~3.4 MiB;
+- frontend overlay source: ~25 MiB;
+- current backup ops overlay: ~24 KiB;
+- current backup frontend overlay archive: ~11 MiB.
+
+Real systemd proof on manual-20260924T073429Z:
+- habbo-disaster-drill.service Result=success / ExecMainStatus=0;
+- journal reported compose=resolved, cloudflare=coherent, systemd=verified, final_v2=verified, db_restore=verified, workspace=tmpfs;
+- drill stamp advanced to 073429Z;
+- zero habbo-drill.* workdirs remained in /dev/shm;
+- disk health returned PASS with stale_disaster_drill_workdirs=0.
+
+Live hashes:
+- disaster-restore-drill.sh: 263f6729d3c6834ce92f0c71f7a16f4c5be8d5b9ae6220adf8f29cbfd31090f0
+- disk-health-smoke.sh: df70c5a35f430d2790abe3f658d6eb38b2825597b5d2957204e411d6700e3804
+
+Git commits:
+- tmpfs disaster drill: 0761f96015f833cf3f77bad0fb085caa35f11e86
+- stale drill workdir guard: 9ee09aea0122ce1692f00ca0dc5d49a8110c012d
+
+Explicit live↔Git comparison after promotion: both artifacts matched byte-for-byte.

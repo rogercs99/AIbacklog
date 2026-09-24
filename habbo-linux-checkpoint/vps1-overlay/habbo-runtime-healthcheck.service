@@ -2,6 +2,7 @@
 Description=Habbo runtime healthcheck
 After=network-online.target habbo-stack.service habbo-static.service habbo-websockify.service cloudflared-stremio-legacy.service
 Wants=network-online.target
+OnFailure=habbo-runtime-healthcheck-failed.service
 
 [Service]
 Type=oneshot

@@ -1,0 +1,9 @@
+[Unit]
+Description=Habbo runtime healthcheck
+After=network-online.target habbo-stack.service habbo-static.service habbo-websockify.service cloudflared-stremio-legacy.service
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+ExecStart=/srv/habbo/ops/runtime-healthcheck.sh
+TimeoutStartSec=90

@@ -1,0 +1,66 @@
+services:
+  mariadb:
+    image: mariadb:11.5.2
+    environment:
+      MARIADB_USER: havana
+      MARIADB_PASSWORD: ${HABBO_DB_PASSWORD}
+      MARIADB_ROOT_PASSWORD: ${HABBO_DB_ROOT_PASSWORD}
+      MARIADB_DATABASE: havana
+    volumes:
+      - /srv/habbo/state/mariadb:/var/lib/mysql
+      - /srv/habbo/Havana/tools/havana.sql:/docker-entrypoint-initdb.d/00-havana.sql:ro
+      - /srv/habbo/Havana/tools/migrations/update.1.1.sql:/docker-entrypoint-initdb.d/01-update.1.1.sql:ro
+      - /srv/habbo/Havana/tools/migrations/update.1.2.sql:/docker-entrypoint-initdb.d/02-update.1.2.sql:ro
+      - /srv/habbo/Havana/tools/migrations/update.1.3.sql:/docker-entrypoint-initdb.d/03-update.1.3.sql:ro
+    ports:
+      - 127.0.0.1:13307:3306
+    healthcheck:
+      test: ["CMD", "healthcheck.sh", "--connect", "--innodb_initialized"]
+      start_period: 20s
+      interval: 10s
+      timeout: 5s
+      retries: 10
+    restart: unless-stopped
+  havana-server:
+    build:
+      context: /srv/habbo/Havana
+      dockerfile: Dockerfile-Server
+    depends_on:
+      mariadb:
+        condition: service_healthy
+    environment:
+      MYSQL_HOSTNAME: mariadb
+      MYSQL_PORT: 3306
+      MYSQL_USERNAME: havana
+      MYSQL_PASSWORD: ${HABBO_DB_PASSWORD}
+      MYSQL_DATABASE: havana
+    ports:
+      - 127.0.0.1:12321:12321
+      - 127.0.0.1:12322:12322
+      - 127.0.0.1:12323:12323
+      - 127.0.0.1:12309:12309
+    restart: unless-stopped
+  havana-web:
+    build:
+      context: /srv/habbo/Havana
+      dockerfile: Dockerfile-Web
+    depends_on:
+      mariadb:
+        condition: service_healthy
+    environment:
+      RCON_IP: havana-server
+      MYSQL_HOSTNAME: mariadb
+      MYSQL_PORT: 3306
+      MYSQL_USERNAME: havana
+      MYSQL_PASSWORD: ${HABBO_DB_PASSWORD}
+      MYSQL_DATABASE: havana
+    volumes:
+      - /srv/habbo/web-frontend-assets/web-gallery:/havana-web/tools/www/web-gallery
+      - /srv/habbo/web-frontend-assets/styles:/havana-web/tools/www/styles
+      - /srv/habbo/web-frontend-assets/js:/havana-web/tools/www/js
+      - /srv/habbo/web-frontend-assets/images:/havana-web/tools/www/images
+      - /srv/habbo/web-frontend-assets/templates/index_v32.tpl:/havana-web/tools/www-tpl/default/index_v32.tpl:ro
+      - /srv/habbo/web-frontend-assets/templates/register.tpl:/havana-web/tools/www-tpl/default/register.tpl:ro
+    ports:
+      - 127.0.0.1:18081:80
+    restart: unless-stopped

@@ -1405,3 +1405,35 @@ Git commits:
 - restore shared preflight: `d40c7de931fccb3eb7eb7f24dbd5fccbd51f0069`
 - VPS1 recovery-space guard: `02a8aa4e5e192d587edfddab8bd748cb98ab6aea`
 - VPS1 status margins: `b00e315af285e1881e53bd3de0c2ef095b2bc3cb`
+
+## VPS2 heartbeat hard-failure path 2026-09-24
+
+The VPS2 control-plane heartbeat now has an independent systemd `OnFailure` path for failures that occur before its own script can write a status marker.
+
+Changes:
+- shared failure recorder `habbo-vps1-offsite-failed.sh` now supports `kind=control`;
+- heartbeat service has `OnFailure=habbo-vps2-control-plane-heartbeat-failed.service`;
+- the failure service writes root-only `/srv/habbo/VPS2_CONTROL_PLANE_FAILED` on VPS1;
+- heartbeat failed-unit scan now includes the `habbo-vps2-control-plane*` namespace;
+- a later successful heartbeat clears the hard-failure latch.
+
+Controlled hard-failure proof:
+- heartbeat `ExecStart` was temporarily overridden with `/bin/false`;
+- main heartbeat service ended Result=exit-code / ExecMainStatus=1;
+- hard-failure recorder service ended Result=success / ExecMainStatus=0;
+- VPS1 received `VPS2_CONTROL_PLANE_FAILED` mode 0600 with kind=control, failed unit, result, status and journal;
+- `habbo-status.sh` reported VPS2 control-plane latch FAILED / proof FAIL / OVERALL DEGRADED;
+- override removed and real unit restored;
+- healthy heartbeat returned success, cleared latch, smoke passed and VPS1 returned OVERALL READY.
+
+Live hashes:
+- shared failure recorder: `065a20b72e3e309bd36e63f235695916c3278eef49e34a77fb5872c0643db986`
+- heartbeat: `a60bf28a561760274b3c34945dc772e03072b50684522c767997c89dfbcb7b25`
+- heartbeat service: `100abd5c69c6512dcf3927e353d8a8807be0e1ee0224524722c1421b395082d2`
+- hard-failure service: `e630f58cc3fc48a6b0302031913ab23fc221a47e3ff9c9117593d70bc401789c`
+
+Git commits:
+- shared recorder control support: `5d16f48a82de255c7f76f1b44c2da16a2f117e4c`
+- heartbeat failed-unit namespace: `a0fdfbfb0b4729aada5cf1bd0f22f6e0d3a6e5ce`
+- heartbeat OnFailure wiring: `4c4e06f2ee635354cb4443e479156b8cdf8871fa`
+- hard-failure service: `c71bd7d108c1ab666f32cbcc5910e0ba3f0a6bb5`

@@ -23,7 +23,7 @@ validate_source(){
   [[ -d "$SRC/usr/local/sbin" && -d "$SRC/etc/systemd/system" ]] || fail "invalid source root: $SRC"
   mapfile -t scripts < <(find "$SRC/usr/local/sbin" -maxdepth 1 -type f -name 'habbo-*' -printf '%p\n' | sort)
   mapfile -t units < <(find "$SRC/etc/systemd/system" -maxdepth 1 -type f -name 'habbo-*' -printf '%p\n' | sort)
-  [[ "${#scripts[@]}" -eq 10 ]] || fail "source script count mismatch: ${#scripts[@]} (expected 10)"
+  [[ "${#scripts[@]}" -eq 11 ]] || fail "source script count mismatch: ${#scripts[@]} (expected 11)"
   [[ "${#units[@]}" -eq 12 ]] || fail "source unit count mismatch: ${#units[@]} (expected 12)"
   [[ -f "$SRC/usr/local/sbin/habbo-vps2-control-plane-bootstrap.sh" ]] || fail 'bootstrap missing from source kit'
   for f in "${scripts[@]}"; do
@@ -97,7 +97,7 @@ validate_installed_root(){
   local target=$1
   mapfile -t scripts < <(find "$target/usr/local/sbin" -maxdepth 1 -type f -name 'habbo-*' -printf '%p\n' | sort)
   mapfile -t units < <(find "$target/etc/systemd/system" -maxdepth 1 -type f -name 'habbo-*' -printf '%p\n' | sort)
-  [[ "${#scripts[@]}" -eq 10 ]] || fail "installed script count mismatch: ${#scripts[@]}"
+  [[ "${#scripts[@]}" -eq 11 ]] || fail "installed script count mismatch: ${#scripts[@]}"
   [[ "${#units[@]}" -eq 12 ]] || fail "installed unit count mismatch: ${#units[@]}"
   for f in "${scripts[@]}"; do [[ "$(stat -c '%a %U:%G' "$f")" == '700 root:root' ]] || fail "script mode invalid: $f"; done
   for f in "${units[@]}"; do [[ "$(stat -c '%a %U:%G' "$f")" == '644 root:root' ]] || fail "unit mode invalid: $f"; done
@@ -128,6 +128,7 @@ seed_store(){
     ssh -o BatchMode=yes "$REMOTE" "exec tar -C '$remote' -czf - ." >"$tmp"
     chmod 600 "$tmp"
     gzip -t "$tmp"
+    "$SRC/usr/local/sbin/habbo-offsite-tar-safety.py" "$tmp" >/dev/null || fail "seed archive structural safety failed: $name"
     work=$(mktemp -d /dev/shm/habbo-bootstrap-seed.XXXXXX)
     tar -xzf "$tmp" -C "$work"
     (cd "$work" && sha256sum -c SHA256SUMS --status) || { rm -rf "$work" "$tmp"; fail "seed internal manifest failed: $name"; }
@@ -157,7 +158,7 @@ case "$mode" in
     enable_offline "$target"
     validate_installed_root "$target"
     echo 'PASS: Habbo VPS2 control-plane bootstrap rehearsal'
-    echo "source=$SRC target=$target files=22 scripts=10 units=12 timers=4 modes=verified offline_enable=verified secrets=external"
+    echo "source=$SRC target=$target files=23 scripts=11 units=12 timers=4 modes=verified offline_enable=verified secrets=external"
     ;;
   --check-prereqs)
     check_prereqs
@@ -179,7 +180,7 @@ case "$mode" in
     systemctl start habbo-vps2-control-plane-heartbeat.service
     /usr/local/sbin/habbo-vps1-offsite-store-smoke.sh
     echo 'PASS: Habbo VPS2 control plane bootstrapped'
-    echo 'files=22 scripts=10 units=12 timers=4 offsite_seed=3 verification=pull+webkit+restore+heartbeat secrets=external'
+    echo 'files=23 scripts=11 units=12 timers=4 offsite_seed=3 verification=pull+webkit+restore+heartbeat secrets=external'
     ;;
   *) usage ;;
 esac

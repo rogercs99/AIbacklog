@@ -133,17 +133,24 @@ if [[ -f /srv/habbo/VPS2_CONTROL_PLANE_STATUS ]]; then
   vps2cp_result=$(awk -F= '$1=="result" {print $2}' /srv/habbo/VPS2_CONTROL_PLANE_STATUS)
   vps2cp_healthy=$(awk -F= '$1=="timers_healthy" {print $2}' /srv/habbo/VPS2_CONTROL_PLANE_STATUS)
   vps2cp_failed=$(awk -F= '$1=="failed_units" {print $2}' /srv/habbo/VPS2_CONTROL_PLANE_STATUS)
+  vps2cp_total=$(awk -F= '$1=="timers_total" {print $2}' /srv/habbo/VPS2_CONTROL_PLANE_STATUS)
+  vps2cp_root=$(awk -F= '$1=="root_free_kb" {print $2}' /srv/habbo/VPS2_CONTROL_PLANE_STATUS)
+  vps2cp_shm=$(awk -F= '$1=="shm_free_kb" {print $2}' /srv/habbo/VPS2_CONTROL_PLANE_STATUS)
   vps2cp_age=$(( $(date -u +%s) - $(date -u -d "$vps2cp_ts" +%s) ))
 else
-  vps2cp_age=999999999; vps2cp_result=missing; vps2cp_healthy=0; vps2cp_failed=999; vps2cp_ok=false
+  vps2cp_age=999999999; vps2cp_result=missing; vps2cp_total=0; vps2cp_healthy=0; vps2cp_failed=999; vps2cp_root=0; vps2cp_shm=0; vps2cp_ok=false
 fi
 [[ "$vps2cp_age" -le 7500 ]] || vps2cp_ok=false
-[[ "$vps2cp_result" == success && "$vps2cp_healthy" == 4 && "$vps2cp_failed" == 0 ]] || vps2cp_ok=false
+[[ "$vps2cp_result" == success && "$vps2cp_total" == 4 && "$vps2cp_healthy" == 4 && "$vps2cp_failed" == 0 ]] || vps2cp_ok=false
+[[ "$vps2cp_root" =~ ^[0-9]+$ && "$vps2cp_root" -ge 819200 ]] || vps2cp_ok=false
+[[ "$vps2cp_shm" =~ ^[0-9]+$ && "$vps2cp_shm" -ge 524288 ]] || vps2cp_ok=false
 [[ ! -e /srv/habbo/VPS2_CONTROL_PLANE_FAILED ]] || vps2cp_ok=false
 $vps2cp_ok || ok=false
 printf '%-28s %ss\n' 'VPS2 control-plane age' "$vps2cp_age"
 printf '%-28s %s\n' 'VPS2 control-plane latch' "$([[ -e /srv/habbo/VPS2_CONTROL_PLANE_FAILED ]] && echo FAILED || echo clear)"
 printf '%-28s %s\n' 'VPS2 control-plane proof' "$($vps2cp_ok && echo OK || echo FAIL)"
+printf '%-28s %s MiB\n' 'VPS2 root free' "$((vps2cp_root/1024))"
+printf '%-28s %s MiB\n' 'VPS2 shm free' "$((vps2cp_shm/1024))"
 printf '%-28s %s\n' 'runtime backup match' "$([[ "$runtime_backup" == "$latest" ]] && echo OK || echo FAIL)"
 
 if [[ -e /run/habbo-runtime-health.failed ]]; then

@@ -2,8 +2,8 @@
 set -u
 ROOT=/srv/habbo
 STAMP=/run/habbo-postboot-validated
-ATTEMPTS=\${ATTEMPTS:-18}
-SLEEP_SEC=\${SLEEP_SEC:-5}
+ATTEMPTS=${ATTEMPTS:-18}
+SLEEP_SEC=${SLEEP_SEC:-5}
 TMP=$(mktemp)
 trap 'rm -f "$TMP"' EXIT
 rm -f "$STAMP"

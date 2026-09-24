@@ -139,16 +139,18 @@ if [[ -f /srv/habbo/VPS2_CONTROL_PLANE_STATUS ]]; then
   vps2cp_store=$(awk -F= '$1=="offsite_store_healthy" {print $2}' /srv/habbo/VPS2_CONTROL_PLANE_STATUS)
   vps2cp_deep=$(awk -F= '$1=="offsite_deep_verified" {print $2}' /srv/habbo/VPS2_CONTROL_PLANE_STATUS)
   vps2cp_bootstrap=$(awk -F= '$1=="offsite_bootstrap_verified" {print $2}' /srv/habbo/VPS2_CONTROL_PLANE_STATUS)
+  vps2cp_deterministic=$(awk -F= '$1=="offsite_recovery_deterministic" {print $2}' /srv/habbo/VPS2_CONTROL_PLANE_STATUS)
+  vps2cp_fingerprint=$(awk -F= '$1=="offsite_recovery_fingerprint" {print $2}' /srv/habbo/VPS2_CONTROL_PLANE_STATUS)
   vps2cp_archives=$(awk -F= '$1=="offsite_archives" {print $2}' /srv/habbo/VPS2_CONTROL_PLANE_STATUS)
   vps2cp_age=$(( $(date -u +%s) - $(date -u -d "$vps2cp_ts" +%s) ))
 else
-  vps2cp_age=999999999; vps2cp_result=missing; vps2cp_total=0; vps2cp_healthy=0; vps2cp_failed=999; vps2cp_root=0; vps2cp_shm=0; vps2cp_store=0; vps2cp_deep=0; vps2cp_bootstrap=0; vps2cp_archives=0; vps2cp_ok=false
+  vps2cp_age=999999999; vps2cp_result=missing; vps2cp_total=0; vps2cp_healthy=0; vps2cp_failed=999; vps2cp_root=0; vps2cp_shm=0; vps2cp_store=0; vps2cp_deep=0; vps2cp_bootstrap=0; vps2cp_deterministic=0; vps2cp_fingerprint=missing; vps2cp_archives=0; vps2cp_ok=false
 fi
 [[ "$vps2cp_age" -le 7500 ]] || vps2cp_ok=false
 [[ "$vps2cp_result" == success && "$vps2cp_total" == 4 && "$vps2cp_healthy" == 4 && "$vps2cp_failed" == 0 ]] || vps2cp_ok=false
 [[ "$vps2cp_root" =~ ^[0-9]+$ && "$vps2cp_root" -ge 819200 ]] || vps2cp_ok=false
 [[ "$vps2cp_shm" =~ ^[0-9]+$ && "$vps2cp_shm" -ge 524288 ]] || vps2cp_ok=false
-[[ "$vps2cp_store" == 1 && "$vps2cp_deep" == 1 && "$vps2cp_bootstrap" == 1 && "$vps2cp_archives" == 3 ]] || vps2cp_ok=false
+[[ "$vps2cp_store" == 1 && "$vps2cp_deep" == 1 && "$vps2cp_bootstrap" == 1 && "$vps2cp_deterministic" == 1 && "$vps2cp_fingerprint" =~ ^[0-9a-f]{64}$ && "$vps2cp_archives" == 3 ]] || vps2cp_ok=false
 [[ ! -e /srv/habbo/VPS2_CONTROL_PLANE_FAILED ]] || vps2cp_ok=false
 $vps2cp_ok || ok=false
 printf '%-28s %ss\n' 'VPS2 control-plane age' "$vps2cp_age"
@@ -156,11 +158,13 @@ printf '%-28s %s\n' 'VPS2 control-plane latch' "$([[ -e /srv/habbo/VPS2_CONTROL_
 printf '%-28s %s\n' 'VPS2 control-plane proof' "$($vps2cp_ok && echo OK || echo FAIL)"
 printf '%-28s %s MiB\n' 'VPS2 root free' "$((vps2cp_root/1024))"
 printf '%-28s %s MiB\n' 'VPS2 shm free' "$((vps2cp_shm/1024))"
-if [[ "$vps2cp_store" == 1 && "$vps2cp_deep" == 1 && "$vps2cp_bootstrap" == 1 && "$vps2cp_archives" == 3 ]]; then vps2cp_store_label=OK; else vps2cp_store_label=FAIL; fi
+if [[ "$vps2cp_store" == 1 && "$vps2cp_deep" == 1 && "$vps2cp_bootstrap" == 1 && "$vps2cp_deterministic" == 1 && "$vps2cp_fingerprint" =~ ^[0-9a-f]{64}$ && "$vps2cp_archives" == 3 ]]; then vps2cp_store_label=OK; else vps2cp_store_label=FAIL; fi
 printf '%-28s %s\n' 'VPS2 offsite store' "$vps2cp_store_label"
 printf '%-28s %s\n' 'VPS2 offsite archives' "$vps2cp_archives"
 printf '%-28s %s\n' 'VPS2 deep scrub' "$([[ "$vps2cp_deep" == 1 ]] && echo OK || echo FAIL)"
 printf '%-28s %s\n' 'VPS2 bootstrap rehearsal' "$([[ "$vps2cp_bootstrap" == 1 ]] && echo OK || echo FAIL)"
+printf '%-28s %s\n' 'VPS2 recovery deterministic' "$([[ "$vps2cp_deterministic" == 1 ]] && echo OK || echo FAIL)"
+printf '%-28s %.16s\n' 'VPS2 recovery fingerprint' "$vps2cp_fingerprint"
 printf '%-28s %s\n' 'runtime backup match' "$([[ "$runtime_backup" == "$latest" ]] && echo OK || echo FAIL)"
 
 if [[ -e /run/habbo-runtime-health.failed ]]; then

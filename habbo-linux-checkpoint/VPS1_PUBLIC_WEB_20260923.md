@@ -1468,3 +1468,41 @@ Live/Git identity after the proof:
 - heartbeat service: match=true;
 - heartbeat failure service: match=true;
 - shared failure recorder with `kind=control`: match=true.
+
+## VPS2 failed-unit parser regression 2026-09-24
+
+A controlled dual failure exposed a parser bug in the VPS2 control-plane heartbeat.
+
+Scenario:
+- heartbeat service and its OnFailure recorder were both temporarily forced to `/bin/false`;
+- both services ended Result=exit-code / ExecMainStatus=1;
+- no remote latch could be written because both the primary heartbeat and its recorder path were intentionally broken;
+- heartbeat timer remained active.
+
+Expected deferred recovery:
+- after restoring both units, the next heartbeat should detect the recorder service still present in systemd failed state;
+- it should publish failed control-plane status/latch to VPS1;
+- the restored OnFailure recorder should then run successfully;
+- a second heartbeat should return to success and clear the latch.
+
+Bug found:
+- heartbeat used `systemctl --failed --no-legend | awk '{print $1}'`;
+- on this systemd version the first field is the visual bullet `●`, not the unit name;
+- therefore the heartbeat incorrectly published `failed_units=0` while the recorder service was visibly failed.
+
+Fix:
+- failed-unit enumeration now uses `systemctl --failed --no-legend --plain` before extracting field 1;
+- unrelated failed services remain filtered out; Habbo offsite/WebKit/control-plane units remain in scope.
+
+Regression proof after fix:
+- stale failed recorder was visible as `habbo-vps2-control-plane-heartbeat-failed.service`;
+- first heartbeat after fix exited status1 and published `failed_units=1` to VPS1;
+- VPS1 received control-plane failure latch and became OVERALL DEGRADED;
+- restored OnFailure recorder ran successfully;
+- second heartbeat published `failed_units=0`, 4/4 timers healthy, valid recovery-space margins, cleared the latch and returned VPS1 to OVERALL READY.
+
+Live heartbeat hash after fix:
+- `d6f745b83af56f5ee1b7748959e35d654a15b9cb3046be616372d6a96c78920c`
+
+Git commit:
+- `73dcef7c217dbd332ba65477be3af292257c1dd7`

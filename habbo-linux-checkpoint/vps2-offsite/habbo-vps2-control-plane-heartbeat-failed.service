@@ -1,0 +1,7 @@
+[Unit]
+Description=Record Habbo VPS2 control-plane heartbeat hard failure on VPS1
+
+[Service]
+Type=oneshot
+ExecStart=/usr/local/sbin/habbo-vps1-offsite-failed.sh control habbo-vps2-control-plane-heartbeat.service
+TimeoutStartSec=30

@@ -2,6 +2,7 @@
 Description=Report Habbo VPS2 control-plane health to VPS1
 After=network-online.target
 Wants=network-online.target
+OnFailure=habbo-vps2-control-plane-heartbeat-failed.service
 
 [Service]
 Type=oneshot

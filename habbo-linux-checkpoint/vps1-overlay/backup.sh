@@ -19,6 +19,9 @@ docker exec habbo-mariadb-1 sh -lc 'mariadb-dump -u"$MARIADB_USER" -p"$MARIADB_P
 chmod 600 "$OUT"/*
 sha256sum "$OUT"/* > "$OUT/SHA256SUMS"
 chmod 600 "$OUT/SHA256SUMS"
+if [[ -x "$ROOT/ops/verify-latest-backup.sh" ]]; then
+  "$ROOT/ops/verify-latest-backup.sh" "$OUT"
+fi
 printf "%s\n" "$OUT" > "$ROOT/LATEST_PUBLIC_WEB_BACKUP"
 chmod 600 "$ROOT/LATEST_PUBLIC_WEB_BACKUP"
 echo "$OUT"

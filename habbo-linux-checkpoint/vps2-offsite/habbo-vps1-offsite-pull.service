@@ -1,0 +1,9 @@
+[Unit]
+Description=Pull verified Habbo VPS1 backup to VPS2
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+ExecStart=/usr/local/sbin/habbo-vps1-offsite-pull.sh
+TimeoutStartSec=300

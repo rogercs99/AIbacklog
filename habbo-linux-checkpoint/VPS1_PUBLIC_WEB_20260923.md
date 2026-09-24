@@ -2227,3 +2227,59 @@ Git commits:
 - refreshed recovery manifest: `972f3558c6b03e84fbbab53d361b197e32d17a0d`
 
 Live/Git identity after rollout: all five updated artifacts matched byte-for-byte.
+
+## Targeted WebKit TargetClosed retry 2026-09-24
+
+A real transient browser-engine crash was observed and converted into a narrowly-scoped retry contract without masking functional regressions.
+
+Observed incident:
+- WebKit smoke passed at 12:10:45 CEST;
+- a second run started 34 seconds later and failed during `page.goto()` with `playwright._impl._errors.TargetClosedError: Target page, context or browser has been closed`;
+- OnFailure recorder succeeded and wrote `WEBKIT_FAILED` on VPS1;
+- kernel journal showed no OOM / killed process / WebKit segfault;
+- no coredump and no orphaned WebKit/Playwright process remained;
+- system had roughly 1.8 GiB available memory at inspection;
+- rerunning the exact unchanged service immediately succeeded and cleared the latch through the normal success path.
+
+Retry policy added to `habbo-public-webkit-daily.sh`:
+- maximum two executions of the Python smoke;
+- retry only on stderr matching `TargetClosedError` or `Target page, context or browser has been closed`;
+- sleep two seconds before the single retry;
+- any HTTP, JS, assertion, navigation-functional or other error fails immediately without retry;
+- success proof records `attempts=1` or `attempts=2` locally and on VPS1.
+
+Validation:
+- two real production WebKit runs after rollout both passed with `attempts=1`;
+- lab transient fake failed first with TargetClosedError and passed second: attempts=2 / runs=2;
+- lab functional fake returned `home failed: status=500`; wrapper exited non-zero after runs=1 and did not retry;
+- VPS1 `public-webkit-remote-smoke.sh` now requires attempts in {1,2};
+- `habbo-status.sh` reports `WebKit attempts`.
+
+Recovery-kit rollout:
+- VPS1 was held DEGRADED with a maintenance control-plane latch;
+- canonical 22-file VPS2 recovery kit refreshed after the wrapper change;
+- refreshed overlay SHA-256: `6881e9cdb6f29f1fa12222013b91edfdb12038055f85b2209f5a4e75cb77e97b`;
+- refreshed manifest SHA-256: `b43f212e85d7756815b00ad13e6558dc647a68af7cc0349a51c92b6b491fc27c`;
+- staging + canonical recovery smoke passed 22 files / 10 scripts / 12 units / bootstrap rehearsal.
+
+Offsite migration:
+- created and synchronized `101702Z`, `101731Z`, `101759Z`;
+- all three daily backups and pulls returned success;
+- 3/3 retained store passed deep semantic+live+bootstrap+deterministic scrub;
+- new canonical recovery fingerprint: `0901038091077e850039f7a4c66a644d92684cf84dcfd3de4f00168a50bb50fc`;
+- heartbeat published 4/4 timers, zero failed units and the new fingerprint;
+- maintenance latch cleared automatically and VPS1 returned OVERALL READY.
+
+Live hashes:
+- WebKit daily wrapper: `660c437451ede52177c2d84ce0d8ea6559427b035508a6bb301b6d785cc732fa`
+- VPS1 WebKit proof smoke: `2d4294873570350c4721cce1e135b857b35fafaa21dd068edf5d73599b6ca317`
+- VPS1 status: `d82897ca1b93c6fe557b2e19134d96591380831750a79272f2d83cc9eb862e5f`
+- refreshed recovery manifest: `b43f212e85d7756815b00ad13e6558dc647a68af7cc0349a51c92b6b491fc27c`
+
+Git commits:
+- WebKit retry wrapper: `f4fba334fc6205dba1f2497ffa840531e05dea64`
+- remote proof attempts: `0e067472a5b830e49cb20e857cdc546a52e8a36e`
+- status attempts: `708d7a4590b7bcc18282420dc31d993f2526f849`
+- refreshed recovery manifest: `417652aec5f43c60ac44d32b72a8f6304493fc79`
+
+Live/Git identity after rollout: all four updated artifacts matched byte-for-byte.

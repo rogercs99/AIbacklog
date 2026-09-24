@@ -1,0 +1,11 @@
+[Unit]
+Description=Run Habbo VPS1 offsite restore drill weekly on VPS2
+
+[Timer]
+OnCalendar=Sun *-*-* 06:20:00
+Persistent=true
+RandomizedDelaySec=300
+Unit=habbo-vps1-offsite-restore-drill.service
+
+[Install]
+WantedBy=timers.target

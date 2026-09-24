@@ -195,3 +195,17 @@ Backup promotion is now guarded:
 - Therefore the latest pointer no longer advances to an untested backup.
 - First backup promoted through this guarded workflow: `/srv/habbo/backups/manual-20260924T020014Z`, restore PASS with 88 tables, 40 `navigator_styles`, `RogerVideo=1`, `room1000=1`.
 - Live `backup.sh` SHA-256: `fd19f562dc3ef1c77ac1c278c74cc4a47c55159f32efca0f103e649ffcefb586`.
+
+## Network perimeter and aggregate validator 2026-09-24
+
+The Habbo publication boundary was explicitly audited from both VPS1 and VPS2.
+
+- Sensitive Habbo ports `13307`, `12309`, `12321-12323`, `18080-18082` listen only on `127.0.0.1`.
+- An external probe from VPS2 to VPS1 public IP `85.208.23.189` confirmed all eight sensitive ports are closed/filtered externally, while expected host-level ports 80/443/22 remain reachable.
+- nginx has no `server_name habbo.gamemodai.pro`; Habbo public ingress exists only in the Cloudflare Tunnel config.
+- Forcing `habbo.gamemodai.pro` directly to the VPS1 public IP fails normal TLS hostname verification. Ignoring TLS reaches the default nginx/Stremio redirect rather than Habbo, so the Habbo origin is not directly addressable as that hostname.
+- Added `vps1-overlay/network-perimeter-smoke.sh`, live at `/srv/habbo/ops/network-perimeter-smoke.sh`, SHA-256 `4494004578fcfea90b63c7bfb3ae90b57dc26cc5af875d5f83baa31e45601159`.
+- Added `vps1-overlay/deployment-final-validate.sh`, live at `/srv/habbo/ops/deployment-final-validate.sh`, SHA-256 `9de8e7995720303f5cb9de1ba376374f9444e841069f8275aceb8b7eecfd5a78`.
+- The aggregate validator checks enabled/active units, immutable FINAL-v2 SHA-256, backend smoke, network perimeter, public/iPhone asset smoke and a full temporary-database restore of the latest backup.
+- Full aggregate validation against `/srv/habbo/backups/manual-20260924T020550Z`: PASS.
+- `verify-latest-backup.sh` now also requires the network perimeter and aggregate validator scripts to exist in each promoted backup; live SHA-256 `54648f6d379396af136b1917aa52d48ed2df36378c48d80a68ffa293763139b1`.

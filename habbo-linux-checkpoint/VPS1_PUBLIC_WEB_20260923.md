@@ -381,3 +381,41 @@ Git commits:
 - backup sync: `bc2743b87751902d9dc6ae6a832cdef1c50bf3ec`
 - restore verifier sync: `d6e7cf86d938eca5ba5bb1694368f4d5502e34e7`
 - final validator sync: `a506a521d774a643d96362f84ba4ff3bd375d3b4`
+
+## Backup hardlink deduplication 2026-09-24
+
+Future backups now deduplicate unchanged files against the previously promoted backup using hardlinks.
+
+- The backup remains a complete directory tree with normal file paths and passes the same SHA256/restore validation.
+- If a newly generated file is byte-identical to the same file in the previous backup, the new copy is replaced with a hardlink to the previous inode before `SHA256SUMS` is generated.
+- No historical backups were rewritten or deleted.
+- Deleting one hardlinked backup later does not invalidate another; storage is released only after the final link to a shared inode is removed.
+
+First deduplicated backup proof:
+- previous: `/srv/habbo/backups/manual-20260924T024249Z`;
+- new: `/srv/habbo/backups/manual-20260924T024717Z`;
+- restore verifier: PASS with 88 tables, 40 navigator_styles, RogerVideo=1, room1000=1;
+- 14 files were hardlinked to the previous backup;
+- deduplicated bytes: 10,712,735 bytes = 10.216 MiB;
+- `web-frontend-overlay.tar.gz` in both backups has inode `251960`, link count 2 and size 10,664,307 bytes;
+- physically unique large payload in the new backup was essentially `havana.sql.gz` (~851 KiB) plus the small changed `ops-overlay`.
+
+Retention reporting was updated for hardlinks:
+- `backup-retention-report.sh` now displays both apparent directory size and `reclaim_if_deleted_alone`;
+- this avoids claiming that deleting a hardlinked backup would free blocks still referenced by another backup;
+- it remains report-only and performs no deletion.
+
+Live hashes:
+- `backup.sh`: `95e8ff45a50187fffa8d30b63691b83d47e1c8573a10c030fba7c56b60fb3df8`
+- `backup-retention-report.sh`: `6d5cb492c2193af8a3feeea5b5d88c2a19edda4a2dcf8953e5e4904071f8593c`
+
+Git commits:
+- backup hardlink dedupe: `7d9a35fa9cc4cc52c75e2544526efa31035b6bf8`
+- hardlink-aware retention report: `d7608ead8775a926366c073d131d7d5fd64f9ecf`
+
+Additional autonomous watchdog proof:
+- at 04:45:18 CEST the timer fired without manual intervention;
+- completed at 04:45:23 CEST with Result=success and ExecMainStatus=0;
+- runtime stamp automatically advanced from backup `manual-20260924T023231Z` to `manual-20260924T024249Z`;
+- latch remained clear;
+- next timer execution was scheduled for 05:00:02 CEST.

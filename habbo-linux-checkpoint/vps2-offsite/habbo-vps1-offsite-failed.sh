@@ -12,6 +12,10 @@ case "$kind" in
     remote=/srv/habbo/OFFSITE_RESTORE_DRILL_FAILED
     runtime=/run/habbo-offsite-restore-drill-failed
     ;;
+  control)
+    remote=/srv/habbo/VPS2_CONTROL_PLANE_FAILED
+    runtime=/run/habbo-vps2-control-plane-failed
+    ;;
   *) echo "unsupported kind: $kind" >&2; exit 2 ;;
 esac
 now=$(date -u +%Y-%m-%dT%H:%M:%SZ)
@@ -30,5 +34,8 @@ case "$kind" in
     ;;
   restore)
     cat "$marker" | ssh -o BatchMode=yes bridge-old 'set -e; tmp=/srv/habbo/.OFFSITE_RESTORE_DRILL_FAILED.tmp; cat >"$tmp"; chmod 600 "$tmp"; mv "$tmp" /srv/habbo/OFFSITE_RESTORE_DRILL_FAILED; cp /srv/habbo/OFFSITE_RESTORE_DRILL_FAILED /run/habbo-offsite-restore-drill-failed; chmod 0644 /run/habbo-offsite-restore-drill-failed'
+    ;;
+  control)
+    cat "$marker" | ssh -o BatchMode=yes bridge-old 'set -e; tmp=/srv/habbo/.VPS2_CONTROL_PLANE_FAILED.tmp; cat >"$tmp"; chmod 600 "$tmp"; mv "$tmp" /srv/habbo/VPS2_CONTROL_PLANE_FAILED; cp /srv/habbo/VPS2_CONTROL_PLANE_FAILED /run/habbo-vps2-control-plane-failed; chmod 0644 /run/habbo-vps2-control-plane-failed'
     ;;
 esac

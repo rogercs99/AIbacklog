@@ -7,6 +7,9 @@ EXPECTED_HAVANA=b550f00f27788145d26723fd19e943aa63504a63
 EXPECTED_BUNDLE=77672bee2a6b8f879aa8cb0acbac41b7bc203b4487e1464ebacbc1848564bcb5
 MARIADB_REF='mariadb@sha256:2d50fe0f77dac919396091e527e5e148a9de690e58f32875f113bef6506a17f5'
 CONTAINER=habbo-offsite-restore-drill
+LOCK=/run/lock/habbo-vps1-offsite.lock
+exec 8>"$LOCK"
+flock -w 120 8 || { echo 'FAIL: offsite lock unavailable after 120s' >&2; exit 1; }
 
 archive=${1:-$(cat "$ROOT/LATEST")}
 [[ -f "$archive" ]] || { echo "FAIL: offsite archive missing: $archive" >&2; exit 1; }

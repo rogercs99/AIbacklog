@@ -66,6 +66,21 @@ else
 fi
 [[ "$drill_age" -le 691200 ]] || ok=false
 printf '%-28s %ss\n' 'disaster drill age' "$drill_age"
+offsite_ok=true
+if [[ -f /srv/habbo/OFFSITE_BACKUP_STATUS ]]; then
+  offsite_ts=$(awk -F= '$1=="validated_at_utc" {print $2}' /srv/habbo/OFFSITE_BACKUP_STATUS)
+  offsite_backup=$(awk -F= '$1=="backup" {print $2}' /srv/habbo/OFFSITE_BACKUP_STATUS)
+  offsite_age=$(( $(date -u +%s) - $(date -u -d "$offsite_ts" +%s) ))
+else
+  offsite_age=999999999
+  offsite_backup=missing
+  offsite_ok=false
+fi
+[[ "$offsite_age" -le 129600 ]] || offsite_ok=false
+[[ "$offsite_backup" == "$latest" ]] || offsite_ok=false
+$offsite_ok || ok=false
+printf '%-28s %ss\n' 'offsite backup age' "$offsite_age"
+printf '%-28s %s\n' 'offsite latest match' "$([[ "$offsite_backup" == "$latest" ]] && echo OK || echo FAIL)"
 printf '%-28s %s\n' 'runtime backup match' "$([[ "$runtime_backup" == "$latest" ]] && echo OK || echo FAIL)"
 
 if [[ -e /run/habbo-runtime-health.failed ]]; then

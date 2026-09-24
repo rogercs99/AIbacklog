@@ -30,6 +30,7 @@ chmod 600 "$tmp"
 mv "$tmp" /srv/habbo/OFFSITE_BACKUP_STATUS
 cp /srv/habbo/OFFSITE_BACKUP_STATUS /run/habbo-offsite-backup
 chmod 0644 /run/habbo-offsite-backup
+rm -f /srv/habbo/OFFSITE_BACKUP_FAILED /run/habbo-offsite-backup-failed
 REMOTE_MARKER
 }
 

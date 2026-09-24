@@ -1,0 +1,9 @@
+[Unit]
+Description=Restore-test latest Habbo VPS1 offsite backup on VPS2
+After=network-online.target docker.service habbo-vps1-offsite-pull.service
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+ExecStart=/usr/local/sbin/habbo-vps1-offsite-restore-drill.sh
+TimeoutStartSec=900

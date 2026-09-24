@@ -13,6 +13,17 @@ actual=$(sha256sum "$BUNDLE" | awk '{print $1}')
 STAMP=/run/habbo-postboot-validated
 [[ -f "$STAMP" ]] || { echo "FAIL: post-boot validation stamp missing" >&2; exit 1; }
 grep -q "^bundle_sha256=$EXPECTED_BUNDLE$" "$STAMP" || { echo "FAIL: post-boot validation stamp has wrong bundle hash" >&2; exit 1; }
+systemctl is-enabled --quiet habbo-disaster-drill.timer || { echo "FAIL: disaster drill timer disabled" >&2; exit 1; }
+systemctl is-active --quiet habbo-disaster-drill.timer || { echo "FAIL: disaster drill timer inactive" >&2; exit 1; }
+[[ "$(systemctl show -p Result --value habbo-disaster-drill.service)" == "success" ]] || { echo "FAIL: last disaster drill did not succeed" >&2; exit 1; }
+DSTAMP=/run/habbo-disaster-drill
+[[ -f "$DSTAMP" ]] || { echo "FAIL: disaster drill stamp missing" >&2; exit 1; }
+dts=$(awk -F= '$1=="validated_at_utc" {print $2}' "$DSTAMP")
+[[ -n "$dts" ]] || { echo "FAIL: disaster drill timestamp missing" >&2; exit 1; }
+dage=$(( $(date -u +%s) - $(date -u -d "$dts" +%s) ))
+[[ "$dage" -ge 0 && "$dage" -le 691200 ]] || { echo "FAIL: disaster drill stamp stale (${dage}s)" >&2; exit 1; }
+drill_backup=$(awk -F= '$1=="backup" {print $2}' "$DSTAMP")
+[[ -d "$drill_backup" ]] || { echo "FAIL: disaster drill backup no longer exists" >&2; exit 1; }
 systemctl is-enabled --quiet habbo-backup-daily.timer || { echo "FAIL: daily backup timer disabled" >&2; exit 1; }
 systemctl is-active --quiet habbo-backup-daily.timer || { echo "FAIL: daily backup timer inactive" >&2; exit 1; }
 [[ "$(systemctl show -p Result --value habbo-backup-daily.service)" == "success" ]] || { echo "FAIL: last daily backup service did not succeed" >&2; exit 1; }

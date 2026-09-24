@@ -882,3 +882,68 @@ The source backup directory `/srv/habbo/backups/manual-20260924T040336Z` remaine
 Therefore the retention loop is scoped to the dedicated off-host destination and does not delete source backups.
 
 `041330Z` exists on VPS1 with filesystem creation time around 06:13 CEST, but there were no `habbo-backup-daily.service` or `habbo-disaster-drill.service` journal entries in that window. It was not created by those scheduled units.
+
+## VPS2 offsite restore drill 2026-09-24
+
+A second, independent recovery drill now runs on VPS2 against the off-host tar.gz archive itself, not against the live VPS1 backup directory.
+
+The drill validates from the off-host archive:
+- archive SHA-256 sidecar;
+- every internal SHA256SUMS entry after remapping VPS1 absolute paths to extracted basenames;
+- FINAL-v2 hash + ZIP integrity;
+- Havana offline Git bundle hash + exact commit + clean checkout;
+- Library chunk manifests cardinality;
+- Compose resolution using only archived `.env` + compose file, with structural loopback-port checks;
+- Cloudflare config/credential coherence;
+- presence of 12 required systemd unit files;
+- a real MariaDB restore from archived `havana.sql.gz`.
+
+MariaDB restore isolation:
+- exact image pinned by digest `mariadb@sha256:2d50fe0f77dac919396091e527e5e148a9de690e58f32875f113bef6506a17f5`;
+- temporary container with `--network none` and no published ports;
+- `/var/lib/mysql` on tmpfs;
+- image removed after the drill to recover VPS2 disk headroom.
+
+Two drill bugs were found and corrected safely:
+- initial client readiness/import attempted the default socket path; fixed to explicit TCP `127.0.0.1` inside the isolated container;
+- final invariant query mistakenly referenced `navigator_publics`; corrected to canonical `navigator_styles`.
+Neither failure touched production nor promoted a successful drill marker.
+
+Successful off-host restore proof:
+- source archive: `manual-20260924T042601Z.tar.gz`;
+- archive SHA-256: `32e8c00a792aea9bd6d43f4875eaea73a5901c0f314651eb903447d2b2eeb821`;
+- Havana commit `b550f00f27788145d26723fd19e943aa63504a63`;
+- Compose resolved; Cloudflare coherent; 12 units present;
+- restored DB invariants: 88 tables, 40 navigator_styles, RogerVideo=1, room1000=1;
+- VPS2 filesystem returned to ~943 MiB free after image cleanup.
+
+Automation:
+- VPS2 `habbo-vps1-offsite-restore-drill.timer` enabled + active;
+- schedule: Sunday 06:20 local, Persistent=true, up to 300 seconds randomized delay;
+- initial systemd proof: 06:45:34 -> 06:45:59 CEST, Result=success / ExecMainStatus=0;
+- successful drill writes `/var/backups/habbo-vps1/OFFSITE_RESTORE_DRILL_STATUS` on VPS2 and a root-only `/srv/habbo/OFFSITE_RESTORE_DRILL_STATUS` proof on VPS1.
+
+VPS1 `offsite-restore-drill-smoke.sh` requires:
+- root-only durable status file;
+- proof age <=8 days;
+- valid source backup path + SHA;
+- offsite host VPS2;
+- 88 tables, 40 navigator_styles, RogerVideo=1 and room1000=1.
+
+Live hashes:
+- VPS2 restore drill: `9a73c13594adf5f32ec05641758822d0b1caa0422e4069860dc04670575cf9c2`
+- VPS2 restore drill service: `a7da4568d7253e7f0b5c6880cd60a2b90a987a6c218e8cdfb496cb83e0bd5bbe`
+- VPS2 restore drill timer: `590639228ccf90e47806c53b5368c4fc76fc0bab73f1531354b81eff61315731`
+- VPS1 offsite restore smoke: `6e3a8d199c29bf85cd269b171fa3f99539387f33a271bee46d48ab4a6e60fd5f`
+- verifier: `144ea3719b56d67a63d0aafd28354177fe6a324710f55ccf7f9aff20f16520dd`
+- final validator: `eba5794dadb87f7d69599c60c93dc7d41c0318f5e043c0ebf5a852da09f11bb2`
+- status: `faa3d9a89ac34d74ec81e9d3cb34ff8ef5814c26cbb9558d2e1deb4b61cd56f1`
+
+Git commits:
+- VPS2 drill: `ce400b7438db412f2fa08722fac5a9258ab203de`
+- VPS2 drill service: `8704720e73a728e83dffdb6956d32d6f9615a92a`
+- VPS2 drill timer: `22cb8e2c0ac68c7a169ebf18183fc17ea636f78c`
+- VPS1 drill smoke: `83ed9701bdb97db0dcdce70986fa5f35eaf84b4f`
+- verifier: `803e216fd56de837be6f54e8bbb816d9af06b5bd`
+- final validator: `fd392457bccc243567f0ba0f6dee8d992502d425`
+- status: `fd831e3b896b13a5b7fa5214d272ab9fd3f75d2e`

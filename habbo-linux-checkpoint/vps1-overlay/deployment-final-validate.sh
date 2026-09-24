@@ -13,6 +13,12 @@ actual=$(sha256sum "$BUNDLE" | awk '{print $1}')
 STAMP=/run/habbo-postboot-validated
 [[ -f "$STAMP" ]] || { echo "FAIL: post-boot validation stamp missing" >&2; exit 1; }
 grep -q "^bundle_sha256=$EXPECTED_BUNDLE$" "$STAMP" || { echo "FAIL: post-boot validation stamp has wrong bundle hash" >&2; exit 1; }
+systemctl is-enabled --quiet habbo-backup-daily.timer || { echo "FAIL: daily backup timer disabled" >&2; exit 1; }
+systemctl is-active --quiet habbo-backup-daily.timer || { echo "FAIL: daily backup timer inactive" >&2; exit 1; }
+[[ "$(systemctl show -p Result --value habbo-backup-daily.service)" == "success" ]] || { echo "FAIL: last daily backup service did not succeed" >&2; exit 1; }
+LATEST_DIR=$(cat "$ROOT/LATEST_PUBLIC_WEB_BACKUP")
+LATEST_AGE=$(( $(date +%s) - $(stat -c %Y "$LATEST_DIR") ))
+[[ "$LATEST_AGE" -le 129600 ]] || { echo "FAIL: latest backup is stale (${LATEST_AGE}s)" >&2; exit 1; }
 systemctl is-enabled --quiet habbo-runtime-healthcheck.timer || { echo "FAIL: runtime health timer disabled" >&2; exit 1; }
 systemctl is-active --quiet habbo-runtime-healthcheck.timer || { echo "FAIL: runtime health timer inactive" >&2; exit 1; }
 [[ "$(systemctl show -p Result --value habbo-runtime-healthcheck.service)" == "success" ]] || { echo "FAIL: last runtime healthcheck did not succeed" >&2; exit 1; }

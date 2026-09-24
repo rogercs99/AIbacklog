@@ -2,6 +2,7 @@
 Description=Pull verified Habbo VPS1 backup to VPS2
 After=network-online.target
 Wants=network-online.target
+OnFailure=habbo-vps1-offsite-pull-failed.service
 
 [Service]
 Type=oneshot

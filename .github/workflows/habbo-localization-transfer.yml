@@ -1,0 +1,24 @@
+name: Habbo localization transfer
+on:
+  push:
+    branches: [tmp/habbo-localization-transfer-20260924]
+permissions:
+  contents: read
+jobs:
+  artifact:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Verify localization
+        run: |
+          set -euo pipefail
+          test -s habbo-linux-checkpoint/localization/external_flash_texts_es.txt
+          test -s habbo-linux-checkpoint/localization/external_texts_es.txt
+          sha256sum habbo-linux-checkpoint/localization/* > habbo-linux-checkpoint/localization/SHA256SUMS.txt
+          wc -l -c habbo-linux-checkpoint/localization/*
+      - uses: actions/upload-artifact@v4
+        with:
+          name: habbo-localization-es-20260924
+          path: habbo-linux-checkpoint/localization/
+          retention-days: 1
+          compression-level: 6

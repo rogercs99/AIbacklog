@@ -1,0 +1,10 @@
+{
+  "name": "r39",
+  "total_keys": 3473,
+  "translated_keys": 3386,
+  "changed_keys": 3203,
+  "historical": 447,
+  "modern": 1410,
+  "machine": 1529,
+  "machine_failed_values": {}
+}

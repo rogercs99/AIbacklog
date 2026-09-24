@@ -1971,3 +1971,38 @@ Live hash:
 
 Git commit:
 - `8dcff3586e1f10b46fb6356ab09bebf1ebd01ad1`
+
+## VPS2 recovery kit live-state refresh 2026-09-24
+
+The VPS2 recovery kit was compared against the live control plane after the semantic offsite scrub work.
+
+Drift audit:
+- 21 expected recovery files checked against VPS2 live;
+- 20 matched exactly;
+- 1 drifted: `usr/local/sbin/habbo-vps1-offsite-store-smoke.sh`;
+- the drift was expected because the live store scrub had just gained deep internal + semantic recovery validation.
+
+Refresh:
+- rebuilt `vps2-control-plane-overlay.tar.gz` from the exact 21 live paths;
+- regenerated `vps2-control-plane-files-sha256.txt` from live bytes;
+- local rebuild verified 21 files, 9 scripts and 12 units;
+- staged on VPS1 and validated with `vps2-control-plane-recovery-smoke.sh` before promotion;
+- promoted atomically into `/srv/habbo/releases/disaster`;
+- canonical recovery smoke and disaster-recovery-source smoke both passed afterward.
+
+Old artifact hashes:
+- overlay: `4397bfa841303e8d684d4ce27be7b5109e0eb3f11f2155895acbc687d6522c4d`
+- manifest: `d820459cd22ca0a687989b77db1f25e20a76748329da98fa2f0db376caf3b82e`
+
+Current artifact hashes:
+- overlay: `881b0165193bf6cc9cd68855f5681cc8f48f9b2064e11069197fc699e71050b5`
+- manifest: `c280526054b37c256ac512859d2316eb57d78906784751af4de1208e29cd106d`
+
+Post-promotion live-state proof:
+- 21/21 MATCH;
+- 0 drift;
+- 0 missing.
+
+The refreshed 21-file manifest is also versioned in Git.
+Git commit:
+- `10f6bb0c8ce2150cd91428006f59d2d9a9bbcc43`

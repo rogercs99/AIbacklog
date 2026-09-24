@@ -741,3 +741,60 @@ Git commits:
 - verifier weekly integration: `dde866868ccb4c3c8e2cfb18b4809b3994f63615`
 - final-validator weekly integration: `d92bb6732373bc0a7d1a7a618fce3fab9f7ac8c3`
 - status weekly integration: `1c2ebd36bd72c99f388f7138ecf6ec61bbf37fce`
+
+## Off-host mutable-state backup to VPS2 2026-09-24
+
+The remaining same-disk failure domain was closed for current mutable production state.
+Historical large assets remain independently protected in ChatGPT Library; the current promoted VPS1 backup is additionally copied to VPS2.
+
+VPS2 pull:
+- script: `/usr/local/sbin/habbo-vps1-offsite-pull.sh`, mode 0700;
+- destination: `/var/backups/habbo-vps1`, mode 0700;
+- archives + checksum files: mode 0600;
+- timer: daily 05:25 local time, Persistent=true, randomized delay up to 60 seconds;
+- retention: newest 3 complete archives only;
+- transport: existing root SSH path from VPS2 to `bridge-old`;
+- source backup SHA256SUMS is checked on VPS1 before streaming;
+- full promoted backup is streamed as tar.gz to VPS2;
+- gzip and every backed-up file checksum are revalidated after extracting into VPS2 `/dev/shm`;
+- promotion to VPS2 `LATEST` is atomic only after verification.
+
+The offsite archive contains current DB and recovery secrets, so it is intentionally root-only. It is not uploaded to any external service.
+
+After a verified pull, VPS2 writes `/srv/habbo/OFFSITE_BACKUP_STATUS` on VPS1 as 0600 and `/run/habbo-offsite-backup` as 0644. The marker contains no secret: UTC time, source backup, archive SHA-256, archive size, offsite host and path.
+
+`offsite-backup-smoke.sh` requires:
+- persistent marker mode 0600 root:root;
+- proof age <= 36 hours;
+- offsite source exactly equal to current `LATEST_PUBLIC_WEB_BACKUP`;
+- valid 64-hex archive SHA-256, positive size, host VPS2 and expected archive path.
+
+`habbo-status.sh` reports offsite age and latest-match state. `deployment-final-validate.sh` includes the offsite smoke.
+
+Observed transition proof:
+- offsite copy of `manual-20260924T040336Z`: 19,331,570 bytes, SHA verified on VPS2;
+- a new local backup `manual-20260924T040928Z` was then promoted;
+- before VPS2 pull, status correctly reported `offsite latest match FAIL` and `OVERALL DEGRADED`;
+- VPS2 pull ran 06:10:00–06:10:04 CEST with Result=success/status0;
+- copied `040928Z` archive size 19,332,483 bytes and verified its checksum;
+- VPS1 marker moved to `040928Z`, offsite smoke passed, status returned `OVERALL READY`, aggregate validator passed.
+
+VPS2 timer next automatic run was observed for 2026-09-25 around 05:25 CEST.
+
+Live hashes:
+- VPS1 `offsite-backup-smoke.sh`: `484ed1a8c643597b3aa9740302dde7ca2b50d40d8cbfad813fb963bbf5354c6b`
+- VPS1 `verify-latest-backup.sh`: `5f08495b7c6720e829dbbc8446216fe1df0c12cdf60853b2ad58b0e98a1f16ba`
+- VPS1 `deployment-final-validate.sh`: `1d9f4d1eab61d2932120c68fe365477949b8a88cf080a22c45ac20f6a6f6dd96`
+- VPS1 `habbo-status.sh`: `2a47e967f4425273ed62b367a342b4ff525f9d53917dbb7fb422a0bc9d919762`
+- VPS2 pull script: `85bd9f9f0026119b18a4842129ede08ac6509da11ae287062aebd012a739ff23`
+- VPS2 service: `54f55d6f437e981761d124f23d90f838ee1b8f09f96fd632812c879987e66ab0`
+- VPS2 timer: `e748fafaf8121226e4852513b0f28f174a89d8f99ce6b7ec4429e1268ff54c58`
+
+Git commits:
+- VPS1 offsite guard: `aa31ee20fb12976526c772d02527a48f26700865`
+- VPS1 verifier: `387608c2cc9984ad82d8434aee0e22ba05b3624d`
+- VPS1 final validator: `deadf9df1fac630926eca17758301117355f0b68`
+- VPS1 status: `8283325887a4b844a6700d23b75b71fc5cea8248`
+- VPS2 pull: `88d106200d1de9f9db7aea5db4cae83ff0b8c53b`
+- VPS2 service: `a42bd37602335127aee81b8739c000c85949a355`
+- VPS2 timer: `c998d01ea0b176d334fb366bd269dd0820b70cc2`

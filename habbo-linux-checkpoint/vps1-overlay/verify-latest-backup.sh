@@ -19,6 +19,20 @@ find "$B" -maxdepth 1 -mindepth 1 -type f ! -name SHA256SUMS -printf '%f\n' | so
 awk '{print $2}' "$B/SHA256SUMS" | sed 's#^\./##' | sort > "$WORK/manifest-files.list"
 cmp -s "$WORK/top-files.list" "$WORK/manifest-files.list" || { echo 'FAIL: SHA256SUMS does not cover every top-level backup file exactly once' >&2; diff -u "$WORK/top-files.list" "$WORK/manifest-files.list" >&2 || true; exit 1; }
 grep -Fxq '.env' "$WORK/manifest-files.list" || { echo 'FAIL: .env is not covered by SHA256SUMS' >&2; exit 1; }
+test -f "$B/db-backup-contract.txt"
+[[ "$(stat -c '%a %U:%G' "$B/db-backup-contract.txt")" == '600 root:root' ]] || { echo 'FAIL: DB backup contract permissions invalid' >&2; exit 1; }
+grep -Fxq 'contract_version=1' "$B/db-backup-contract.txt" || { echo 'FAIL: DB backup contract version mismatch' >&2; exit 1; }
+grep -Fxq 'consistency=global-read-lock' "$B/db-backup-contract.txt" || { echo 'FAIL: DB backup consistency contract mismatch' >&2; exit 1; }
+grep -Fxq 'dump_tool=mariadb-dump' "$B/db-backup-contract.txt" || { echo 'FAIL: DB dump tool contract mismatch' >&2; exit 1; }
+db_flags=$(awk -F= '$1=="dump_flags" {sub(/^[^=]*=/,""); print; exit}' "$B/db-backup-contract.txt")
+for required in --lock-all-tables --routines --triggers --events --hex-blob; do
+  grep -qw -- "$required" <<<"$db_flags" || { echo "FAIL: DB backup contract missing flag $required" >&2; exit 1; }
+done
+expected_engines=$(awk -F= '$1=="engine_counts" {sub(/^[^=]*=/,""); print; exit}' "$B/db-backup-contract.txt")
+expected_objects=$(awk -F= '$1=="object_counts" {sub(/^[^=]*=/,""); print; exit}' "$B/db-backup-contract.txt")
+expected_binary=$(awk -F= '$1=="binary_columns" {print $2; exit}' "$B/db-backup-contract.txt")
+[[ "$expected_engines" =~ (^|,)MyISAM:[1-9][0-9]*($|,) ]] || { echo 'FAIL: DB backup contract lost MyISAM inventory' >&2; exit 1; }
+[[ "$expected_binary" =~ ^[0-9]+$ ]] || { echo 'FAIL: DB backup contract binary column count invalid' >&2; exit 1; }
 test -f "$B/.env"
 test -f "$B/DISASTER_RECOVERY_MANIFEST.md"
 test -f "$B/HOST_PREREQUISITES.md"
@@ -145,5 +159,11 @@ read -r tables nav user room < <(docker exec "$VERIFY_CONTAINER" mariadb --proto
 [[ "$nav" == 40 ]] || { echo "FAIL: restored navigator_styles mismatch: $nav" >&2; exit 1; }
 [[ "$user" == 1 ]] || { echo "FAIL: restored RogerVideo mismatch: $user" >&2; exit 1; }
 [[ "$room" == 1 ]] || { echo "FAIL: restored room1000 mismatch: $room" >&2; exit 1; }
+restored_engines=$(docker exec "$VERIFY_CONTAINER" mariadb --protocol=tcp -h127.0.0.1 -N -B -uroot -pverify-root restore_verify -e "SELECT CONCAT(COALESCE(ENGINE,'NULL'),':',COUNT(*)) FROM information_schema.tables WHERE table_schema=DATABASE() GROUP BY ENGINE ORDER BY ENGINE;" | tr '\n' ',' | sed 's/,$//')
+restored_objects=$(docker exec "$VERIFY_CONTAINER" mariadb --protocol=tcp -h127.0.0.1 -N -B -uroot -pverify-root restore_verify -e "SELECT CONCAT('triggers:',(SELECT COUNT(*) FROM information_schema.triggers WHERE trigger_schema=DATABASE()),',routines:',(SELECT COUNT(*) FROM information_schema.routines WHERE routine_schema=DATABASE()),',events:',(SELECT COUNT(*) FROM information_schema.events WHERE event_schema=DATABASE()));")
+restored_binary=$(docker exec "$VERIFY_CONTAINER" mariadb --protocol=tcp -h127.0.0.1 -N -B -uroot -pverify-root restore_verify -e "SELECT COUNT(*) FROM information_schema.columns WHERE table_schema=DATABASE() AND DATA_TYPE IN ('binary','varbinary','tinyblob','blob','mediumblob','longblob','bit');")
+[[ "$restored_engines" == "$expected_engines" ]] || { echo "FAIL: restored engine inventory mismatch: $restored_engines != $expected_engines" >&2; exit 1; }
+[[ "$restored_objects" == "$expected_objects" ]] || { echo "FAIL: restored SQL object inventory mismatch: $restored_objects != $expected_objects" >&2; exit 1; }
+[[ "$restored_binary" == "$expected_binary" ]] || { echo "FAIL: restored binary-column inventory mismatch: $restored_binary != $expected_binary" >&2; exit 1; }
 
-printf 'PASS: backup restore verifier\nbackup=%s\ntables=%s navigator_styles=%s RogerVideo=%s room1000=%s\nrestore_isolation=network-none tmpfs-datadir no-published-ports live-db-untouched\n' "$B" "$tables" "$nav" "$user" "$room"
+printf 'PASS: backup restore verifier\nbackup=%s\ntables=%s navigator_styles=%s RogerVideo=%s room1000=%s\nrestore_isolation=network-none tmpfs-datadir no-published-ports live-db-untouched\ndb_contract=global-read-lock engines+objects+binary-columns-exact\n' "$B" "$tables" "$nav" "$user" "$room"

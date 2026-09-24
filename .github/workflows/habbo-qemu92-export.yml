@@ -1,0 +1,28 @@
+name: Habbo local QEMU 9.2.4 export
+on:
+  push:
+    branches: [project/habbo-2009-dual-linux-vps1-deploy-20260923]
+    paths:
+      - '.github/workflows/habbo-qemu92-export.yml'
+permissions:
+  contents: read
+jobs:
+  export:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Fetch QEMU i386 9.2.4
+        shell: bash
+        run: |
+          set -euxo pipefail
+          curl -fL --retry 5 https://github.com/hermeticbuild/qemu-user-prebuilt/releases/download/9.2.4/qemu-user-linux-amd64-i386.tar.gz -o qemu.tar.gz
+          curl -fL --retry 5 https://github.com/hermeticbuild/qemu-user-prebuilt/releases/download/9.2.4/qemu-user-linux-amd64-i386.tar.gz.sha256 -o qemu.tar.gz.sha256
+          sha256sum -c qemu.tar.gz.sha256
+          mkdir qemu92
+          tar -xzf qemu.tar.gz -C qemu92
+          find qemu92 -type f -print0 | sort -z | xargs -0 sha256sum > qemu92/SHA256SUMS.txt
+      - uses: actions/upload-artifact@v4
+        with:
+          name: habbo-qemu-i386-9.2.4
+          path: qemu92/
+          retention-days: 7
+          compression-level: 6

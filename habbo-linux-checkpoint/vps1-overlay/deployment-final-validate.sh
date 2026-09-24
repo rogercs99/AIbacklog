@@ -18,6 +18,7 @@ systemctl is-active --quiet habbo-runtime-healthcheck.timer || { echo "FAIL: run
 [[ "$(systemctl show -p Result --value habbo-runtime-healthcheck.service)" == "success" ]] || { echo "FAIL: last runtime healthcheck did not succeed" >&2; exit 1; }
 RSTAMP=/run/habbo-runtime-health
 [[ -f "$RSTAMP" ]] || { echo "FAIL: runtime health stamp missing" >&2; exit 1; }
+[[ ! -e /run/habbo-runtime-health.failed ]] || { echo "FAIL: unresolved runtime health failure latch present" >&2; exit 1; }
 grep -q "^bundle_sha256=$EXPECTED_BUNDLE$" "$RSTAMP" || { echo "FAIL: runtime health stamp has wrong bundle hash" >&2; exit 1; }
 rts=$(awk -F= '$1=="validated_at_utc" {print $2}' "$RSTAMP")
 [[ -n "$rts" ]] || { echo "FAIL: runtime health timestamp missing" >&2; exit 1; }

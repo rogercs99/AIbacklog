@@ -1936,3 +1936,38 @@ Live hashes:
 Git commits:
 - verifier pipefail fix: `e9c63bfb8a7f04c546f560548bf8b868154a5061`
 - disaster-source pipefail fix: `cbbf84ebcfaf1ea13efc1215b2c5a1adb5bad755`
+
+## Semantic VPS2 recovery validation across all offsite copies 2026-09-24
+
+The deep offsite scrub now validates the VPS2 recovery kit semantically in every retained generation, not only byte-for-byte.
+
+Transition handling:
+- enabling the semantic check immediately exposed one retained legacy archive (`074228Z`) without a top-level VPS2 recovery kit;
+- the archive was not corrupt, but no longer satisfied the new contract;
+- no permanent legacy exception was added;
+- two fresh daily generations were created and synchronized;
+- VPS2 retention became exactly `081418Z`, `081937Z`, `081959Z`, all on the new recovery-kit format.
+
+Per-generation semantic checks now include:
+- `vps2-control-plane-overlay.tar.gz` present;
+- `vps2-control-plane-files-sha256.txt` present with exactly 21 entries;
+- overlay extraction succeeds;
+- all 21 file hashes verify;
+- tar inventory matches the manifest exactly;
+- exactly 9 Habbo scripts;
+- exactly 12 systemd units;
+- Bash/Python syntax validation;
+- every Habbo `ExecStart` path resolves inside the kit;
+- every timer resolves to an included service;
+- required pull/restore/heartbeat/WebKit scripts and timers are present.
+
+Production proof:
+- strict semantic scrub passed all three retained generations;
+- no `/dev/shm/habbo-offsite-store-scrub.*` or recovery workdir residues remained;
+- VPS2 had ~984 MiB root free after the scrub.
+
+Live hash:
+- offsite store semantic scrub: `3e8cb7d91c7580b30f61c744f7c6bdedc82e74343858e4826cc14be3d6f05d59`
+
+Git commit:
+- `8dcff3586e1f10b46fb6356ab09bebf1ebd01ad1`

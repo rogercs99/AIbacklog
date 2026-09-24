@@ -1,0 +1,7 @@
+[Unit]
+Description=Record Habbo VPS1 offsite pull failure on VPS1
+
+[Service]
+Type=oneshot
+ExecStart=/usr/local/sbin/habbo-vps1-offsite-failed.sh pull habbo-vps1-offsite-pull.service
+TimeoutStartSec=30

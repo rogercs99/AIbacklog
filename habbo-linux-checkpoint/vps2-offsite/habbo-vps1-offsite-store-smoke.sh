@@ -52,7 +52,7 @@ for f in "${archives[@]}"; do
   tar -tzf "$work/ops-overlay.tar.gz" >/dev/null || { rm -rf "$work"; fail "internal ops overlay unreadable: $f"; }
   [[ -f "$work/vps2-control-plane-overlay.tar.gz" ]] || { rm -rf "$work"; fail "VPS2 recovery overlay missing inside backup: $f"; }
   [[ -f "$work/vps2-control-plane-files-sha256.txt" ]] || { rm -rf "$work"; fail "VPS2 recovery manifest missing inside backup: $f"; }
-  [[ "$(wc -l < "$work/vps2-control-plane-files-sha256.txt")" -eq 21 ]] || { rm -rf "$work"; fail "VPS2 recovery manifest file count mismatch: $f"; }
+  [[ "$(wc -l < "$work/vps2-control-plane-files-sha256.txt")" -eq 22 ]] || { rm -rf "$work"; fail "VPS2 recovery manifest file count mismatch: $f"; }
   (cd / && sha256sum -c "$work/vps2-control-plane-files-sha256.txt" --status) || { rm -rf "$work"; fail "VPS2 recovery kit drift from live control plane: $f"; }
   kit="$work/.vps2-kit"
   install -d -m 700 "$kit"
@@ -63,7 +63,7 @@ for f in "${archives[@]}"; do
   [[ "$kit_tar_digest" == "$kit_manifest_digest" ]] || { rm -rf "$work"; fail "VPS2 recovery kit inventory mismatch: $f"; }
   mapfile -t kit_scripts < <(find "$kit/usr/local/sbin" -maxdepth 1 -type f -name 'habbo-*' -printf '%p\n' | sort)
   mapfile -t kit_units < <(find "$kit/etc/systemd/system" -maxdepth 1 -type f -name 'habbo-*' -printf '%p\n' | sort)
-  [[ "${#kit_scripts[@]}" -eq 9 ]] || { rm -rf "$work"; fail "VPS2 recovery script count mismatch (${#kit_scripts[@]}): $f"; }
+  [[ "${#kit_scripts[@]}" -eq 10 ]] || { rm -rf "$work"; fail "VPS2 recovery script count mismatch (${#kit_scripts[@]}): $f"; }
   [[ "${#kit_units[@]}" -eq 12 ]] || { rm -rf "$work"; fail "VPS2 recovery unit count mismatch (${#kit_units[@]}): $f"; }
   for sf in "${kit_scripts[@]}"; do
     case "$sf" in
@@ -95,6 +95,7 @@ PYKIT
     usr/local/sbin/habbo-vps1-offsite-pull.sh \
     usr/local/sbin/habbo-vps1-offsite-restore-drill.sh \
     usr/local/sbin/habbo-vps2-control-plane-heartbeat.sh \
+    usr/local/sbin/habbo-vps2-control-plane-bootstrap.sh \
     usr/local/sbin/habbo-public-webkit-smoke.py \
     etc/systemd/system/habbo-vps1-offsite-pull.timer \
     etc/systemd/system/habbo-vps1-offsite-restore-drill.timer \

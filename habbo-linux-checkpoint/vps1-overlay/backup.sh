@@ -21,6 +21,8 @@ install -m 600 /etc/systemd/system/habbo-postboot-validate.service "$OUT/habbo-p
 install -m 600 /etc/systemd/system/habbo-runtime-healthcheck.service "$OUT/habbo-runtime-healthcheck.service"
 install -m 600 /etc/systemd/system/habbo-runtime-healthcheck-failed.service "$OUT/habbo-runtime-healthcheck-failed.service"
 install -m 600 /etc/systemd/system/habbo-runtime-healthcheck.timer "$OUT/habbo-runtime-healthcheck.timer"
+install -m 600 /etc/systemd/system/habbo-backup-daily.service "$OUT/habbo-backup-daily.service"
+install -m 600 /etc/systemd/system/habbo-backup-daily.timer "$OUT/habbo-backup-daily.timer"
 install -m 600 /etc/cloudflared-stremio-legacy/config.yml "$OUT/cloudflared-stremio-legacy-config.yml"
 tar -C "$ROOT" -czf "$OUT/web-frontend-overlay.tar.gz" web-frontend-assets
 install -m 600 "$ROOT/v31/client/vars.txt" "$OUT/v31-vars.txt"

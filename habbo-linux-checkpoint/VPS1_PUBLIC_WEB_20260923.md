@@ -221,3 +221,21 @@ The backup workflow now includes a disk-space safety guard.
 - Current backup footprint at the time of this validation was about 178 MB across 24 backups, while the root filesystem had about 2.0 GiB free. Backups are therefore not the primary source of disk usage.
 - First backup validated with these tools included: `/srv/habbo/backups/manual-20260924T020824Z`.
 - Live hashes at this point: `backup.sh` = `ac20853b52179953c9e6f4c08b7cef89da18adf176c5962fbc42c4aac3461459`; `backup-retention-report.sh` = `85ba3a33b8ec7f3d076ce413799008230ae9006b63162c38aa22ad3379c1575d`; `verify-latest-backup.sh` = `caac39b9f4acdc39370bab9b704e3f60b4f96986e658ac1e4b51b722cba26585`.
+
+## Disk health validation 2026-09-24
+
+Disk-related operational failure modes are now part of deployment validation.
+
+- Added `vps1-overlay/disk-health-smoke.sh`, live as `/srv/habbo/ops/disk-health-smoke.sh`.
+- It requires at least 1 GiB free on the filesystem containing `/srv/habbo`.
+- It fails if Habbo backups exceed 1 GiB.
+- It verifies the three Habbo Docker containers use `json-file` logging with `max-size=20m` and `max-file=3`.
+- It fails if a stale `habbo_restore_verify_*` database remains after restore validation.
+- It requires the latest-backup pointer to reference an existing directory.
+- Validation result at introduction: PASS with about 1.94 GiB free, about 199 MiB of backups, Docker log rotation `20m × 3`, and zero stale restore databases.
+- Current Habbo Docker logs were tiny: MariaDB about 60 KiB, Havana server about 128 KiB, Havana web about 16 KiB.
+- `/srv/habbo` footprint was about 2.5 GiB; the largest intended trees were `v31` (~1.3 GiB) and `web` (~756 MiB), so they were not treated as disposable cache.
+- `deployment-final-validate.sh` now runs the disk-health smoke before public/restore checks.
+- `verify-latest-backup.sh` now requires the disk-health helper in every promoted backup.
+- Live hashes: `disk-health-smoke.sh` = `9664b2833d1283d6e95c67068b189c28a743cecf322802a0ac95c97c1a9947ea`; `deployment-final-validate.sh` = `8bcb729d1bcb67b9b2f910b50696c86af502f4638becf631b374b9e5ba04366c`; `verify-latest-backup.sh` = `844ed21e196e8912700171e5b96ee16a61fd51361f76d8e37d207aa0567a18c8`.
+- First backup containing and validating this guard: `/srv/habbo/backups/manual-20260924T021104Z`.

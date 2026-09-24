@@ -4,7 +4,7 @@ b81882a29c57a645ab2ca70adb066152ec7929cfafa3d9560bdaf50275453a54  usr/local/sbin
 065a20b72e3e309bd36e63f235695916c3278eef49e34a77fb5872c0643db986  usr/local/sbin/habbo-vps1-offsite-failed.sh
 3a354ffc974118bde8b0f1a827d71807ff43b703cf280bff64500b45cc633c97  usr/local/sbin/habbo-vps1-offsite-pull.sh
 3ef71dfcd4344823ad018043560aff6b6f8b7684f45cfb4b51a7ad22f96a2d53  usr/local/sbin/habbo-vps1-offsite-restore-drill.sh
-3e8cb7d91c7580b30f61c744f7c6bdedc82e74343858e4826cc14be3d6f05d59  usr/local/sbin/habbo-vps1-offsite-store-smoke.sh
+2643fc9af6fed862a25622e358b78b41bfe79445df36e49ea8b63631f1ed7496  usr/local/sbin/habbo-vps1-offsite-store-smoke.sh
 da2dd76bfa4ef39889d03e02577ccd75a3b3537529d0e33c38569fbdcf9be660  usr/local/sbin/habbo-vps2-control-plane-heartbeat.sh
 6f29be0b5685bf59a3c6975a32e751f0f9193eda3354d9c9a1ac638022974665  usr/local/sbin/habbo-vps2-space-preflight.sh
 8b04b250d0be3c9597ba3a3812c9b6a4cad3f2b4f29750b3edb4a97957ea47a8  etc/systemd/system/habbo-public-webkit-failed.service

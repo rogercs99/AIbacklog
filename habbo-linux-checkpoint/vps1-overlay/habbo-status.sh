@@ -127,6 +127,23 @@ $webkit_ok || ok=false
 printf '%-28s %ss\n' 'WebKit proof age' "$webkit_age"
 printf '%-28s %s\n' 'WebKit failure latch' "$([[ -e /srv/habbo/WEBKIT_FAILED ]] && echo FAILED || echo clear)"
 printf '%-28s %s\n' 'WebKit iPhone proof' "$($webkit_ok && echo OK || echo FAIL)"
+vps2cp_ok=true
+if [[ -f /srv/habbo/VPS2_CONTROL_PLANE_STATUS ]]; then
+  vps2cp_ts=$(awk -F= '$1=="validated_at_utc" {print $2}' /srv/habbo/VPS2_CONTROL_PLANE_STATUS)
+  vps2cp_result=$(awk -F= '$1=="result" {print $2}' /srv/habbo/VPS2_CONTROL_PLANE_STATUS)
+  vps2cp_healthy=$(awk -F= '$1=="timers_healthy" {print $2}' /srv/habbo/VPS2_CONTROL_PLANE_STATUS)
+  vps2cp_failed=$(awk -F= '$1=="failed_units" {print $2}' /srv/habbo/VPS2_CONTROL_PLANE_STATUS)
+  vps2cp_age=$(( $(date -u +%s) - $(date -u -d "$vps2cp_ts" +%s) ))
+else
+  vps2cp_age=999999999; vps2cp_result=missing; vps2cp_healthy=0; vps2cp_failed=999; vps2cp_ok=false
+fi
+[[ "$vps2cp_age" -le 7500 ]] || vps2cp_ok=false
+[[ "$vps2cp_result" == success && "$vps2cp_healthy" == 4 && "$vps2cp_failed" == 0 ]] || vps2cp_ok=false
+[[ ! -e /srv/habbo/VPS2_CONTROL_PLANE_FAILED ]] || vps2cp_ok=false
+$vps2cp_ok || ok=false
+printf '%-28s %ss\n' 'VPS2 control-plane age' "$vps2cp_age"
+printf '%-28s %s\n' 'VPS2 control-plane latch' "$([[ -e /srv/habbo/VPS2_CONTROL_PLANE_FAILED ]] && echo FAILED || echo clear)"
+printf '%-28s %s\n' 'VPS2 control-plane proof' "$($vps2cp_ok && echo OK || echo FAIL)"
 printf '%-28s %s\n' 'runtime backup match' "$([[ "$runtime_backup" == "$latest" ]] && echo OK || echo FAIL)"
 
 if [[ -e /run/habbo-runtime-health.failed ]]; then

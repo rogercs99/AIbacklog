@@ -529,3 +529,57 @@ Git commits:
 - restore verifier integration: `38387adafd597e54820603086fa9469b9596f7b2`
 - final validator integration: `e7346c8202edc0f5a651f4ebb98a0b01b915b03b`
 - status integration: `fb383f979f5096346acf54ec4787d335e8618104`
+
+## Database backup consistency 2026-09-24
+
+The MariaDB backup path was audited for transactional consistency across storage engines.
+
+Engine inventory:
+- 84 InnoDB tables;
+- 3 MyISAM tables: `cms_stickers` (0 rows), `cms_stickers_catalogue` (~1488 rows), `games_ranks` (8 rows);
+- 1 view: `vw_users_hc_duplicates`.
+
+The previous dump used `--single-transaction`, which is transactionally consistent for InnoDB but does not provide the same guarantee for MyISAM.
+The normal Havana DB user intentionally lacks RELOAD, so it cannot acquire the global table lock needed by `--lock-all-tables`.
+
+Measured dump timings:
+- container-local root + `--lock-all-tables --routines --triggers`: about 0.81 s;
+- normal application user + `--single-transaction --routines --triggers`: about 0.84 s.
+
+Because the database is small and the locked dump is not slower in practice, `backup.sh` now uses the MariaDB root credential only inside the container with `--lock-all-tables --routines --triggers`.
+This gives a consistent snapshot across both InnoDB and MyISAM without converting legacy tables.
+
+Added `/srv/habbo/ops/db-backup-consistency-smoke.sh`.
+It reports engine counts and fails if:
+- an unexpected storage engine appears;
+- MyISAM exists but `backup.sh` lacks `--lock-all-tables`;
+- MyISAM exists but the dump is not using container-local root;
+- `--single-transaction` reappears while MyISAM exists.
+
+Validation:
+- guard result: `PASS: Habbo DB backup consistency smoke`;
+- reported `innodb=84 myisam=3 views=1 dump_mode=lock-all-tables`;
+- backup `manual-20260924T031405Z` created with the new dump mode;
+- physical growth only 876 KiB thanks to hardlink dedupe;
+- restore verifier PASS with 88 tables, 40 navigator_styles, RogerVideo=1, room1000=1;
+- aggregate deployment validator PASS with the DB consistency guard included.
+
+Live hashes:
+- `backup.sh`: `6b6a80b8dfc0484f46f9c08020dbca03f2d478db64c36bd32b4df72841fba836`
+- `db-backup-consistency-smoke.sh`: `8ed6d55a9d201c92b72e1ecf70545dd77da63ea04efc2508759049dbe0492c54`
+- `verify-latest-backup.sh`: `b4f23608296e02887d5bbc58cfae4137e53c997474338e754ff19fd228152456`
+- `deployment-final-validate.sh`: `965e5759b60c85185b26d1247b17decca7ab811b40580dbf1f88117f05fb6d05`
+
+Git commits:
+- backup consistency: `1ede22649cf5a105105ed4868e8db5213612ddb3`
+- DB guard: `94da7728c625f8cdd9057d4f9b276ecdfb2bad13`
+- restore verifier: `d351811c13cf459bf6b6f761df9978b265529f99`
+- aggregate validator: `e16120e46e9141c6c2afb618e448fd8f8f158ebf`
+
+First fully automatic daily backup proof:
+- timer fired automatically at 05:10:17 CEST;
+- completed at 05:10:30 CEST with Result=success / ExecMainStatus=0;
+- created `manual-20260924T031017Z`;
+- runtime stamp advanced automatically to that backup;
+- next daily run scheduled for the following day at 05:10;
+- restore verifier, status and aggregate validator all passed against the automatic backup.

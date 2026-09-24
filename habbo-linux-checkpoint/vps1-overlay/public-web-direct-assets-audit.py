@@ -10,6 +10,11 @@ for page in ('/','/register'):
     req=urllib.request.Request(BASE+page,headers=headers)
     with urllib.request.urlopen(req,timeout=15) as resp:
         html=resp.read().decode('utf-8','replace')
+    if page == '/':
+        libs = '/web-gallery/static/js/libs2.js'
+        landing = '/web-gallery/static/js/landing.js'
+        if libs not in html or landing not in html or html.index(libs) > html.index(landing):
+            raise SystemExit('homepage script dependency/order failure: libs2.js must load before landing.js')
     for m in re.finditer(r'(?:src|href)=[\"\']([^\"\']+)',html,re.I):
         ref=m.group(1).split('#',1)[0]
         if ref.startswith(BASE): ref=ref[len(BASE):]

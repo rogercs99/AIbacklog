@@ -866,3 +866,19 @@ Git commits:
 - verifier: `ca797bd909fba4696c2496d7b73262043ec42995`
 - final validator: `12422fd56adf2a178c27fe2fa508fd47f68f7cc8`
 - status: `0a72a8ce01a3162136257518fb60697ec4366178`
+
+## Off-host retention proof 2026-09-24
+
+The three-copy retention policy on VPS2 was observed in real operation.
+
+Before the retention turnover, off-host archives included `manual-20260924T040336Z`, `040928Z`, `041330Z` and then the new `042223Z` generation.
+After the pull of `042223Z`, VPS2 contained exactly three archives:
+- `manual-20260924T040928Z.tar.gz`;
+- `manual-20260924T041330Z.tar.gz`;
+- `manual-20260924T042223Z.tar.gz`.
+
+The former oldest archive `040336Z` was removed only from `/var/backups/habbo-vps1` on VPS2.
+The source backup directory `/srv/habbo/backups/manual-20260924T040336Z` remained present on VPS1.
+Therefore the retention loop is scoped to the dedicated off-host destination and does not delete source backups.
+
+`041330Z` exists on VPS1 with filesystem creation time around 06:13 CEST, but there were no `habbo-backup-daily.service` or `habbo-disaster-drill.service` journal entries in that window. It was not created by those scheduled units.

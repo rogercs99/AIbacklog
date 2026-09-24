@@ -2006,3 +2006,36 @@ Post-promotion live-state proof:
 The refreshed 21-file manifest is also versioned in Git.
 Git commit:
 - `10f6bb0c8ce2150cd91428006f59d2d9a9bbcc43`
+
+## Live-current VPS2 recovery kits in all offsite generations 2026-09-24
+
+The offsite scrub now rejects recovery kits that are internally valid but stale relative to the current VPS2 control plane.
+
+Mechanism:
+- every retained backup already carries `vps2-control-plane-files-sha256.txt`;
+- during deep scrub VPS2 now runs that manifest directly against `/`, comparing all 21 recovery files to current live bytes;
+- a mismatch fails the store scrub and therefore the hourly control-plane heartbeat.
+
+Self-reference regression found during rollout:
+- adding the live-current check changed `habbo-vps1-offsite-store-smoke.sh` itself;
+- that script is one of the 21 recovery-kit files;
+- therefore the just-refreshed kit immediately became 20/21 current again;
+- strict scrub correctly detected the drift on `082943Z` rather than silently accepting it.
+
+Final kit refresh:
+- rebuilt the 21-file kit after the store scrub reached its final `semantic+live` form;
+- final store-smoke hash inside the kit: `2643fc9af6fed862a25622e358b78b41bfe79445df36e49ea8b63631f1ed7496`;
+- canonical recovery overlay hash: `9948095a6663f6b48d8aca7692de4e8e77db6364eccfbef6697c129ea0f1067c`;
+- canonical recovery manifest hash: `061701f0df795d601a60a8738444dff36fae8c1ce5e2833987f4faf219916813`;
+- staging and canonical recovery smoke both passed 21 files / 9 scripts / 12 units.
+
+Offsite migration:
+- created and synchronized `083337Z`, `083403Z`, `083425Z` after the final kit refresh;
+- VPS2 retention became exactly those three generations;
+- strict offsite scrub passed 3/3 with `vps2-recovery=semantic+live`;
+- no scrub/recovery workdir residue remained;
+- VPS2 root had about 976 MiB free afterward.
+
+Durable Git state:
+- store scrub commit: `ee27fdc2f200e2caebdb3fe13fea0bb6acd3d928`;
+- refreshed 21-file recovery manifest commit: `07a9c35e64b5aa347b1998426c2305246f0140a5`.

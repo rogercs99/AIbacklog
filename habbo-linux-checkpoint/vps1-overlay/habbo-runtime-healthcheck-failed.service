@@ -1,0 +1,6 @@
+[Unit]
+Description=Record failed Habbo runtime healthcheck
+
+[Service]
+Type=oneshot
+ExecStart=/srv/habbo/ops/runtime-healthcheck-failed.sh

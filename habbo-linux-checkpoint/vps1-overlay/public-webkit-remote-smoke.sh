@@ -13,6 +13,7 @@ result=$(get result)
 engine=$(get engine)
 device=$(get device)
 scenario=$(get scenario)
+attempts=$(get attempts)
 [[ -n "$ts" ]] || fail 'WebKit timestamp missing'
 age=$(( $(date -u +%s) - $(date -u -d "$ts" +%s) ))
 [[ "$age" -ge 0 && "$age" -le "$MAX_AGE" ]] || fail "WebKit proof stale (${age}s)"
@@ -20,5 +21,6 @@ age=$(( $(date -u +%s) - $(date -u -d "$ts" +%s) ))
 [[ "$engine" == webkit ]] || fail "unexpected browser engine: $engine"
 [[ "$device" == 'iPhone 14 Plus' ]] || fail "unexpected device profile: $device"
 [[ "$scenario" == 'home+register' ]] || fail "unexpected scenario: $scenario"
+[[ "$attempts" =~ ^[12]$ ]] || fail "unexpected WebKit attempt count: $attempts"
 echo 'PASS: Habbo remote WebKit iPhone smoke proof'
-echo "age_seconds=$age engine=$engine device=$device scenario=$scenario"
+echo "age_seconds=$age engine=$engine device=$device scenario=$scenario attempts=$attempts"

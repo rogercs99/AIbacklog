@@ -41,6 +41,13 @@ else
 fi
 [[ "$backup_age" -le 129600 ]] || ok=false
 printf '%-28s %ss\n' 'latest backup age' "$backup_age"
+if "$ROOT/ops/backup-publication-smoke.sh" >/dev/null 2>&1; then
+  publication=OK
+else
+  publication=FAIL
+  ok=false
+fi
+printf '%-28s %s\n' 'backup publication' "$publication"
 
 stamp_age(){
   local f=$1 ts now

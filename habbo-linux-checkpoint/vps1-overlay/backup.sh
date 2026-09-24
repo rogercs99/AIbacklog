@@ -1,6 +1,12 @@
 #!/usr/bin/env bash
 set -euo pipefail
 ROOT=/srv/habbo
+MIN_FREE_KB=1048576
+free_kb=$(df -Pk "$ROOT" | awk 'NR==2 {print $4}')
+if [[ "$free_kb" -lt "$MIN_FREE_KB" ]]; then
+  echo "FAIL: refusing backup with less than 1 GiB free on filesystem containing $ROOT" >&2
+  exit 1
+fi
 TS="$(date -u +%Y%m%dT%H%M%SZ)"
 OUT="$ROOT/backups/manual-$TS"
 install -d -m 700 "$OUT"

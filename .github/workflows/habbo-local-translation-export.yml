@@ -1,0 +1,30 @@
+name: Habbo local translation export
+on:
+  push:
+    branches: [project/habbo-2009-dual-linux-vps1-deploy-20260923]
+    paths:
+      - 'habbo-linux-checkpoint/local-web/translations/**'
+      - '.github/workflows/habbo-local-translation-export.yml'
+permissions:
+  contents: read
+jobs:
+  export:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Verify translation bundle
+        shell: bash
+        run: |
+          set -euo pipefail
+          d=habbo-linux-checkpoint/local-web/translations
+          test -s "$d/external_flash_texts.es.txt"
+          test -s "$d/external_texts.es.txt"
+          grep -q '^navigator' "$d/external_flash_texts.es.txt"
+          grep -q '^nav_' "$d/external_texts.es.txt"
+          sha256sum "$d"/* > "$d/SHA256SUMS.txt"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: habbo-local-es-translations
+          path: habbo-linux-checkpoint/local-web/translations/
+          retention-days: 7
+          compression-level: 9

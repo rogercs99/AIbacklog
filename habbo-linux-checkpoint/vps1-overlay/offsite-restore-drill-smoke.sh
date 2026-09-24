@@ -16,6 +16,10 @@ manifest=$(get manifest)
 workspace=$(get workspace)
 network=$(get network)
 db_datadir=$(get db_datadir)
+db_contract=$(get db_contract)
+db_engines=$(get db_engines)
+db_objects=$(get db_objects)
+db_binary=$(get db_binary_columns)
 tables=$(get tables)
 nav=$(get navigator_styles)
 user=$(get RogerVideo)
@@ -31,9 +35,18 @@ age=$(( $(date -u +%s) - $(date -u -d "$ts" +%s) ))
 [[ "$workspace" == tmpfs ]] || fail "offsite restore workspace proof invalid: $workspace"
 [[ "$network" == none ]] || fail "offsite restore network proof invalid: $network"
 [[ "$db_datadir" == tmpfs ]] || fail "offsite restore DB datadir proof invalid: $db_datadir"
+[[ "$db_contract" == global-read-lock ]] || fail "offsite restore DB contract invalid: $db_contract"
+contract_file="$backup/db-backup-contract.txt"
+[[ -f "$contract_file" ]] || fail 'source backup DB contract missing'
+expected_engines=$(awk -F= '$1=="engine_counts" {sub(/^[^=]*=/,""); print; exit}' "$contract_file")
+expected_objects=$(awk -F= '$1=="object_counts" {sub(/^[^=]*=/,""); print; exit}' "$contract_file")
+expected_binary=$(awk -F= '$1=="binary_columns" {print $2; exit}' "$contract_file")
+[[ "$db_engines" == "$expected_engines" ]] || fail "offsite restored engine inventory mismatch: $db_engines != $expected_engines"
+[[ "$db_objects" == "$expected_objects" ]] || fail "offsite restored SQL object inventory mismatch: $db_objects != $expected_objects"
+[[ "$db_binary" == "$expected_binary" ]] || fail "offsite restored binary-column inventory mismatch: $db_binary != $expected_binary"
 [[ "$tables" == 88 ]] || fail "restored table count mismatch: $tables"
 [[ "$nav" == 40 ]] || fail "restored navigator_styles mismatch: $nav"
 [[ "$user" == 1 ]] || fail "restored RogerVideo mismatch: $user"
 [[ "$room" == 1 ]] || fail "restored room1000 mismatch: $room"
 echo 'PASS: Habbo offsite restore drill smoke'
-echo "age_seconds=$age backup=$backup host=$host tables=$tables navigator_styles=$nav RogerVideo=$user room1000=$room sha256=$sha manifest=complete workspace=tmpfs network=none db_datadir=tmpfs"
+echo "age_seconds=$age backup=$backup host=$host tables=$tables navigator_styles=$nav RogerVideo=$user room1000=$room sha256=$sha manifest=complete workspace=tmpfs network=none db_datadir=tmpfs db_contract=global-read-lock db_engines=$db_engines db_objects=$db_objects db_binary_columns=$db_binary"

@@ -35,10 +35,13 @@ stamp_age(){
 }
 post_age=$(stamp_age /run/habbo-postboot-validated 2>/dev/null || echo missing)
 runtime_age=$(stamp_age /run/habbo-runtime-health 2>/dev/null || echo missing)
+runtime_backup=$(awk -F= '$1=="latest_backup" {print $2}' /run/habbo-runtime-health 2>/dev/null || true)
 [[ "$post_age" =~ ^[0-9]+$ ]] || ok=false
 [[ "$runtime_age" =~ ^[0-9]+$ && "$runtime_age" -le 1800 ]] || ok=false
+[[ "$runtime_backup" == "$latest" ]] || ok=false
 printf '%-28s %ss\n' 'postboot stamp age' "$post_age"
 printf '%-28s %ss\n' 'runtime stamp age' "$runtime_age"
+printf '%-28s %s\n' 'runtime backup match' "$([[ "$runtime_backup" == "$latest" ]] && echo OK || echo FAIL)"
 
 if [[ -e /run/habbo-runtime-health.failed ]]; then
   ok=false; latch=FAILED

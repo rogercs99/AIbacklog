@@ -125,7 +125,7 @@ Root cause:
 Persistent fix:
 - overlay template: `/srv/habbo/web-frontend-assets/templates/index_v32.tpl`;
 - Compose bind mount: `/srv/habbo/web-frontend-assets/templates/index_v32.tpl:/havana-web/tools/www-tpl/default/index_v32.tpl:ro`;
-- reproducible helper: `/srv/habbo/ops/ensure-home-libs2-overlay.sh`;
+- reproducible helper: `/srv/habbo/ops/ensure-home-libs2-overlay.sh`;\n- The overlay helper writes the destination in place instead of replacing the file, preserving the inode used by Docker's single-file bind mount. This was regression-tested by running the helper while `havana-web` was live: the mounted inode remained stable and `libs2.js -> landing.js` stayed active without another container recreate.
 - `public-web-direct-assets-audit.py` now fails if `libs2.js` is missing or appears after `landing.js`.
 
 Post-fix browser validation from VPS2:
@@ -140,7 +140,7 @@ Network notes:
 
 Live hashes:
 - `web-frontend-assets/templates/index_v32.tpl`: `142ed3022792a11b6b9d16c29e5f6648d1d8fd5805276af0e88075c890a60e50`;
-- `ops/ensure-home-libs2-overlay.sh`: `ebf4e9cdef4550f74a688e57196a4331bb617aecf3a1e3afd6f008b8431bbe97`;
+- `ops/ensure-home-libs2-overlay.sh`: `aefb96afd6df4b9499b6f6afc4536b9998b911524fa81902df4bed7b769cc745`;
 - `ops/public-web-direct-assets-audit.py`: `cef006508dcc5368d0af8a974944a2199c9eec0b22f37b7766c3d3e5bf55c21f`;
 - `docker-compose.yml`: `e54aecdff9052ae6d60db2e679cfefcde34950e1463ab8c3ea7e1dfa920b525c`.
 

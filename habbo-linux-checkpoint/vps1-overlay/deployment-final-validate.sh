@@ -12,7 +12,7 @@ actual=$(sha256sum "$BUNDLE" | awk '{print $1}')
 [[ "$actual" == "$EXPECTED_BUNDLE" ]] || { echo "FAIL: FINAL-v2 hash mismatch" >&2; exit 1; }
 
 "$ROOT/ops/smoke-test.sh"
-"$ROOT/ops/network-perimeter-smoke.sh"
+"$ROOT/ops/network-perimeter-smoke.sh"\n"$ROOT/ops/disk-health-smoke.sh"
 "$ROOT/ops/public-web-smoke.sh"
 "$ROOT/ops/verify-latest-backup.sh"
 

@@ -2092,3 +2092,34 @@ Git commits:
 - refreshed 22-file recovery manifest: `ed82b53357476fe75613543f15aecbaca052aef9`.
 
 Live/Git identity after rollout: all six updated artifacts matched byte-for-byte.
+
+## Strict 3-generation VPS2 kit rotation after control-plane drift 2026-09-24
+
+The retained offsite policy remains intentionally strict: all three retained generations must contain a VPS2 recovery kit matching the current live control plane, in addition to internal semantic/bootstrap validation.
+
+A temporary latest-only live-drift experiment was not retained. The canonical all-3-live-current policy was restored before promotion.
+
+Event and recovery:
+- heartbeat/service hardening changed the live VPS2 control plane after the previous offsite generations had been created;
+- strict store scrub correctly reported recovery-kit drift beginning with `manual-20260924T093323Z.tar.gz`;
+- `/srv/habbo/ops/refresh-vps2-control-plane-kit.sh` rebuilt the canonical recovery source from the exact 22 live VPS2 files;
+- staging recovery smoke passed with 22 files / 10 scripts / 12 units / bootstrap rehearsed;
+- promoted recovery source passed again plus disaster-recovery-source smoke;
+- refreshed overlay SHA-256: `8d3ec8a5f764c960f1fe3e95b5aa6a88e4b03e15833a417609a56e36eef74098`;
+- refreshed manifest SHA-256: `36975b8352a0ebdb75b6c7fcb97b0de953172b2ee710536f96bc207f0d951cc0`.
+
+Strict retention rotation:
+- created and synchronized `manual-20260924T095109Z`;
+- created and synchronized `manual-20260924T095134Z`;
+- created and synchronized `manual-20260924T095158Z`;
+- VPS2 retention became exactly those three generations;
+- final 3/3 scrub passed `external-sha256+gzip+internal-manifest-full`, canonical critical files, `semantic+live+bootstrap`, private permissions and zero temp residue.
+
+Latest-generation proof:
+- offsite restore of `095158Z` passed manifest=complete, tmpfs workspace/datadir, network=none, 88 tables / 40 navigator_styles / RogerVideo=1 / room1000=1;
+- archive SHA-256: `b227ff5d36877773d82dc64bae7074954950153aecaf7c8a288b9b05a2b689c2`;
+- heartbeat returned success with 4/4 timers, no failed Habbo units and 3/3 deep-bootstrap store;
+- VPS1 returned OVERALL READY;
+- aggregate deployment validator passed on `095158Z` with isolated local restore and live DB untouched.
+
+Heartbeat service retains `TimeoutStartSec=120` to leave margin for legitimate offsite-lock waiting plus deep scrub/bootstrap work. Its live unit is byte-identical to the Git branch.

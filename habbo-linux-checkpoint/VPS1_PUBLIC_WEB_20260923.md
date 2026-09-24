@@ -337,3 +337,47 @@ Git commits:
 - backup sync: `43ebfbf61f8e02be93be945bf90344bf5f45c8c9`
 - restore verifier sync: `c9ca8bacbd224fd1aa3ae0f3bcdbb0e6858786b6`
 - final validator sync: `4cf3eec13f17ad4e18bb8de275a55a2300b51c78`
+
+## Runtime failure detection and recovery 2026-09-24
+
+The periodic watchdog was tested against a real controlled Habbo failure rather than only against healthy-state checks.
+
+Failure injection:
+- `habbo-static` was stopped briefly while MariaDB, Havana server, Cloudflare and Stremio were left untouched;
+- direct runtime-healthcheck execution failed immediately because listener `127.0.0.1:18080` was missing;
+- after `habbo-static` was restarted, the same runtime healthcheck returned PASS on attempt 1/3.
+
+Systemd failure semantics were then tested:
+- with `habbo-static` stopped, `habbo-runtime-healthcheck.service` ended with `Result=exit-code` and `ExecMainStatus=1`;
+- the recurring timer remained active and retained its next scheduled run;
+- after restoring `habbo-static`, resetting the failed state and running the service again, it returned `Result=success` and `ExecMainStatus=0` without re-enabling or recreating the timer.
+
+A failure latch was added:
+- `habbo-runtime-healthcheck.service` now has `OnFailure=habbo-runtime-healthcheck-failed.service`;
+- `/srv/habbo/ops/runtime-healthcheck-failed.sh` writes `/run/habbo-runtime-health.failed` with failure time, unit result, exit status, current latest backup and recent healthcheck journal;
+- a later successful `runtime-healthcheck.sh` removes the latch automatically;
+- the aggregate deployment validator now fails if an unresolved failure latch exists.
+
+Failure-latch round trip proof:
+- injected outage produced `Result=exit-code`, `ExecMainStatus=1` and triggered the OnFailure dependency;
+- failure latch was written at `2026-09-24T02:39:13Z` with the missing `127.0.0.1:18080` evidence in its journal;
+- after recovery, the healthcheck returned `Result=success`, `ExecMainStatus=0` and the latch was removed;
+- runtime timer remained active throughout.
+
+Live hashes:
+- `runtime-healthcheck.sh`: `c5bc7e00c64751542db4082fdffda69149f050a485492d544c5a30c1bf9f7bf7`
+- `runtime-healthcheck-failed.sh`: `8469d15647f8ef913c28875f1bc22819091e79cddb239c8b837a429be074ec31`
+- `habbo-runtime-healthcheck.service`: `04bbb27240cb0a8c27fd9ad9742300af0234a6897113080617836ed4be21f407`
+- `habbo-runtime-healthcheck-failed.service`: `62d462b22d113247ed77792ba801ea4d1f3383cb96871b7009291ccfc117b92e`
+- `backup.sh`: `1d1ff9d36b3bac106a05a322027cde7af2864c862f52b70ea65ad240ce17818d`
+- `verify-latest-backup.sh`: `79bb3f86850116c59bd981b922b327e13222597136d84ebed4096dab1b0ed081`
+- `deployment-final-validate.sh`: `eab4f5954bdefca2a8ac0262b0217f6c4bde43de786e45fc93a0a928a9501d03`
+
+Git commits:
+- runtime recovery sync: `3db66fc54c50629a08b96e22a5963244500ca11a`
+- failure recorder script: `a2d188c3e3afa98c6d73b16d6f860316bf5cf49e`
+- runtime service OnFailure wiring: `210c22f2f0b60526486c7fe5e271b25bcc1bac7b`
+- failure recorder unit: `3e27c12d7017d687f2baa45a1ca93bbb2388086f`
+- backup sync: `bc2743b87751902d9dc6ae6a832cdef1c50bf3ec`
+- restore verifier sync: `d6e7cf86d938eca5ba5bb1694368f4d5502e34e7`
+- final validator sync: `a506a521d774a643d96362f84ba4ff3bd375d3b4`

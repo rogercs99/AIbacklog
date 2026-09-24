@@ -947,3 +947,74 @@ Git commits:
 - verifier: `803e216fd56de837be6f54e8bbb816d9af06b5bd`
 - final validator: `fd392457bccc243567f0ba0f6dee8d992502d425`
 - status: `fd831e3b896b13a5b7fa5214d272ab9fd3f75d2e`
+
+## Automated WebKit iPhone regression 2026-09-24
+
+The external Safari/iPhone regression is now automated on VPS2 instead of being a manual-only check.
+
+VPS2 components:
+- `/usr/local/sbin/habbo-public-webkit-smoke.py`: Playwright WebKit using the `iPhone 14 Plus` device profile;
+- `/usr/local/sbin/habbo-public-webkit-daily.sh`: success wrapper + durable VPS1 proof;
+- `/usr/local/sbin/habbo-public-webkit-failed.sh`: `OnFailure` recorder that writes a failure latch to VPS1;
+- `habbo-public-webkit.service` + `habbo-public-webkit.timer`;
+- `habbo-public-webkit-failed.service`.
+
+Schedule:
+- daily at 05:35 local time;
+- Persistent=true;
+- up to 60 seconds randomized delay.
+
+Successful WebKit scenario:
+- public home must return 200 with title `Habbo 2009 ~ Home`;
+- legacy libs2.js must precede landing.js;
+- a physical touchscreen tap must focus the login field;
+- navigation by touchscreen to `/register` must succeed with title `Habbo 2009: Register`;
+- a touchscreen tap must toggle the marketing checkbox;
+- no HTTP >=400 responses, failed requests, JS page errors or console errors are allowed.
+
+Remote proof on VPS1:
+- `/srv/habbo/WEBKIT_STATUS` mode 0600 root:root;
+- fields: timestamp, result=success, engine=webkit, device=iPhone 14 Plus, scenario=home+register;
+- `/srv/habbo/WEBKIT_FAILED` is an explicit failure latch and is removed only by a later successful WebKit run.
+
+The marker transport was hardened after a quoting issue truncated a human summary field. Proofs now travel over stdin rather than SSH command arguments with spaces.
+
+Controlled failure round trip:
+- only `habbo-public-webkit.service` was temporarily overridden to run `/bin/false`; no Habbo/Cloudflare/Stremio service was touched;
+- service ended with Result=exit-code and ExecMainStatus=1 at 06:54:51 CEST;
+- `habbo-public-webkit-failed.service` succeeded and wrote the root-only `WEBKIT_FAILED` latch to VPS1 with recent journal evidence;
+- WebKit timer remained active;
+- override was removed, service restored, and a real WebKit run succeeded at 06:55:04 CEST;
+- the failure latch was then cleared automatically and the timer remained active.
+
+VPS1 `public-webkit-remote-smoke.sh` requires:
+- success marker mode 0600 root:root;
+- no failure latch;
+- proof age <=36 hours;
+- result success, engine webkit, device iPhone 14 Plus, scenario home+register.
+
+`habbo-status.sh` now reports WebKit proof age, failure latch and proof state. The aggregate final validator runs the WebKit proof smoke.
+
+Live hashes:
+- WebKit Python smoke: `30318a3ab36ec0cb4b5adbbdbf0c11d67d4a70a9a31c5ff661dbcf166f85be2e`
+- daily wrapper: `6d939c84b76afa98a76db12497314373788f7c8e40ee1da4276a1b4c379d0ba9`
+- failure handler: `b81882a29c57a645ab2ca70adb066152ec7929cfafa3d9560bdaf50275453a54`
+- WebKit service: `d5777b3713cecf5c4856c72a186fe43fa3c6cdcb53ce118d832718ec835114fc`
+- failure service: `8b04b250d0be3c9597ba3a3812c9b6a4cad3f2b4f29750b3edb4a97957ea47a8`
+- WebKit timer: `2de0d3fa16b5a3dfc07f520a9e210253ea7c4ba4821afb09f2a89b0d5d626a5d`
+- VPS1 WebKit proof smoke: `51ffe85f460a7ebcbcc4375be22f39775ba1b01a462d9c7dea3e92731a8435cd`
+- verifier: `6fae88503748961a68f7a97b773ae2a7ffc57728bee8442b4a39eb3e56253ee2`
+- final validator: `9f9925dab9904fcf26a3c6e5737fa813d102d9b2c3ccb4891637a6a36184253b`
+- status: `16f4ba25781e94fc86ae2595bfb73f06777aeddf36cfbb8b576f47b3954204b6`
+
+Git commits:
+- WebKit smoke: `b834c65ca975b594b791e76ea9f63380aba75987`
+- daily wrapper: `242496f8a1cc4a00cfd90301ad851d02ea78718e`
+- failure handler: `207716406ac84c8a2d4a2ae96ab67f5b32211f56`
+- WebKit service: `e7f5d7f07ee32ef6ada7aa8486f0fb76560353f9`
+- failure service: `7f04773af176b3d1e4b71aeb9b54c8f7ca29963f`
+- timer: `1176b39bc9159d1ede570acb5b7157fd1141841f`
+- VPS1 proof smoke: `d854bd174501ff0786d85acea1db0fb17cdc7dcf`
+- verifier: `3c8eb87420a3811825cd6f2df352e9eadb866052`
+- final validator: `f19181f527391d3cfc160a7cfd03ee3465ea0674`
+- status: `6b1b5cfee2991a23940cdedcf1e997cb170f24ea`

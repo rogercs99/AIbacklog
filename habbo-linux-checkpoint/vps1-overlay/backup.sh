@@ -57,7 +57,27 @@ tar -C "$ROOT" -czf "$OUT/web-frontend-overlay.tar.gz" web-frontend-assets
 install -m 600 "$ROOT/v31/client/vars.txt" "$OUT/v31-vars.txt"
 install -m 600 "$ROOT/web/client/v39/gamedata/external_variables_vps1.txt" "$OUT/r39-external_variables_vps1.txt"
 readlink "$ROOT/web/gordon/RELEASE39-22643-22891-200911110035_07c3a2a30713fd5bea8a8caf07e33438/config_habbo.xml" > "$OUT/r39-config_habbo-symlink.txt"
-docker exec habbo-mariadb-1 sh -lc 'mariadb-dump -uroot -p"$MARIADB_ROOT_PASSWORD" --lock-all-tables --routines --triggers "$MARIADB_DATABASE"' | gzip -9 > "$OUT/havana.sql.gz"
+root_db_query() {
+  local sql=$1
+  docker exec habbo-mariadb-1 sh -lc 'exec mariadb -N -B -uroot -p"$MARIADB_ROOT_PASSWORD" "$MARIADB_DATABASE" -e "$1"' _ "$sql"
+}
+DB_DUMP_FLAGS='--lock-all-tables --routines --triggers --events --hex-blob'
+DB_DUMP_VERSION=$(docker exec habbo-mariadb-1 mariadb-dump --version | tr '\n' ' ')
+DB_ENGINE_COUNTS=$(root_db_query "SELECT CONCAT(COALESCE(ENGINE,'NULL'),':',COUNT(*)) FROM information_schema.tables WHERE table_schema=DATABASE() GROUP BY ENGINE ORDER BY ENGINE;" | tr '\n' ',' | sed 's/,$//')
+DB_OBJECT_COUNTS=$(root_db_query "SELECT CONCAT('triggers:',(SELECT COUNT(*) FROM information_schema.triggers WHERE trigger_schema=DATABASE()),',routines:',(SELECT COUNT(*) FROM information_schema.routines WHERE routine_schema=DATABASE()),',events:',(SELECT COUNT(*) FROM information_schema.events WHERE event_schema=DATABASE()));")
+DB_BINARY_COLUMNS=$(root_db_query "SELECT COUNT(*) FROM information_schema.columns WHERE table_schema=DATABASE() AND DATA_TYPE IN ('binary','varbinary','tinyblob','blob','mediumblob','longblob','bit');")
+cat >"$OUT/db-backup-contract.txt" <<EOF
+contract_version=1
+consistency=global-read-lock
+dump_tool=mariadb-dump
+dump_flags=$DB_DUMP_FLAGS
+dump_version=$DB_DUMP_VERSION
+engine_counts=$DB_ENGINE_COUNTS
+object_counts=$DB_OBJECT_COUNTS
+binary_columns=$DB_BINARY_COLUMNS
+EOF
+chmod 600 "$OUT/db-backup-contract.txt"
+docker exec habbo-mariadb-1 sh -lc 'mariadb-dump -uroot -p"$MARIADB_ROOT_PASSWORD" --lock-all-tables --routines --triggers --events --hex-blob "$MARIADB_DATABASE"' | gzip -9 > "$OUT/havana.sql.gz"
 mapfile -d '' top_files < <(find "$OUT" -maxdepth 1 -mindepth 1 -type f ! -name SHA256SUMS -print0 | sort -z)
 ((${#top_files[@]} > 0)) || { echo 'FAIL: backup contains no top-level files' >&2; exit 1; }
 chmod 600 "${top_files[@]}"

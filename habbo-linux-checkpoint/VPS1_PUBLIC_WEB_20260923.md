@@ -1097,3 +1097,40 @@ Git commits:
 - VPS1 pull smoke latch: `2f028f985d90fb104bc8754498c50db6a93cb776`
 - VPS1 restore smoke latch: `2bb5e688e9aaaf045843f73e72b78f1ac061df14`
 - VPS1 status latches: `2bb1e51de5035c9764536b119363514cb2671de0`
+
+## Isolated local backup restore verification 2026-09-24
+
+The VPS1 backup verifier no longer creates a temporary database inside the live production MariaDB container.
+
+Previous behavior:
+- created `habbo_restore_verify_*` inside `habbo-mariadb-1`;
+- imported `havana.sql.gz` there;
+- queried invariants and dropped the temporary database in the exit trap.
+
+New behavior:
+- obtains the image ID already used by `habbo-mariadb-1`;
+- verifies that image exposes pinned digest `mariadb@sha256:2d50fe0f77dac919396091e527e5e148a9de690e58f32875f113bef6506a17f5`;
+- starts `habbo-backup-restore-verify-<pid>` with `--network none`;
+- publishes no ports;
+- stores `/var/lib/mysql` on a 320 MiB tmpfs;
+- restores the archived SQL into isolated database `restore_verify`;
+- requires exact invariants: 88 tables, 40 navigator_styles, RogerVideo=1, room1000=1;
+- removes the verifier container via EXIT trap.
+
+Proof against backup `manual-20260924T051335Z`:
+- verifier PASS with `restore_isolation=network-none tmpfs-datadir no-published-ports live-db-untouched`;
+- no `habbo_restore_verify_*` database existed before or after the run in production;
+- no `habbo-backup-restore-verify-*` container remained after the run.
+
+Disk health was extended to detect residues from both architectures:
+- legacy temporary production DBs;
+- stale isolated verifier containers;
+- `/dev/shm/habbo-restore-verify.*` workdirs older than 10 minutes.
+
+Live hashes:
+- `verify-latest-backup.sh`: `7aca16c092b2fed64cb7fc9e6e0e991f04e3a53ae3d6c22f4bd67158f330f98d`
+- `disk-health-smoke.sh`: `c39bf44f36a0623af1646a6932f075f4569b4160203596d4f9331d62603cb95b`
+
+Git commits:
+- isolated verifier: `8c834f1c38066b4dcd7b4828ca97451b39ccd8a0`
+- stale isolated verifier guards: `3c61ac9fa3164f562e5c96bfd22fddc15a3870b6`

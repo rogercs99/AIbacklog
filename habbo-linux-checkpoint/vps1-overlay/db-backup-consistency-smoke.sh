@@ -2,8 +2,12 @@
 set -euo pipefail
 ROOT=/srv/habbo
 fail(){ echo "FAIL: $*" >&2; exit 1; }
+db_query() {
+  local sql=$1
+  docker exec habbo-mariadb-1 sh -lc 'exec mariadb -N -B -u"$MARIADB_USER" -p"$MARIADB_PASSWORD" "$MARIADB_DATABASE" -e "$1"' _ "$sql"
+}
 
-mapfile -t rows < <(docker exec habbo-mariadb-1 sh -lc 'mariadb -N -B -u"$MARIADB_USER" -p"$MARIADB_PASSWORD" "$MARIADB_DATABASE" -e "SELECT COALESCE(engine,\"VIEW\"),COUNT(*) FROM information_schema.tables WHERE table_schema=DATABASE() GROUP BY engine ORDER BY engine;"')
+mapfile -t rows < <(db_query "SELECT COALESCE(engine,'VIEW'),COUNT(*) FROM information_schema.tables WHERE table_schema=DATABASE() GROUP BY engine ORDER BY engine;")
 innodb=0; myisam=0; views=0; unknown=0
 for row in "${rows[@]}"; do
   engine=${row%%$'\t'*}; count=${row##*$'\t'}
@@ -25,5 +29,13 @@ if [[ "$myisam" -gt 0 ]]; then
   fi
 fi
 
+binary_columns=$(db_query "SELECT COUNT(*) FROM information_schema.columns WHERE table_schema=DATABASE() AND DATA_TYPE IN ('binary','varbinary','tinyblob','blob','mediumblob','longblob','bit');")
+if [[ "$binary_columns" -gt 0 ]]; then
+  grep -q -- '--hex-blob' "$ROOT/ops/backup.sh" || fail 'binary/BLOB columns exist but backup.sh lacks --hex-blob'
+fi
+for required in --routines --triggers --events; do
+  grep -q -- "$required" "$ROOT/ops/backup.sh" || fail "backup.sh lacks $required"
+done
+
 echo 'PASS: Habbo DB backup consistency smoke'
-echo "innodb=$innodb myisam=$myisam views=$views dump_mode=lock-all-tables"
+echo "innodb=$innodb myisam=$myisam views=$views binary_columns=$binary_columns dump_mode=lock-all-tables+hex-blob objects=routines+triggers+events"

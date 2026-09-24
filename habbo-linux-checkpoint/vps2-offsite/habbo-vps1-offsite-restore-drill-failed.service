@@ -1,0 +1,7 @@
+[Unit]
+Description=Record Habbo VPS1 offsite restore drill failure on VPS1
+
+[Service]
+Type=oneshot
+ExecStart=/usr/local/sbin/habbo-vps1-offsite-failed.sh restore habbo-vps1-offsite-restore-drill.service
+TimeoutStartSec=30

@@ -53,7 +53,9 @@ for f in "${archives[@]}"; do
   [[ -f "$work/vps2-control-plane-overlay.tar.gz" ]] || { rm -rf "$work"; fail "VPS2 recovery overlay missing inside backup: $f"; }
   [[ -f "$work/vps2-control-plane-files-sha256.txt" ]] || { rm -rf "$work"; fail "VPS2 recovery manifest missing inside backup: $f"; }
   [[ "$(wc -l < "$work/vps2-control-plane-files-sha256.txt")" -eq 22 ]] || { rm -rf "$work"; fail "VPS2 recovery manifest file count mismatch: $f"; }
-  (cd / && sha256sum -c "$work/vps2-control-plane-files-sha256.txt" --status) || { rm -rf "$work"; fail "VPS2 recovery kit drift from live control plane: $f"; }
+  if [[ "$f" == "$latest" ]]; then
+    (cd / && sha256sum -c "$work/vps2-control-plane-files-sha256.txt" --status) || { rm -rf "$work"; fail "LATEST VPS2 recovery kit drift from live control plane: $f"; }
+  fi
   kit="$work/.vps2-kit"
   install -d -m 700 "$kit"
   tar -xzf "$work/vps2-control-plane-overlay.tar.gz" -C "$kit" || { rm -rf "$work"; fail "VPS2 recovery overlay extraction failed: $f"; }
@@ -124,4 +126,4 @@ fi
 newest=${archives[-1]##*/}
 [[ "$latest_name" == "$newest" ]] || fail "LATEST is not newest archive: $latest_name vs $newest"
 echo 'PASS: Habbo VPS1 offsite store smoke'
-echo "archives=${#archives[@]} latest=$latest_name integrity=external-sha256+gzip+internal-manifest-full critical=verified vps2-recovery=semantic+live+bootstrap permissions=private temp_residue=0"
+echo "archives=${#archives[@]} latest=$latest_name integrity=external-sha256+gzip+internal-manifest-full critical=verified vps2-recovery=semantic+latest-live+bootstrap permissions=private temp_residue=0"

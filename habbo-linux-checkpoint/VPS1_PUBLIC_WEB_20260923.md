@@ -2166,3 +2166,64 @@ Latest recovery proof:
 - heartbeat returned success, no failed Habbo units, control-plane 4/4 and deterministic recovery OK;
 - VPS1 returned OVERALL READY;
 - deployment final validator exited 0 on `100206Z`.
+
+## Deterministic cross-generation VPS2 recovery 2026-09-24
+
+The three retained VPS2 recovery kits are now required to reconstruct the same canonical control-plane tree, not merely pass independently.
+
+Canonical reconstruction fingerprint:
+- includes regular-file paths, modes, uid/gid and SHA-256 content;
+- includes directory paths, modes and uid/gid;
+- includes symlink paths and link targets;
+- is computed over the clean bootstrap rehearsal root.
+
+Initial proof before rollout:
+- retained generations `095109Z`, `095134Z`, `095158Z` all reconstructed fingerprint `ccef88742fdfb3917919beb6a9f93576b3ed2b227defc6be198cd84175874e87`;
+- one-shot comparison returned deterministic_recovery=PASS.
+
+Permanent guard rollout:
+- `habbo-vps1-offsite-store-smoke.sh` now computes the first rehearsal fingerprint as baseline and requires every retained generation to match it;
+- store output reports `vps2-recovery=semantic+live+bootstrap+deterministic`, `recovery_deterministic=1` and the canonical fingerprint;
+- heartbeat publishes `offsite_recovery_deterministic=1` plus `offsite_recovery_fingerprint`;
+- VPS1 control-plane smoke requires deterministic=1 and a 64-hex fingerprint;
+- `habbo-status.sh` reports deterministic recovery plus a fingerprint prefix.
+
+Self-reference handling:
+- changing the store smoke itself immediately made the then-retained kits stale against live control-plane hashes;
+- the strict live guard correctly rejected them rather than allowing a compatibility exception;
+- VPS1 was held `OVERALL DEGRADED` with a root-only maintenance latch during migration.
+
+Recovery kit refresh:
+- canonical 22-file kit rebuilt from exact live VPS2 files using staged validation and atomic promotion;
+- refreshed overlay SHA-256: `d240d61ec984d17b66f6541c36abba101acc70017283c385ac701b984e5005f4`;
+- refreshed manifest SHA-256: `5ba6e5b0eba9670b05a3851061ef46ed2ff8fb71d71fe47e9ff8d0ddda79bde2`;
+- staging + canonical recovery smoke passed 22 files / 10 scripts / 12 units / bootstrap rehearsal.
+
+Offsite rotation:
+- created and synchronized `100102Z`, `100136Z`, `100206Z`;
+- all three daily backups and all three offsite pulls completed Result=success / ExecMainStatus=0;
+- retained store became exactly those three generations;
+- strict store scrub passed all three with semantic+live+bootstrap+deterministic;
+- final fingerprint: `541dab34be881f0568aedc4f3b1748cb924d520135c18fc50c5edca04507e8ff`;
+- no recovery/scrub workdir residue remained.
+
+Heartbeat recovery:
+- heartbeat published timers 4/4, failed_units=0, offsite store/deep/bootstrap/deterministic all healthy and the final fingerprint;
+- success cleared the maintenance latch automatically;
+- VPS1 control-plane smoke returned PASS and `habbo-status.sh` returned OVERALL READY.
+
+Live hashes:
+- store smoke: `ad0bfbf90860d525fdffeb45e5aece7c2b55b268117ae678f35ba027e0a3f422`
+- heartbeat: `8eafb2d9ad2fe038a1510114bb712dc81a112c244494c821d3663bdd8b8803c6`
+- VPS1 control-plane smoke: `f66872a8fd2bd10d16041c3fe22f9a2497c8733840d6ccea14c4e914063e1d6e`
+- VPS1 status: `427f1e9784bb3573edfde72ba15d722b147386f754435833317c39909b2d8a5c`
+- recovery manifest: `5ba6e5b0eba9670b05a3851061ef46ed2ff8fb71d71fe47e9ff8d0ddda79bde2`
+
+Git commits:
+- deterministic store smoke: `f36ea022b80058aa4bcf453607164afe4627223e`
+- heartbeat fingerprint publication: `f5666a0c544b0936a5b99c4f51dde7915922aa6c`
+- VPS1 deterministic guard: `61b026cbaa87db1b4a4990ee28a799dc0c709115`
+- VPS1 deterministic status: `7cd4b4bf0ce6ff9eab65f387e035e550db2dc517`
+- refreshed recovery manifest: `972f3558c6b03e84fbbab53d361b197e32d17a0d`
+
+Live/Git identity after rollout: all five updated artifacts matched byte-for-byte.

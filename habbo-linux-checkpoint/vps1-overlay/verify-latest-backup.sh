@@ -27,15 +27,20 @@ grep -q "cloudflared.*--config /etc/cloudflared-stremio-legacy/config.yml tunnel
 test -f "$B/havana-source-b550f00.bundle"
 test -f "$B/habbo-library-chunks-sha256.txt"
 test -f "$B/habbo-runtime-prefix-parts-sha256.txt"
+test -f "$B/vps2-control-plane-overlay.tar.gz"
+test -f "$B/vps2-control-plane-files-sha256.txt"
 test -f "$B/habbo-2009-dual-linux-FINAL-v2-20260923.zip"
 echo 'f80bbefc5a486fd0f9cce058a39462ef3925c563253dc2f69ebe647f6a6630ec  '"$B"'/habbo-2009-dual-linux-FINAL-v2-20260923.zip' | sha256sum -c - >/dev/null
 echo '77672bee2a6b8f879aa8cb0acbac41b7bc203b4487e1464ebacbc1848564bcb5  '"$B"'/havana-source-b550f00.bundle' | sha256sum -c - >/dev/null
 echo '31f607e2c83bbc3859687492236b21b1c5da2439939b1e715abc3eebdb6260d8  '"$B"'/habbo-library-chunks-sha256.txt' | sha256sum -c - >/dev/null
 echo '33574318d69e29e4ddfa2430af4d87467836626432085cac2326f7efdf47fec6  '"$B"'/habbo-runtime-prefix-parts-sha256.txt' | sha256sum -c - >/dev/null
-git bundle list-heads "$B/havana-source-b550f00.bundle" | grep -q '^b550f00f27788145d26723fd19e943aa63504a63 ' || { echo 'FAIL: backed-up Havana bundle commit mismatch' >&2; exit 1; }
+git bundle list-heads "$B/havana-source-b550f00.bundle" | grep '^b550f00f27788145d26723fd19e943aa63504a63 ' >/dev/null || { echo 'FAIL: backed-up Havana bundle commit mismatch' >&2; exit 1; }
 unzip -tqq "$B/habbo-2009-dual-linux-FINAL-v2-20260923.zip" || { echo 'FAIL: backed-up FINAL-v2 ZIP is unreadable' >&2; exit 1; }
 [[ "$(wc -l < "$B/habbo-library-chunks-sha256.txt")" -eq 15 ]] || { echo 'FAIL: Library backend/WWW manifest line count mismatch' >&2; exit 1; }
 [[ "$(wc -l < "$B/habbo-runtime-prefix-parts-sha256.txt")" -eq 7 ]] || { echo 'FAIL: Library runtime/prefix manifest line count mismatch' >&2; exit 1; }
+[[ "$(wc -l < "$B/vps2-control-plane-files-sha256.txt")" -eq 21 ]] || { echo 'FAIL: VPS2 control-plane recovery manifest line count mismatch' >&2; exit 1; }
+"$ROOT/ops/vps2-control-plane-recovery-smoke.sh" "$B" >/dev/null || { echo 'FAIL: backed-up VPS2 control-plane recovery kit verification failed' >&2; exit 1; }
+tar -tzf "$B/ops-overlay.tar.gz" | grep -Fx 'ops/vps2-control-plane-recovery-smoke.sh' >/dev/null || { echo 'FAIL: ops overlay missing VPS2 recovery smoke' >&2; exit 1; }
 mkdir -p "$WORK/havana-bundle-verify"
 git init -q "$WORK/havana-bundle-verify"
 git -C "$WORK/havana-bundle-verify" bundle verify "$B/havana-source-b550f00.bundle" >/dev/null 2>&1 || { echo 'FAIL: backed-up Havana bundle verification failed' >&2; exit 1; }

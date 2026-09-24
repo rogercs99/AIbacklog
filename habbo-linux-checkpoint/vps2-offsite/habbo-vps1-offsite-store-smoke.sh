@@ -103,6 +103,18 @@ PYKIT
     etc/systemd/system/habbo-vps2-control-plane-heartbeat.timer; do
     [[ -f "$kit/$required" ]] || { rm -rf "$work"; fail "required VPS2 recovery artifact missing ($required): $f"; }
   done
+  bootstrap="$kit/usr/local/sbin/habbo-vps2-control-plane-bootstrap.sh"
+  HABBO_VPS2_SOURCE_ROOT="$kit" "$bootstrap" --check-prereqs >/dev/null || { rm -rf "$work"; fail "VPS2 recovery bootstrap prerequisites failed: $f"; }
+  rehearsal="$work/.bootstrap-rehearsal"
+  HABBO_VPS2_SOURCE_ROOT="$kit" "$bootstrap" --rehearsal "$rehearsal" >/dev/null || { rm -rf "$work"; fail "VPS2 recovery bootstrap rehearsal failed: $f"; }
+  (cd "$rehearsal" && sha256sum -c "$work/vps2-control-plane-files-sha256.txt" --status) || { rm -rf "$work"; fail "VPS2 recovery rehearsal hash verification failed: $f"; }
+  rehearsal_scripts=$(find "$rehearsal/usr/local/sbin" -maxdepth 1 -type f -name 'habbo-*' | wc -l)
+  rehearsal_units=$(find "$rehearsal/etc/systemd/system" -maxdepth 1 -type f -name 'habbo-*' | wc -l)
+  rehearsal_links=$(find "$rehearsal/etc/systemd/system/timers.target.wants" -maxdepth 1 -type l -name 'habbo-*' | wc -l)
+  [[ "$rehearsal_scripts" -eq 10 && "$rehearsal_units" -eq 12 && "$rehearsal_links" -eq 4 ]] || { rm -rf "$work"; fail "VPS2 recovery rehearsal inventory mismatch ($rehearsal_scripts/$rehearsal_units/$rehearsal_links): $f"; }
+  mapfile -t rehearsal_unit_files < <(find "$rehearsal/etc/systemd/system" -maxdepth 1 -type f -name 'habbo-*' -printf '%p\n' | sort)
+  unit_path="$rehearsal/etc/systemd/system:/etc/systemd/system:/run/systemd/system:/usr/local/lib/systemd/system:/usr/lib/systemd/system:/lib/systemd/system"
+  SYSTEMD_UNIT_PATH="$unit_path" systemd-analyze verify "${rehearsal_unit_files[@]}" >/dev/null 2>&1 || { rm -rf "$work"; fail "VPS2 recovery rehearsal systemd verification failed: $f"; }
   rm -rf "$work"
   current_work=
 done
@@ -112,4 +124,4 @@ fi
 newest=${archives[-1]##*/}
 [[ "$latest_name" == "$newest" ]] || fail "LATEST is not newest archive: $latest_name vs $newest"
 echo 'PASS: Habbo VPS1 offsite store smoke'
-echo "archives=${#archives[@]} latest=$latest_name integrity=external-sha256+gzip+internal-manifest-full critical=verified vps2-recovery=semantic+live permissions=private temp_residue=0"
+echo "archives=${#archives[@]} latest=$latest_name integrity=external-sha256+gzip+internal-manifest-full critical=verified vps2-recovery=semantic+live+bootstrap permissions=private temp_residue=0"

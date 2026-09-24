@@ -1,0 +1,31 @@
+name: Habbo R39 exact release export v07
+on:
+  push:
+    branches: [project/habbo-2009-dual-linux-vps1-deploy-20260923]
+    paths:
+      - '.github/workflows/habbo-r39-release39-export-v07.yml'
+permissions:
+  contents: read
+jobs:
+  export:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Download exact RELEASE39 client bundle
+        shell: bash
+        run: |
+          set -euxo pipefail
+          url='https://h4bbo.net/archive/Habbo%20Client%20Data/Flash/zipped_swf/RELEASE39-22643-22891-200911110035_07c3a2a30713fd5bea8a8caf07e33438.zip'
+          curl -fL --retry 5 --retry-delay 2 "$url" -o RELEASE39.zip
+          unzip -t RELEASE39.zip
+          unzip -l RELEASE39.zip | tee CONTENTS.txt
+          sha256sum RELEASE39.zip > SHA256SUMS.txt
+      - uses: actions/upload-artifact@v4
+        with:
+          name: habbo-v07-release39-exact
+          path: |
+            RELEASE39.zip
+            CONTENTS.txt
+            SHA256SUMS.txt
+          retention-days: 7
+          compression-level: 0

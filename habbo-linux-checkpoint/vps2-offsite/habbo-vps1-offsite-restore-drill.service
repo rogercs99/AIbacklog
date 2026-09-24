@@ -2,6 +2,7 @@
 Description=Restore-test latest Habbo VPS1 offsite backup on VPS2
 After=network-online.target docker.service habbo-vps1-offsite-pull.service
 Wants=network-online.target
+OnFailure=habbo-vps1-offsite-restore-drill-failed.service
 
 [Service]
 Type=oneshot

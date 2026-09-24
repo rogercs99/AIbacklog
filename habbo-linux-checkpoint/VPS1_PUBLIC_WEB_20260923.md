@@ -1898,3 +1898,41 @@ Live/Git identity:
 - VPS2 control-plane smoke;
 - habbo-status.sh;
 - all seven were compared byte-for-byte against the deployment branch and returned match=true.
+
+## Pipefail-safe recovery verification 2026-09-24
+
+A real regression was found while creating the first post-deep-scrub canonical backup.
+
+Symptom:
+- `habbo-backup-daily.service` failed before promotion;
+- staging was cleaned correctly and LATEST stayed on the previous valid generation;
+- verifier logged `FAIL: ops overlay missing VPS2 recovery smoke` plus `tar: stdout: write error`.
+
+Root cause:
+- the recovery smoke actually existed in `/srv/habbo/ops` and was included by `tar -C /srv/habbo -czf ... ops`;
+- `verify-latest-backup.sh` used `set -o pipefail` together with `tar -tzf ... | grep -Fxq ...`;
+- `grep -q` exited immediately after finding the correct entry;
+- `tar` then received SIGPIPE / write error;
+- pipefail converted that successful match into a failing pipeline.
+
+Fix:
+- long producer pipelines no longer use early-exit `grep -q`;
+- tar membership check now uses `grep -Fx ... >/dev/null` so grep consumes the stream;
+- the same defensive change was applied to Havana `git bundle list-heads` checks in both the backup verifier and disaster-source smoke.
+
+Regression proof:
+- disaster-recovery-source-smoke returned PASS after the change;
+- `habbo-backup-daily.service` rerun completed Result=success / ExecMainStatus=0;
+- promoted `manual-20260924T081208Z`;
+- its ops overlay contains `ops/vps2-control-plane-recovery-smoke.sh`;
+- `.env` appears exactly once in SHA256SUMS;
+- isolated restore verifier passed 88/40/1/1;
+- local retention remained 16.
+
+Live hashes:
+- verify-latest-backup.sh: `264a15654f5f7914a03ab116e0895c979a9503c48527a04813c8be0c31b39dca`
+- disaster-recovery-source-smoke.sh: `c3b1f394745618563caa6465a142f52b37868a784783ac3d6fc9ff91d5352b75`
+
+Git commits:
+- verifier pipefail fix: `e9c63bfb8a7f04c546f560548bf8b868154a5061`
+- disaster-source pipefail fix: `cbbf84ebcfaf1ea13efc1215b2c5a1adb5bad755`

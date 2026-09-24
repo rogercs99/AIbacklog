@@ -60,6 +60,7 @@ rm -f "$tmp"
 ssh -o BatchMode=yes "$REMOTE" 'B=$(cat /srv/habbo/LATEST_PUBLIC_WEB_BACKUP); exec tar -C "$B" -czf - .' >"$tmp"
 chmod 600 "$tmp"
 gzip -t "$tmp"
+/usr/local/sbin/habbo-offsite-tar-safety.py "$tmp" >/dev/null || { echo 'FAIL: pulled archive structural safety check failed' >&2; exit 1; }
 
 work=$(mktemp -d /dev/shm/habbo-offsite-verify.XXXXXX)
 trap 'rm -rf "$work" "$tmp"' EXIT

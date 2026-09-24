@@ -16,10 +16,7 @@ archive=${1:-$(cat "$ROOT/LATEST")}
 [[ -f "$archive.sha256" ]] || { echo "FAIL: offsite archive checksum missing" >&2; exit 1; }
 sha256sum -c "$archive.sha256" --status || { echo 'FAIL: offsite archive SHA-256 mismatch' >&2; exit 1; }
 
-ROOT_FREE_KB=$(df -Pk / | awk 'NR==2 {print $4}')
-SHM_FREE_KB=$(df -Pk /dev/shm | awk 'NR==2 {print $4}')
-[[ "$ROOT_FREE_KB" -ge 819200 ]] || { echo "FAIL: VPS2 root free space below 800 MiB (${ROOT_FREE_KB} KiB)" >&2; exit 1; }
-[[ "$SHM_FREE_KB" -ge 524288 ]] || { echo "FAIL: VPS2 /dev/shm free space below 512 MiB (${SHM_FREE_KB} KiB)" >&2; exit 1; }
+/usr/local/sbin/habbo-vps2-space-preflight.sh
 
 work=$(mktemp -d /dev/shm/habbo-offsite-drill.XXXXXX)
 pulled_image=false

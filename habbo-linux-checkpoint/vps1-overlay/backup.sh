@@ -55,13 +55,13 @@ install -m 600 "$ROOT/v31/client/vars.txt" "$OUT/v31-vars.txt"
 install -m 600 "$ROOT/web/client/v39/gamedata/external_variables_vps1.txt" "$OUT/r39-external_variables_vps1.txt"
 readlink "$ROOT/web/gordon/RELEASE39-22643-22891-200911110035_07c3a2a30713fd5bea8a8caf07e33438/config_habbo.xml" > "$OUT/r39-config_habbo-symlink.txt"
 docker exec habbo-mariadb-1 sh -lc 'mariadb-dump -uroot -p"$MARIADB_ROOT_PASSWORD" --lock-all-tables --routines --triggers "$MARIADB_DATABASE"' | gzip -9 > "$OUT/havana.sql.gz"
-chmod 600 "$OUT"/*
+mapfile -d '' top_files < <(find "$OUT" -maxdepth 1 -mindepth 1 -type f ! -name SHA256SUMS -print0 | sort -z)
+((${#top_files[@]} > 0)) || { echo 'FAIL: backup contains no top-level files' >&2; exit 1; }
+chmod 600 "${top_files[@]}"
 if [[ -n "$PREV" && -d "$PREV" && "$PREV" != "$OUT" ]]; then
   deduped=0
-  for new in "$OUT"/*; do
-    [[ -f "$new" ]] || continue
+  for new in "${top_files[@]}"; do
     name=${new##*/}
-    [[ "$name" == "SHA256SUMS" ]] && continue
     old="$PREV/$name"
     if [[ -f "$old" ]] && cmp -s "$old" "$new"; then
       ln -f "$old" "$new"
@@ -70,7 +70,10 @@ if [[ -n "$PREV" && -d "$PREV" && "$PREV" != "$OUT" ]]; then
   done
   echo "dedup_hardlinks=$deduped previous=$PREV"
 fi
-(cd "$OUT" && sha256sum -- * > SHA256SUMS)
+(
+  cd "$OUT"
+  find . -maxdepth 1 -mindepth 1 -type f ! -name SHA256SUMS -printf '%P\0' | sort -z | xargs -0 sha256sum --
+) > "$OUT/SHA256SUMS"
 chmod 600 "$OUT/SHA256SUMS"
 if [[ -x "$ROOT/ops/verify-latest-backup.sh" ]]; then
   "$ROOT/ops/verify-latest-backup.sh" "$OUT"

@@ -1634,3 +1634,45 @@ Git commits:
 - status deep field: `dd8f3739defbcf0e69d30841a9f7eab81dbbd3b2`
 
 Explicit post-update live/Git comparison: all seven artifacts returned `match=true`.
+
+## VPS2 journal pressure relief and latest disaster-drill alignment 2026-09-24
+
+The VPS2 recovery-space preflight gained a second conservative housekeeping phase for persistent journal pressure.
+
+Behavior:
+- APT metadata/cache cleanup remains the first action below 900 MiB root free;
+- after that cleanup, if root free is still below 900 MiB and `/var/log/journal` exceeds 150 MiB, the preflight rotates journald and vacuums archived journals to about 120 MiB;
+- `/var/log/btmp`, browser caches, npm, Quetzal, Puppeteer, Emscripten and unrelated Docker images remain untouched;
+- journald housekeeping only trims older system journal history, not application data.
+
+Real pressure-relief proof:
+- VPS2 had about 889 MiB free and journald occupied 200 MiB;
+- preflight ran with `cleanup=apt-metadata+journal`;
+- journal usage fell from about 200 MiB to 120 MiB;
+- root free increased to about 971 MiB;
+- shared preflight remained PASS.
+
+Post-cleanup recovery proof on `manual-20260924T072113Z`:
+- offsite copy verified;
+- full 3/3 deep retained-store scrub passed;
+- WebKit PASS;
+- heartbeat published 4/4 timers, deep store proof and about 988 MiB root free;
+- offsite restore succeeded with 88 tables / 40 navigator_styles / RogerVideo=1 / room1000=1;
+- temporary MariaDB image was absent afterward;
+- no Habbo VPS2 unit remained failed;
+- all five VPS1 failure latches were clear;
+- VPS1 returned OVERALL READY.
+
+Latest local disaster-drill alignment:
+- before refresh, `/run/habbo-disaster-drill` still referenced `manual-20260924T054309Z`;
+- `habbo-disaster-drill.service` was run against current `manual-20260924T072113Z`;
+- Result=success / ExecMainStatus=0;
+- stamp advanced to `072113Z` with canonical Havana commit `b550f00f27788145d26723fd19e943aa63504a63`;
+- retention re-applied: 16 kept / 0 candidates;
+- status returned OVERALL READY.
+
+VPS2 space-preflight live hash after journald support:
+- `6f29be0b5685bf59a3c6975a32e751f0f9193eda3354d9c9a1ac638022974665`
+
+Git commit:
+- journald pressure relief: `c30f479930388b5de579dbebecbda5c6c82cbaaf`

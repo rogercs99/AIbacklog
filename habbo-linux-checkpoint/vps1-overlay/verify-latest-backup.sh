@@ -26,6 +26,7 @@ test -x "$WORK/ops/public-web-smoke.sh"
 test -f "$WORK/ops/public-web-direct-assets-audit.py"
 test -f "$WORK/ops/ensure-home-libs2-overlay.sh"
 test -f "$WORK/ops/public-web-webkit-smoke.py"\ntest -x "$WORK/ops/network-perimeter-smoke.sh"\ntest -x "$WORK/ops/deployment-final-validate.sh"\ntest -x "$WORK/ops/backup-retention-report.sh"\ntest -x "$WORK/ops/disk-health-smoke.sh"
+test -x "$WORK/ops/cloudflare-ingress-smoke.sh"
 test -f "$WORK/web-frontend-assets/templates/index_v32.tpl"
 grep -q 'static/js/libs2.js' "$WORK/web-frontend-assets/templates/index_v32.tpl"
 

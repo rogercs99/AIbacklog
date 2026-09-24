@@ -92,5 +92,12 @@ systemd-analyze verify "${units[@]}" >"$TMP/systemd-verify.log" 2>&1 || { cat "$
 # Verify backup DB through the existing isolated temporary-DB verifier.
 "$ROOT/ops/verify-latest-backup.sh" "$B" >/dev/null
 
+STAMP=/run/habbo-disaster-drill
+{
+  printf 'validated_at_utc=%s\n' "$(date -u +%Y-%m-%dT%H:%M:%SZ)"
+  printf 'backup=%s\n' "$B"
+  printf 'havana_commit=%s\n' "$EXPECTED_COMMIT"
+} >"$STAMP"
+chmod 0644 "$STAMP"
 echo 'PASS: Habbo disaster restore drill'
 echo "backup=$B havana_commit=$EXPECTED_COMMIT compose=resolved cloudflare=coherent systemd=verified final_v2=verified db_restore=verified"

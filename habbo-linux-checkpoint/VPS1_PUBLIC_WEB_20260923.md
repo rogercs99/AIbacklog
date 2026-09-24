@@ -1834,3 +1834,67 @@ Git commits:
 - VPS1 proof contract: e4ee318c9fdf68d61287d081e41825dfb687c4b8
 
 Explicit live↔Git comparison after promotion: both artifacts matched byte-for-byte.
+
+## Complete backup manifests and deep offsite scrub 2026-09-24
+
+Backup integrity was hardened again after discovering that the previous top-level `sha256sum -- *` manifest omitted dotfiles such as `.env`.
+
+Local backup publication contract:
+- `backup.sh` now enumerates every top-level regular file with `find`, including dotfiles;
+- permissions are normalized for all top-level files, including `.env`;
+- hardlink dedupe now also applies to dotfiles;
+- `SHA256SUMS` contains every top-level regular file except `SHA256SUMS` itself;
+- `verify-latest-backup.sh` compares the actual top-level file set against the manifest 1:1;
+- `.env` must appear exactly once in the manifest;
+- the isolated DB restore remains unchanged and still requires exact 88/40/1/1.
+
+First complete-manifest generation:
+- `manual-20260924T070721Z`;
+- `.env` present exactly once in SHA256SUMS;
+- 29 actual top-level files = 29 manifest entries;
+- isolated restore PASS 88 tables / 40 navigator_styles / RogerVideo=1 / room1000=1.
+
+Offsite migration:
+- two additional daily generations were created and synchronized after 070721Z;
+- VPS2 retention was thereby migrated completely to the new format;
+- retained generations became 070721Z, 070908Z and 070929Z;
+- no legacy manifest generation remained in the three-copy offsite window.
+
+Deep VPS2 scrub:
+- each of the three retained tarballs is extracted sequentially to `/dev/shm`;
+- its internal SHA256SUMS is verified;
+- internal manifest coverage must exactly match every top-level regular file;
+- `.env` must be manifest-covered and mode 0600;
+- required recovery files are checked explicitly;
+- canonical FINAL-v2 ZIP hash must remain `f80bbefc5a486fd0f9cce058a39462ef3925c563253dc2f69ebe647f6a6630ec`;
+- DB dump must pass `gzip -t`;
+- ops overlay must be readable as tar.gz;
+- workdir is deleted between generations and protected by an EXIT cleanup trap.
+
+Strong internal-integrity regression:
+- a complete 3-copy offsite store was cloned into `/dev/shm`;
+- `.env` inside one archive was modified;
+- that archive was repacked and its EXTERNAL SHA sidecar was recalculated, so the outer archive check remained valid;
+- deep scrub still rejected it with `internal manifest verification failed`;
+- the laboratory was removed and production 3/3 scrub returned PASS.
+
+Local publication regression:
+- current LATEST was cloned using hardlinks into a root-only lab;
+- only the lab copy of SHA256SUMS was replaced with a version lacking `.env`;
+- publication smoke rejected it with `LATEST manifest coverage mismatch`;
+- production publication smoke remained PASS and the lab was removed.
+
+Control-plane integration:
+- heartbeat publishes `offsite_deep_verified=1` only when the full 3-generation scrub succeeds;
+- VPS1 control-plane smoke requires deep verification;
+- `habbo-status.sh` reports `VPS2 deep scrub = OK`.
+
+Live/Git identity:
+- backup.sh;
+- verify-latest-backup.sh;
+- offsite store scrub;
+- VPS2 heartbeat;
+- backup-publication-smoke.sh;
+- VPS2 control-plane smoke;
+- habbo-status.sh;
+- all seven were compared byte-for-byte against the deployment branch and returned match=true.

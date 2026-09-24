@@ -18,6 +18,7 @@ install -m 600 /etc/systemd/system/habbo-static.service "$OUT/habbo-static.servi
 install -m 600 /etc/systemd/system/habbo-websockify.service "$OUT/habbo-websockify.service"
 install -m 600 /etc/systemd/system/habbo-postboot-validate.service "$OUT/habbo-postboot-validate.service"
 install -m 600 /etc/systemd/system/habbo-runtime-healthcheck.service "$OUT/habbo-runtime-healthcheck.service"
+install -m 600 /etc/systemd/system/habbo-runtime-healthcheck-failed.service "$OUT/habbo-runtime-healthcheck-failed.service"
 install -m 600 /etc/systemd/system/habbo-runtime-healthcheck.timer "$OUT/habbo-runtime-healthcheck.timer"
 install -m 600 /etc/cloudflared-stremio-legacy/config.yml "$OUT/cloudflared-stremio-legacy-config.yml"
 tar -C "$ROOT" -czf "$OUT/web-frontend-overlay.tar.gz" web-frontend-assets

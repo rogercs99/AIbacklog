@@ -23,6 +23,7 @@ for attempt in $(seq 1 "$ATTEMPTS"); do
     fi
   done
   if $ok; then
+    rm -f /run/habbo-runtime-health.failed
     cat "$TMP"
     {
       printf 'validated_at_utc=%s\n' "$(date -u +%Y-%m-%dT%H:%M:%SZ)"

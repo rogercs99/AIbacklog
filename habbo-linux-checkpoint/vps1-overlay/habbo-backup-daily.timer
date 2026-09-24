@@ -1,0 +1,11 @@
+[Unit]
+Description=Run Habbo guarded backup daily
+
+[Timer]
+OnCalendar=*-*-* 05:10:00
+Persistent=true
+RandomizedDelaySec=60
+Unit=habbo-backup-daily.service
+
+[Install]
+WantedBy=timers.target

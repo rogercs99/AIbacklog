@@ -1,8 +1,8 @@
 [Unit]
-Description=Pull Habbo VPS1 offsite backup daily
+Description=Pull Habbo VPS1 offsite backup with hourly catch-up
 
 [Timer]
-OnCalendar=*-*-* 05:25:00
+OnCalendar=*-*-* *:25:00
 Persistent=true
 RandomizedDelaySec=60
 Unit=habbo-vps1-offsite-pull.service

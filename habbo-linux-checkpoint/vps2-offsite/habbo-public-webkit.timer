@@ -1,0 +1,11 @@
+[Unit]
+Description=Run Habbo WebKit iPhone regression daily
+
+[Timer]
+OnCalendar=*-*-* 05:35:00
+Persistent=true
+RandomizedDelaySec=60
+Unit=habbo-public-webkit.service
+
+[Install]
+WantedBy=timers.target

@@ -1,0 +1,9 @@
+[Unit]
+Description=Report Habbo VPS2 control-plane health to VPS1
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+ExecStart=/usr/local/sbin/habbo-vps2-control-plane-heartbeat.sh
+TimeoutStartSec=60

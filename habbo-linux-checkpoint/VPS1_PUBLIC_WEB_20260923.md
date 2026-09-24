@@ -2283,3 +2283,82 @@ Git commits:
 - refreshed recovery manifest: `417652aec5f43c60ac44d32b72a8f6304493fc79`
 
 Live/Git identity after rollout: all four updated artifacts matched byte-for-byte.
+
+## Structural tar safety and 23-file VPS2 recovery kit 2026-09-24
+
+All tar extraction paths used by the off-host backup/restore flow now validate archive structure before extraction.
+
+Added VPS2 helper `/usr/local/sbin/habbo-offsite-tar-safety.py`.
+Strict outer-backup mode requires:
+- no absolute paths, backslashes or `..` traversal;
+- no duplicate normalized destinations;
+- only regular files plus optional root directory `.`;
+- no symlinks, hardlinks, devices, FIFOs or other special members;
+- no nested members;
+- <=128 members, <=256 MiB per file, <=512 MiB total declared regular-file size.
+
+Nested mode (`--nested`) applies the same traversal/link/special/duplicate/size protections while allowing safe nested regular-file paths for the VPS2 recovery overlay.
+
+Live integration:
+- offsite pull validates the temporary tar before its verification extraction;
+- offsite restore drill validates the archive before restore extraction;
+- full offsite store scrub validates every retained outer archive before extraction;
+- store scrub validates `vps2-control-plane-overlay.tar.gz` in nested mode before extraction;
+- bootstrap seed validates each seeded offsite archive before extraction.
+
+Controlled safety regressions:
+- tar containing `../escape` rejected before extraction;
+- tar containing a symlink to `/etc/passwd` rejected before extraction;
+- tar containing `./foo` and `foo` rejected as duplicate normalized destination;
+- all laboratory tar files were removed afterward.
+
+Recovery-kit inventory migration:
+- helper increased VPS2 recovery kit from 22 -> 23 files and 10 -> 11 scripts; units remain 12 and timers remain 4;
+- refresh builder, recovery smoke, backup verifier, bootstrap and deep store scrub were updated consistently;
+- global search after migration found no remaining legacy `10/22` inventory checks.
+
+Recovery-kit structural validation:
+- builder now performs a pre-extraction structural safety check on the generated overlay;
+- recovery smoke performs an independent pre-extraction Python structural check;
+- runtime store scrub applies the packaged helper in nested mode.
+
+Final recovery kit after all live changes:
+- overlay SHA-256: `bc8ee932d8bf67560398b12574566183612e5ec0431d55c3f6db420c5c8a6239`;
+- manifest SHA-256: `8197c7b25d971945f6500dc8fe0bcc045873d0634de529db5f071bb2b60a0d19`;
+- two consecutive bootstrap rehearsals produced identical tree fingerprint `bfc0c18b4ff7b4f1cd94c27a0b6be72550b83a314ad25c65f8169df77cfea3af`;
+- rehearsal inventory: 11 scripts / 12 units / 4 timer links.
+
+Offsite-store migration:
+- final homogeneous retained generations: `manual-20260924T104318Z`, `manual-20260924T104338Z`, `manual-20260924T104359Z`;
+- all three passed structural safety + external SHA/gzip + complete internal manifest + recovery-kit semantic/live/bootstrap/deterministic checks;
+- store recovery fingerprint after migration: `61713d71e8e8ba3b9abd80f2c8d15db9410921925f8d56ce5faa2247c0c3fcfd`;
+- no scrub/rehearsal workdirs remained in `/dev/shm`.
+
+Latest validated generation before documentation promotion:
+- local/offsite: `manual-20260924T104359Z`;
+- offsite SHA-256: `e57862bd4fa62c8dbc687cf1d6e0344c094e8ca6bca78d56cdeb689701221011`;
+- local disaster drill points to `104359Z`;
+- offsite restore PASS with manifest=complete, tmpfs workspace/datadir, network=none and 88/40/1/1;
+- deployment final validator PASS and OVERALL READY.
+
+Live hashes:
+- tar safety helper: `b205836410c898de4b2ff072fbb8edbc09e73238ac3b00f5682c155b516456f9`
+- offsite pull: `b1ffcc0bd4107a4d271c4e3ad3333f3f1a19be1ac68000f601ee5c9b0ead562e`
+- offsite restore drill: `0ec58fb989f040d488ba8ed04eacad8e37607798534d3bbad11dcdf9e9097b7f`
+- offsite store scrub: `5f4d446fb0d0640f87a690e8f9867c38a91745f1dc19a1880867789e1c5c2f82`
+- VPS2 bootstrap: `5010a31ad1435e3e0e7fe16e7d107eb3307bee060a35fb008665187d6dd1b636`
+- recovery-kit builder: `2aaad3c257b6263525f56f53cf0cbd31445d369018f441bf85090225351d61eb`
+- recovery smoke: `15450171fbb9dee1082e12efc23de02c66c6c6dff3419c6cc05ce79239bbbcf7`
+- backup verifier: `94eef7027b5ebd72dcd4e8620a5cfa4229c62c4e601495c20b1c48ecece7525d`
+
+Git commits:
+- tar safety helper: `a5955454cc079f493c0ce93aa34cc54cb02a0103`
+- protected pull: `4e1c35ec88425bb15c9057288cc934093c58c0fd`
+- protected restore: `a458ecd124950539cdbf5f159b3949d662c4b53e`
+- protected store scrub: `d800f7bdb742f3a8ab62c6d9d3bda8cd263b55ba`
+- 23/11 bootstrap: `d718b83d5ab543191964bf99ad27afe752a51f37`
+- safe recovery-kit builder: `4e14f1221eab049e52eac0e8c1eecc267ab780e0`
+- 23/11 recovery smoke: `85a94ec8d4816a9d8129946f29168842dd4972c8`
+- 23-line backup verifier: `9674d682b476c4c3713800652ed16c6a70b77458`
+
+Explicit live↔Git comparison after promotion: 8/8 artifacts matched byte-for-byte.

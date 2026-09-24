@@ -1,0 +1,14 @@
+[Unit]
+Description=Habbo post-boot readiness validation
+After=network-online.target docker.service habbo-stack.service habbo-static.service habbo-websockify.service cloudflared-stremio-legacy.service
+Wants=network-online.target cloudflared-stremio-legacy.service
+Requires=habbo-stack.service habbo-static.service habbo-websockify.service
+
+[Service]
+Type=oneshot
+ExecStart=/srv/habbo/ops/postboot-validate.sh
+RemainAfterExit=yes
+TimeoutStartSec=180
+
+[Install]
+WantedBy=multi-user.target

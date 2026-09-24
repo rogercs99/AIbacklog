@@ -81,6 +81,10 @@ fi
 $offsite_ok || ok=false
 printf '%-28s %ss\n' 'offsite backup age' "$offsite_age"
 printf '%-28s %s\n' 'offsite latest match' "$([[ "$offsite_backup" == "$latest" ]] && echo OK || echo FAIL)"
+offsite_pull_failed=false
+[[ -e /srv/habbo/OFFSITE_BACKUP_FAILED ]] && offsite_pull_failed=true
+$offsite_pull_failed && ok=false
+printf '%-28s %s\n' 'offsite pull failure latch' "$($offsite_pull_failed && echo FAILED || echo clear)"
 if [[ -f /srv/habbo/OFFSITE_RESTORE_DRILL_STATUS ]]; then
   osd_ts=$(awk -F= '$1=="validated_at_utc" {print $2}' /srv/habbo/OFFSITE_RESTORE_DRILL_STATUS)
   osd_tables=$(awk -F= '$1=="tables" {print $2}' /srv/habbo/OFFSITE_RESTORE_DRILL_STATUS)
@@ -97,6 +101,10 @@ osd_ok=true
 $osd_ok || ok=false
 printf '%-28s %ss\n' 'offsite restore drill age' "$osd_age"
 printf '%-28s %s\n' 'offsite restore proof' "$($osd_ok && echo OK || echo FAIL)"
+offsite_restore_failed=false
+[[ -e /srv/habbo/OFFSITE_RESTORE_DRILL_FAILED ]] && offsite_restore_failed=true
+$offsite_restore_failed && ok=false
+printf '%-28s %s\n' 'offsite restore fail latch' "$($offsite_restore_failed && echo FAILED || echo clear)"
 webkit_ok=true
 if [[ -f /srv/habbo/WEBKIT_STATUS ]]; then
   webkit_ts=$(awk -F= '$1=="validated_at_utc" {print $2}' /srv/habbo/WEBKIT_STATUS)

@@ -16,6 +16,29 @@ trap cleanup EXIT
 
 cd "$B"
 sha256sum -c SHA256SUMS
+test -f "$B/.env"
+test -f "$B/cloudflared-tunnel-credentials.json"
+test "$(stat -c %a "$B/cloudflared-tunnel-credentials.json")" = 600
+python3 - "$B/cloudflared-stremio-legacy-config.yml" "$B/cloudflared-tunnel-credentials.json" <<'PYCF'
+import json,re,sys
+cfg=open(sys.argv[1],encoding='utf-8').read()
+m=re.search(r'(?m)^\s*tunnel:\s*([^#\s]+)',cfg)
+if not m: raise SystemExit('Cloudflare tunnel id missing from backed-up config')
+with open(sys.argv[2],encoding='utf-8') as f: obj=json.load(f)
+for key in ('AccountTag','TunnelSecret','TunnelID'):
+    if not obj.get(key): raise SystemExit('Cloudflare credential missing required field: '+key)
+if str(obj['TunnelID']) != m.group(1).strip():
+    raise SystemExit('Cloudflare credential TunnelID does not match config')
+PYCF
+test "$(stat -c %a "$B/.env")" = 600
+grep -q '^HABBO_DB_PASSWORD=.' "$B/.env"
+grep -q '^HABBO_DB_ROOT_PASSWORD=.' "$B/.env"
+docker compose --env-file "$B/.env" -f "$B/docker-compose.yml" config >/dev/null 2>"$WORK/compose-config.err"
+if grep -qi 'is not set\|Defaulting to a blank string' "$WORK/compose-config.err"; then
+  echo 'FAIL: backed-up Compose environment is incomplete' >&2
+  cat "$WORK/compose-config.err" >&2
+  exit 1
+fi
 gzip -t havana.sql.gz
 
 tar -C "$WORK" -xzf ops-overlay.tar.gz
@@ -37,6 +60,7 @@ test -x "$WORK/ops/runtime-healthcheck.sh"
 test -x "$WORK/ops/runtime-healthcheck-failed.sh"
 test -x "$WORK/ops/habbo-status.sh"
 test -x "$WORK/ops/db-backup-consistency-smoke.sh"
+test -x "$WORK/ops/secret-permissions-smoke.sh"
 test -x "$WORK/ops/habbo-backup-daily.sh"
 test -f "$B/habbo-backup-daily.service"
 test -f "$B/habbo-backup-daily.timer"

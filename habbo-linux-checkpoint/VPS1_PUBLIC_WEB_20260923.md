@@ -1254,3 +1254,45 @@ Git commits:
 - disk count guard: `c3c1caebf8faedc26c2d1870382108b925da285a`
 - verifier integration: `5783419a4b2883411bd27c76cd166b061bd235cc`
 - status count: `202cd41dd6368b93dfc41b3e4721ca0c346ee972`
+
+## Offsite scheduling race closure 2026-09-24
+
+The VPS2 pull no longer assumes the VPS1 daily backup always completes before 05:25.
+
+Coordination changes:
+- VPS2 pull and offsite restore drill share `/run/lock/habbo-vps1-offsite.lock` with a 120-second wait;
+- pull reads the remote `ActiveState` of `habbo-backup-daily.service` before reading/blessing LATEST;
+- states `active`, `activating`, `reloading` or `deactivating` cause an immediate pull failure;
+- this is important because the daily service is Type=oneshot and is normally `activating` while backup work is running;
+- pull timer changed from once-daily 05:25 to hourly catch-up at minute `:25`, Persistent=true, with up to 60 seconds randomized delay.
+
+Timer proof:
+- `systemd-analyze calendar '*-*-* *:25:00'` normalized successfully;
+- systemd reported the next trigger at 08:25 CEST after the change;
+- timer remained enabled + active/waiting.
+
+Controlled delayed-backup proof:
+- only `habbo-backup-daily.service` was temporarily overridden with `/bin/sleep 30`;
+- remote backup service reached `ActiveState=activating`;
+- VPS2 pull refused with `FAIL: VPS1 daily backup state is activating; refusing to bless the previous generation`;
+- pull service Result=exit-code / ExecMainStatus=1;
+- OnFailure recorder succeeded and wrote `OFFSITE_BACKUP_FAILED` on VPS1;
+- hourly pull timer remained active;
+- override was removed and the real daily ExecStart restored;
+- a normal pull then succeeded and automatically cleared the failure latch.
+
+Shared-lock proof:
+- the offsite lock was externally held for 4 seconds;
+- a pull started during the hold waited instead of failing or racing;
+- elapsed time was about 5 seconds;
+- pull then completed success, latch stayed clear and offsite smoke passed.
+
+Live hashes:
+- VPS2 offsite pull: `3a354ffc974118bde8b0f1a827d71807ff43b703cf280bff64500b45cc633c97`
+- VPS2 restore drill: `866f5e245aca680add0aecd29493d816870e9233a11c7dbdde44d761ae8fd0c4`
+- VPS2 pull timer: `d299bac29cb2b0eea4c0149a22c54ba64df0828e4ce451fdf63b08e2198a00f0`
+
+Git commits:
+- coordinated pull: `3b43678eea8a6a45c4ffd21802ad6785d8593b1b`
+- shared-lock restore drill: `b095c9cc4b16af7d0da90771f8911bdb3cfc8cba`
+- hourly catch-up timer: `cecabd0b719ec24dc67a91bfe20a686030827d47`

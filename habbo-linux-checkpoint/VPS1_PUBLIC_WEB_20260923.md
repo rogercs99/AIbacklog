@@ -125,7 +125,8 @@ Root cause:
 Persistent fix:
 - overlay template: `/srv/habbo/web-frontend-assets/templates/index_v32.tpl`;
 - Compose bind mount: `/srv/habbo/web-frontend-assets/templates/index_v32.tpl:/havana-web/tools/www-tpl/default/index_v32.tpl:ro`;
-- reproducible helper: `/srv/habbo/ops/ensure-home-libs2-overlay.sh`;\n- The overlay helper writes the destination in place instead of replacing the file, preserving the inode used by Docker's single-file bind mount. This was regression-tested by running the helper while `havana-web` was live: the mounted inode remained stable and `libs2.js -> landing.js` stayed active without another container recreate.
+- reproducible helper: `/srv/habbo/ops/ensure-home-libs2-overlay.sh`;
+- The overlay helper writes the destination in place instead of replacing the file, preserving the inode used by Docker's single-file bind mount. This was regression-tested by running the helper while `havana-web` was live: the mounted inode remained stable and `libs2.js -> landing.js` stayed active without another container recreate.
 - `public-web-direct-assets-audit.py` now fails if `libs2.js` is missing or appears after `landing.js`.
 
 Post-fix browser validation from VPS2:
@@ -271,3 +272,31 @@ The smoke requires:
 It intentionally does not restart the shared tunnel during routine validation.
 Live SHA-256: `966eea7ab7a4073664fd67381881b934c3f2463aaf1e072f0c32b3c15b69421f`.
 `deployment-final-validate.sh` and `verify-latest-backup.sh` now include/require this guard.
+
+## Post-boot readiness validation 2026-09-24
+
+A boot-time readiness layer was added so the host can distinguish process startup from actual Habbo readiness.
+
+- `/srv/habbo/ops/postboot-validate.sh` retries up to 18 times with five seconds between attempts.
+- It checks backend smoke, network perimeter, disk health, shared Cloudflare ingress and public web readiness.
+- It intentionally does not perform a temporary MariaDB restore on every boot.
+- `habbo-postboot-validate.service` is enabled under `multi-user.target`, ordered after Docker, Habbo stack/static/websockify and the shared Cloudflare tunnel.
+- On success the service remains `active (exited)` and writes `/run/habbo-postboot-validated` with UTC validation time, current latest-backup path and immutable FINAL-v2 SHA-256.
+- Manual execution passed on attempt 1/18.
+- After backup `/srv/habbo/backups/manual-20260924T022006Z`, the service was rerun and the stamp updated to that backup; aggregate deployment validation then passed.
+- Backups now include `habbo-postboot-validate.service`; the restore verifier requires both unit and script.
+- `deployment-final-validate.sh` requires the post-boot unit to be enabled/active and checks the stamp contains the canonical FINAL-v2 hash.
+
+Live hashes:
+- `postboot-validate.sh`: `77c7c5b7bb6d01c29c3e29b67472c2bd5aa03665e7215371f7e1adef93be3a36`
+- `habbo-postboot-validate.service`: `b1aab325cbf01a6180830bd410ccd5c53b8d58c54df07203541bc13f791491b2`
+- `backup.sh`: `533ddc9117ed1523c4b89c8939bf289d74194d9186c9ccf1e76faf1ac9518608`
+- `verify-latest-backup.sh`: `c6e71c99b0cf1c165c760c2fd59c8bb90bdcccf95b2bb7ee54a12a0b084275aa`
+- `deployment-final-validate.sh`: `d68d5dbf6a699e7cf76435c0f1501d6ca35c9f7e64f21b26e4648a8ce7823e60`
+
+Git reconciliation commits:
+- live backup script sync: `33a2d351e3e4a390ddbc919751fd6d23ba7d66df`
+- live restore verifier sync: `fbf7560eb674730312296cf6be3c7730d18ebe40`
+- live final validator sync: `07a322117abefe2df4a8d17c05360c1e87bc73e4`
+- live post-boot script sync: `376445ab3cad8ffc253c964415bda106e80cf5ae`
+- live post-boot unit sync: `4dd421566f8fe37b806b73519989de755aded0fc`

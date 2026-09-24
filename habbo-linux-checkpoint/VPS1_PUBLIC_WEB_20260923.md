@@ -489,3 +489,43 @@ Second hardlink-dedupe proof:
 - `manual-20260924T025022Z` increased physical backup storage by only 904 KiB;
 - `manual-20260924T025424Z` increased it by only 908 KiB;
 - the 10,664,307-byte frontend overlay shares inode `251960` and reached link count 4.
+
+## Daily guarded backups 2026-09-24
+
+Backups are now automated with a daily systemd timer while preserving the guarded promotion rules.
+
+- `habbo-backup-daily.timer` is enabled and active with `OnCalendar=*-*-* 05:10:00`, `Persistent=true`, and `RandomizedDelaySec=60`.
+- `habbo-backup-daily.service` runs `/srv/habbo/ops/habbo-backup-daily.sh`.
+- The runner calls the existing guarded `backup.sh`, then immediately starts `habbo-runtime-healthcheck.service` and requires the runtime stamp to reference the newly promoted backup.
+- This avoids a stale-runtime-stamp window after automated backup promotion.
+- The backup timer/service and runner are included in backups and required by the restore verifier.
+- `habbo-status.sh` now reports daily backup timer enabled/active state, last backup service result and latest backup age.
+- `deployment-final-validate.sh` requires the daily timer enabled/active, last daily backup result `success`, and latest backup age <= 36 hours.
+
+Manual end-to-end service validation:
+- service start: 2026-09-24 05:03:47 CEST;
+- service end: 05:03:59 CEST;
+- Result=success, ExecMainStatus=0;
+- previous backup: `manual-20260924T025655Z`;
+- new backup: `manual-20260924T030347Z`;
+- physical backup growth: 876 KiB thanks to hardlink dedupe;
+- runtime stamp advanced immediately to `manual-20260924T030347Z`;
+- `habbo-status.sh` remained `OVERALL READY`.
+
+Live hashes:
+- `habbo-backup-daily.sh`: `6ef05fd61a40eb9b851605686a8ac2cd25afc5dde48df7c50b8ee186a38d1568`
+- `habbo-backup-daily.service`: `13289a0c28eb3a16a9cf86073433d6e30c1495d49628eb00628cbc8e1ce5bad8`
+- `habbo-backup-daily.timer`: `86a0f520935a2a2b2269576d7c8b93abc059b788c1bf5982d91e073bb654cd4b`
+- `backup.sh`: `186c59974de1516e4f550cbb700f97b956ff174f07c6fc6ee937b484c36bf433`
+- `verify-latest-backup.sh`: `be2b12398c90b7c3cde4e59e64ee6a75c52d8f7976a04930bfd10ca569d6b89a`
+- `deployment-final-validate.sh`: `1bfd0d5a97d8a71bec1c4e37ff5ffdb5f0ad14a003d2f6ef83cd8908f6b1eec4`
+- `habbo-status.sh`: `444e8fc0cc73669dc017a3768a896cc009febd9e56aa4e6db5a043c8592f30b2`
+
+Git commits:
+- daily runner: `df2c72eb0a2e176844d6b9e758a5726def3dac22`
+- daily service: `b47e799fc5a9903ced9ee7cb1db062be21468b39`
+- daily timer: `a2e5dfcee9683b9ff2266bbaa051d88ce7c5db24`
+- backup integration: `d82d41dcf257c04b55b87effdd79cad5c9e1f2aa`
+- restore verifier integration: `38387adafd597e54820603086fa9469b9596f7b2`
+- final validator integration: `e7346c8202edc0f5a651f4ebb98a0b01b915b03b`
+- status integration: `fb383f979f5096346acf54ec4787d335e8618104`

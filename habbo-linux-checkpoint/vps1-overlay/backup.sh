@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
 set -euo pipefail
 ROOT=/srv/habbo
+install -d -m 700 "$ROOT/backups"
 PREV=$(cat "$ROOT/LATEST_PUBLIC_WEB_BACKUP" 2>/dev/null || true)
 MIN_FREE_KB=1048576
 free_kb=$(df -Pk "$ROOT" | awk 'NR==2 {print $4}')
@@ -12,6 +13,7 @@ TS="$(date -u +%Y%m%dT%H%M%SZ)"
 OUT="$ROOT/backups/manual-$TS"
 install -d -m 700 "$OUT"
 install -m 600 "$ROOT/docker-compose.yml" "$OUT/docker-compose.yml"
+install -m 600 "$ROOT/.env" "$OUT/.env"
 install -m 600 "$ROOT/PROJECT_CONTEXT.md" "$OUT/PROJECT_CONTEXT.md"
 tar -C "$ROOT" -czf "$OUT/ops-overlay.tar.gz" ops
 install -m 600 /etc/systemd/system/habbo-stack.service "$OUT/habbo-stack.service"
@@ -24,6 +26,10 @@ install -m 600 /etc/systemd/system/habbo-runtime-healthcheck.timer "$OUT/habbo-r
 install -m 600 /etc/systemd/system/habbo-backup-daily.service "$OUT/habbo-backup-daily.service"
 install -m 600 /etc/systemd/system/habbo-backup-daily.timer "$OUT/habbo-backup-daily.timer"
 install -m 600 /etc/cloudflared-stremio-legacy/config.yml "$OUT/cloudflared-stremio-legacy-config.yml"
+CF_CRED=$(awk '$1=="credentials-file:" {print $2}' /etc/cloudflared-stremio-legacy/config.yml | head -1)
+test -n "$CF_CRED"
+test -f "$CF_CRED"
+install -m 600 "$CF_CRED" "$OUT/cloudflared-tunnel-credentials.json"
 tar -C "$ROOT" -czf "$OUT/web-frontend-overlay.tar.gz" web-frontend-assets
 install -m 600 "$ROOT/v31/client/vars.txt" "$OUT/v31-vars.txt"
 install -m 600 "$ROOT/web/client/v39/gamedata/external_variables_vps1.txt" "$OUT/r39-external_variables_vps1.txt"

@@ -1359,3 +1359,49 @@ Git commits:
 - status integration: `cec55f3bdf39126ef2546972f031dbc30a7cc14e`
 - corrected 4/4 smoke: `5074090a61198bc031deb767c6fbb504c7d3ef65`
 - corrected 4/4 status: `c980bdd9669d655367c974faa77d0627c4c78b01`
+
+## VPS2 self-healing recovery-space preflight 2026-09-24
+
+The off-host restore path now has a shared, self-healing capacity preflight instead of a duplicated static free-space check.
+
+Real incident:
+- at 08:09 CEST the offsite restore of `manual-20260924T060757Z` refused to start because VPS2 root had only 384,148 KiB free;
+- the restore service failed immediately, OnFailure wrote `OFFSITE_RESTORE_DRILL_FAILED` on VPS1, and the previous successful restore marker was preserved;
+- investigation found 426 MiB of regenerated `/var/lib/apt/lists` plus 145 MiB of APT caches;
+- Quetzal Playwright Chromium 1181, Puppeteer cache and the 2.81 GiB Emscripten image were explicitly left untouched;
+- only regenerable APT lists/pkgcache/srcpkgcache were removed;
+- VPS2 recovered to about 945 MiB free;
+- rerun restore of `060757Z` succeeded with 88 tables / 40 navigator_styles / RogerVideo=1 / room1000=1, removed the temporary MariaDB image and cleared the restore failure latch.
+
+Shared preflight:
+- `/usr/local/sbin/habbo-vps2-space-preflight.sh`;
+- minimum root free: 800 MiB;
+- housekeeping trigger: root free below 900 MiB;
+- minimum `/dev/shm` free: 512 MiB;
+- housekeeping removes only APT package indexes and caches;
+- it refuses cleanup while APT/DPKG lock files are actively held;
+- APT activity detection uses real lock holders via `fuser`, not broad process-name matching.
+
+The restore drill now calls this preflight directly before creating temporary restore state.
+The hourly VPS2 control-plane heartbeat also calls the preflight and publishes `root_free_kb` and `shm_free_kb` to VPS1.
+VPS1 `vps2-control-plane-smoke.sh` requires both free-space minima in addition to the 4/4 timer proof.
+`habbo-status.sh` displays VPS2 root and shm margins explicitly.
+
+Preflight validation:
+- normal execution with ~945 MiB root free returned `cleanup=none`;
+- forced housekeeping branch returned `cleanup=apt-metadata` and still passed the minimums;
+- a restore run using the shared preflight succeeded and left the MariaDB test image absent.
+
+Live hashes:
+- VPS2 space preflight: `376a1cedd77cda8c52f1aae7c095482287fd3c2bad26db943371c4911ed12fdf`
+- VPS2 heartbeat: `46eb9be68a5eaa6e7f8c25d3198f23d685cf585487a9ca308e4ef74d97e86969`
+- VPS2 restore drill: `46a143910a49ecf07a42dcb7ee140d187ac51e081070d0f90e06f5b17ea68794`
+- VPS1 control-plane smoke: `4a4964caf6e28faac71fe015db1b80a7e4c226fd982664539db4500fa61c1287`
+- VPS1 status: `365d0f6786f5a177f400c1ef67b747d5ee06ac7e0877c791774f9499c3948c27`
+
+Git commits:
+- space preflight: `e1252602037a05309be2d7af583cd98e5e92a81a`
+- heartbeat capacity integration: `ef5bf61c3b1c2d2cbf541c6cba5488fb1d7f2086`
+- restore shared preflight: `d40c7de931fccb3eb7eb7f24dbd5fccbd51f0069`
+- VPS1 recovery-space guard: `02a8aa4e5e192d587edfddab8bd748cb98ab6aea`
+- VPS1 status margins: `b00e315af285e1881e53bd3de0c2ef095b2bc3cb`

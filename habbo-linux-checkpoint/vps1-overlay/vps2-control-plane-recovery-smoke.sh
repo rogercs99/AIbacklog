@@ -63,5 +63,12 @@ for required in \
   etc/systemd/system/habbo-vps2-control-plane-heartbeat.timer; do
   [[ -f "$work/$required" ]] || fail "required VPS2 recovery artifact missing: $required"
 done
+bootstrap="$work/usr/local/sbin/habbo-vps2-control-plane-bootstrap.sh"
+rehearsal="$work/.bootstrap-rehearsal"
+HABBO_VPS2_SOURCE_ROOT="$work" "$bootstrap" --rehearsal "$rehearsal" >/dev/null || fail 'VPS2 recovery bootstrap rehearsal failed'
+(cd "$rehearsal" && sha256sum -c "$MANIFEST" --status) || fail 'VPS2 recovery rehearsal hash verification failed'
+[[ "$(find "$rehearsal/usr/local/sbin" -maxdepth 1 -type f -name 'habbo-*' | wc -l)" -eq 10 ]] || fail 'VPS2 recovery rehearsal script count mismatch'
+[[ "$(find "$rehearsal/etc/systemd/system" -maxdepth 1 -type f -name 'habbo-*' | wc -l)" -eq 12 ]] || fail 'VPS2 recovery rehearsal unit count mismatch'
+[[ "$(find "$rehearsal/etc/systemd/system/timers.target.wants" -maxdepth 1 -type l -name 'habbo-*' | wc -l)" -eq 4 ]] || fail 'VPS2 recovery rehearsal timer-link count mismatch'
 echo 'PASS: Habbo VPS2 control-plane recovery smoke'
-echo "source=$SRC files=22 scripts=10 units=12 hashes=verified inventory=exact syntax=verified exec_links=resolved"
+echo "source=$SRC files=22 scripts=10 units=12 hashes=verified inventory=exact syntax=verified exec_links=resolved bootstrap=rehearsed"

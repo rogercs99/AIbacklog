@@ -1437,3 +1437,34 @@ Git commits:
 - heartbeat failed-unit namespace: `a0fdfbfb0b4729aada5cf1bd0f22f6e0d3a6e5ce`
 - heartbeat OnFailure wiring: `4c4e06f2ee635354cb4443e479156b8cdf8871fa`
 - hard-failure service: `c71bd7d108c1ab666f32cbcc5910e0ba3f0a6bb5`
+
+## VPS2 heartbeat hard-failure path proof 2026-09-24
+
+The VPS2 control-plane heartbeat now has a separately proven hard-failure path for failures that occur before the heartbeat script can write its own remote latch.
+
+Durable wiring:
+- `habbo-vps2-control-plane-heartbeat.service` has `OnFailure=habbo-vps2-control-plane-heartbeat-failed.service`;
+- the failure service calls the shared `habbo-vps1-offsite-failed.sh` recorder with `kind=control`;
+- the recorder writes root-only `/srv/habbo/VPS2_CONTROL_PLANE_FAILED` on VPS1 and mirrors it under `/run`.
+
+Controlled hard-failure proof:
+- only the heartbeat service received a temporary drop-in replacing ExecStart with `/bin/false`;
+- the heartbeat script did not run, so it could not create the latch itself;
+- heartbeat service ended Result=exit-code / ExecMainStatus=1;
+- `habbo-vps2-control-plane-heartbeat-failed.service` ended Result=success / ExecMainStatus=0;
+- VPS1 received `VPS2_CONTROL_PLANE_FAILED` mode 0600 with kind=control, unit, result, exit status and journal evidence;
+- VPS1 immediately reported control-plane latch FAILED, proof FAIL and OVERALL DEGRADED;
+- the heartbeat timer remained active throughout.
+
+Recovery proof:
+- temporary drop-in removed and daemon-reload performed;
+- heartbeat service returned Result=success / ExecMainStatus=0;
+- success removed the hard-failure latch automatically;
+- VPS1 control-plane smoke returned PASS with 4/4 timers and recovery-space margins;
+- VPS1 returned to OVERALL READY;
+- heartbeat timer remained enabled + active with a real next trigger.
+
+Live/Git identity after the proof:
+- heartbeat service: match=true;
+- heartbeat failure service: match=true;
+- shared failure recorder with `kind=control`: match=true.

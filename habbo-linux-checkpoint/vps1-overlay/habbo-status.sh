@@ -81,6 +81,22 @@ fi
 $offsite_ok || ok=false
 printf '%-28s %ss\n' 'offsite backup age' "$offsite_age"
 printf '%-28s %s\n' 'offsite latest match' "$([[ "$offsite_backup" == "$latest" ]] && echo OK || echo FAIL)"
+if [[ -f /srv/habbo/OFFSITE_RESTORE_DRILL_STATUS ]]; then
+  osd_ts=$(awk -F= '$1=="validated_at_utc" {print $2}' /srv/habbo/OFFSITE_RESTORE_DRILL_STATUS)
+  osd_tables=$(awk -F= '$1=="tables" {print $2}' /srv/habbo/OFFSITE_RESTORE_DRILL_STATUS)
+  osd_nav=$(awk -F= '$1=="navigator_styles" {print $2}' /srv/habbo/OFFSITE_RESTORE_DRILL_STATUS)
+  osd_user=$(awk -F= '$1=="RogerVideo" {print $2}' /srv/habbo/OFFSITE_RESTORE_DRILL_STATUS)
+  osd_room=$(awk -F= '$1=="room1000" {print $2}' /srv/habbo/OFFSITE_RESTORE_DRILL_STATUS)
+  osd_age=$(( $(date -u +%s) - $(date -u -d "$osd_ts" +%s) ))
+else
+  osd_age=999999999; osd_tables=0; osd_nav=0; osd_user=0; osd_room=0
+fi
+osd_ok=true
+[[ "$osd_age" -le 691200 ]] || osd_ok=false
+[[ "$osd_tables" == 88 && "$osd_nav" == 40 && "$osd_user" == 1 && "$osd_room" == 1 ]] || osd_ok=false
+$osd_ok || ok=false
+printf '%-28s %ss\n' 'offsite restore drill age' "$osd_age"
+printf '%-28s %s\n' 'offsite restore proof' "$($osd_ok && echo OK || echo FAIL)"
 printf '%-28s %s\n' 'runtime backup match' "$([[ "$runtime_backup" == "$latest" ]] && echo OK || echo FAIL)"
 
 if [[ -e /run/habbo-runtime-health.failed ]]; then

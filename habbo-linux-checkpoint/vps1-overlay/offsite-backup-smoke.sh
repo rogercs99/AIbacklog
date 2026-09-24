@@ -5,6 +5,7 @@ STATUS=$ROOT/OFFSITE_BACKUP_STATUS
 MAX_AGE=129600
 fail(){ echo "FAIL: $*" >&2; exit 1; }
 [[ -f "$STATUS" ]] || fail 'offsite backup status missing'
+[[ ! -e "$ROOT/OFFSITE_BACKUP_FAILED" ]] || fail 'offsite backup failure latch present'
 [[ "$(stat -c '%a %U:%G' "$STATUS")" == '600 root:root' ]] || fail 'offsite status permissions invalid'
 get(){ awk -F= -v k="$1" '$1==k {sub(/^[^=]*=/,""); print; exit}' "$STATUS"; }
 ts=$(get validated_at_utc)

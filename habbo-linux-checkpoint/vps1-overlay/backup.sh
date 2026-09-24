@@ -32,6 +32,8 @@ install -m 600 /etc/systemd/system/habbo-runtime-healthcheck-failed.service "$OU
 install -m 600 /etc/systemd/system/habbo-runtime-healthcheck.timer "$OUT/habbo-runtime-healthcheck.timer"
 install -m 600 /etc/systemd/system/habbo-backup-daily.service "$OUT/habbo-backup-daily.service"
 install -m 600 /etc/systemd/system/habbo-backup-daily.timer "$OUT/habbo-backup-daily.timer"
+install -m 600 /etc/systemd/system/habbo-disaster-drill.service "$OUT/habbo-disaster-drill.service"
+install -m 600 /etc/systemd/system/habbo-disaster-drill.timer "$OUT/habbo-disaster-drill.timer"
 install -m 600 /etc/cloudflared-stremio-legacy/config.yml "$OUT/cloudflared-stremio-legacy-config.yml"
 CF_CRED=$(awk '$1=="credentials-file:" {print $2}' /etc/cloudflared-stremio-legacy/config.yml | head -1)
 test -n "$CF_CRED"

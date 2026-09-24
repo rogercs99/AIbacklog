@@ -1556,3 +1556,81 @@ Git commits:
 - heartbeat integration: `c8cfb622c73bb4fc4bbb207378c2cffb3cfba027`
 - VPS1 guard: `59485a8c1ede94a36d82937da92ef182846cd8b1`
 - VPS1 status: `2e637fd872e4e53581d58e0c6c28c2404caaf094`
+
+## Complete backup manifests and deep retained-store scrub 2026-09-24
+
+Backup manifests and the VPS2 retained-store scrub were upgraded so every retained generation has an internally complete integrity contract, including hidden files such as `.env`.
+
+Local backup publisher changes:
+- `backup.sh` no longer uses shell glob `*` for permissions, dedupe or SHA generation;
+- top-level regular files are enumerated with `find ... -print0 | sort -z`, so dotfiles are included;
+- `.env` now participates in chmod normalization, hardlink dedupe and SHA256SUMS;
+- SHA256SUMS contains every top-level regular file except SHA256SUMS itself.
+
+Local verifier changes:
+- `verify-latest-backup.sh` still runs `sha256sum -c`;
+- it additionally compares the sorted real top-level file list against the manifest list 1:1;
+- it requires `.env` to appear exactly through that complete manifest contract.
+
+First complete-manifest generation:
+- `manual-20260924T070721Z`;
+- `.env` appeared exactly once in SHA256SUMS;
+- 29 top-level files matched 29 manifest entries exactly;
+- isolated restore passed 88 tables / 40 navigator_styles / RogerVideo=1 / room1000=1.
+
+Offsite migration:
+- VPS2 retention was deliberately rotated to three complete-manifest generations: `070721Z`, `070908Z`, `070929Z`;
+- no legacy manifest generation remains in the three-file offsite retention set.
+
+Deep VPS2 retained-store scrub:
+- each of the three tarballs is verified by external SHA256 sidecar and `gzip -t`;
+- each is then extracted sequentially into a root-only `/dev/shm` workdir;
+- internal `SHA256SUMS` must verify;
+- internal manifest coverage must equal the extracted top-level file set exactly;
+- `.env` must be manifest-covered and mode 0600;
+- critical files `.env`, disaster manifest, project context, docker-compose, DB dump, ops overlay and FINAL-v2 ZIP must exist;
+- FINAL-v2 must match canonical SHA `f80bbefc5a486fd0f9cce058a39462ef3925c563253dc2f69ebe647f6a6630ec`;
+- DB dump gzip and ops overlay tar must be readable;
+- workdir is removed after each generation and an EXIT trap guarantees cleanup on interruption.
+
+Deep tamper proof:
+- a three-generation lab store was created under `/dev/shm`;
+- baseline deep scrub passed;
+- `.env` inside one lab tar was modified and the tar was repacked;
+- the external archive SHA sidecar was recalculated, so the outer SHA layer was valid;
+- deep scrub still failed specifically with `internal manifest verification failed`;
+- laboratory removed; production 3/3 deep scrub returned PASS.
+
+Local publication regression:
+- publication smoke now requires exact top-level manifest coverage, `.env` presence and mode 0600 for every manifested file;
+- a hardlink-based laboratory copy of LATEST passed baseline;
+- only the `.env` manifest line was removed in the lab copy;
+- smoke failed with `LATEST manifest coverage mismatch`;
+- laboratory removed; production publication smoke returned PASS.
+
+Control-plane integration:
+- heartbeat now publishes `offsite_deep_verified=1` only when the full 3/3 deep scrub returns success;
+- VPS1 control-plane smoke requires deep verification;
+- status shows `VPS2 deep scrub = OK`.
+
+A cleanup-trap integration regression was also found and fixed: the scrub initially printed PASS but returned rc=1 because an empty-workdir test in the EXIT trap propagated status 1. `cleanup_work()` now always returns 0 after cleanup/no-op.
+
+Live hashes:
+- `backup.sh`: `9fc4a663b6056b523ccfe4743595a4745667fbe91826633427d1bdd390cca037`
+- `verify-latest-backup.sh`: `a979dd231d708c12564e3954facdd0c17453c593ac29467ce6de69070df27180`
+- VPS2 deep store scrub: `a7e18747a74c8efdbb6acfed6045a0e34849720312cff2027c4283555b33c0db`
+- VPS2 heartbeat: `da2dd76bfa4ef39889d03e02577ccd75a3b3537529d0e33c38569fbdcf9be660`
+- `backup-publication-smoke.sh`: `b142abfa9a4e29510c883e24dfcf9d32e35098047d2e992fa8f47ded1ccaee1d`
+- VPS1 control-plane smoke: `eb30b5ce2b9c3ac26b77b41a048cd89ad63307bedd682dd9ae1b9006a85b8b8e`
+- `habbo-status.sh`: `ab39c5b36092ac31a2d54e7168a9769435440d23235e5d8b1f7fb85a2d0301ec`
+
+Git commits:
+- complete backup manifest publisher: `fe7c50ec003e96838a0d3b6db998f0d560e98dfb`
+- exact manifest verifier: `e6d24c19c1e00a7518abd5d582a44562bb198b09`
+- deep retained-store scrub: `ae35ee552f13b59b92e0a2597c814389be2f182f`
+- heartbeat deep proof: `7f8d0cae62ab461a061950890e22e9f73f5932ed`
+- publication exact coverage: `c95cc7525b78b22409959e39bee7b40631bdfb58`
+- VPS1 deep guard: `da0c1de45dd04f27ac5f81741b8e68b6cff8c0b9`
+- status deep field: `dd8f3739defbcf0e69d30841a9f7eab81dbbd3b2`
+
+Explicit post-update live/Git comparison: all seven artifacts returned `match=true`.

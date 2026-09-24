@@ -110,3 +110,38 @@ The canonical FINAL-v2 ZIP remains unchanged with SHA-256 `f80bbefc5a486fd0f9cce
 - A broader CSS URL scan surfaced 15 legacy references tied to unused IE compatibility, minimail/tagging, or obsolete landing selectors; they are not requested by the current iPhone pages and were deliberately not replaced with fake assets.
 - Live guard hashes: `public-web-smoke.sh` = `de930782a7bddca879e1186a259197ddd9e66b88547c1e2d69bbd569afab82ce`; `public-web-direct-assets-audit.py` = `4bf05514f6896a1ae29ad4a1f678560a64c5eccda39431b00a6825785897b432`.
 - Internal Habbo smoke and public smoke remain PASS; FINAL-v2 is unchanged.
+
+## Homepage JavaScript dependency fix 2026-09-24
+
+A headless mobile-browser probe from VPS2 reproduced the public homepage with an iPhone Safari user-agent and touch/mobile viewport. HTTP and asset checks were already clean, but JavaScript raised `ReferenceError: deconcept is not defined`.
+
+Root cause:
+- production uses `index_v32.tpl`;
+- that template loaded `landing.js` directly;
+- `landing.js` uses `deconcept.SWFObjectUtil`;
+- `deconcept` is defined by `web-gallery/static/js/libs2.js`;
+- the legacy `index_old.tpl` already had the correct `libs2.js -> landing.js` ordering, while `index_v32.tpl` did not.
+
+Persistent fix:
+- overlay template: `/srv/habbo/web-frontend-assets/templates/index_v32.tpl`;
+- Compose bind mount: `/srv/habbo/web-frontend-assets/templates/index_v32.tpl:/havana-web/tools/www-tpl/default/index_v32.tpl:ro`;
+- reproducible helper: `/srv/habbo/ops/ensure-home-libs2-overlay.sh`;
+- `public-web-direct-assets-audit.py` now fails if `libs2.js` is missing or appears after `landing.js`.
+
+Post-fix browser validation from VPS2:
+- `/`: HTTP 200, title `Habbo 2009 ~ Home`, 0 HTTP 4xx/5xx, 0 console errors, 0 page errors;
+- `/register`: HTTP 200, title `Habbo 2009: Register`, 0 HTTP 4xx/5xx, 0 console errors, 0 page errors;
+- the only failed request was the unrelated legacy Quantserve tracking pixel (`net::ERR_ABORTED`), which does not participate in rendering or application logic.
+
+Network notes:
+- Cloudflare serves IPv4 and AAAA records and HTTP/2/TLS validation succeeds;
+- VPS1 and VPS2 themselves have no global IPv6 route, so direct `curl -6` failure on those hosts is not evidence of a public IPv6/Cloudflare defect;
+- gzip, Brotli and zstd responses were all successfully negotiated over IPv4.
+
+Live hashes:
+- `web-frontend-assets/templates/index_v32.tpl`: `142ed3022792a11b6b9d16c29e5f6648d1d8fd5805276af0e88075c890a60e50`;
+- `ops/ensure-home-libs2-overlay.sh`: `ebf4e9cdef4550f74a688e57196a4331bb617aecf3a1e3afd6f008b8431bbe97`;
+- `ops/public-web-direct-assets-audit.py`: `cef006508dcc5368d0af8a974944a2199c9eec0b22f37b7766c3d3e5bf55c21f`;
+- `docker-compose.yml`: `e54aecdff9052ae6d60db2e679cfefcde34950e1463ab8c3ea7e1dfa920b525c`.
+
+FINAL-v2 remains unchanged.

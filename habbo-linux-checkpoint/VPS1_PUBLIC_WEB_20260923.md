@@ -239,3 +239,35 @@ Disk-related operational failure modes are now part of deployment validation.
 - `verify-latest-backup.sh` now requires the disk-health helper in every promoted backup.
 - Live hashes: `disk-health-smoke.sh` = `9664b2833d1283d6e95c67068b189c28a743cecf322802a0ac95c97c1a9947ea`; `deployment-final-validate.sh` = `8bcb729d1bcb67b9b2f910b50696c86af502f4638becf631b374b9e5ba04366c`; `verify-latest-backup.sh` = `844ed21e196e8912700171e5b96ee16a61fd51361f76d8e37d207aa0567a18c8`.
 - First backup containing and validating this guard: `/srv/habbo/backups/manual-20260924T021104Z`.
+
+## Cloudflare ingress recovery 2026-09-24
+
+The shared `cloudflared-stremio-legacy` connector was restarted deliberately while VPS2 continuously probed both public services.
+
+Pre-restart:
+- Habbo returned HTTP 200 over HTTP/2.
+- Stremio returned the expected HTTP 307.
+- The tunnel was enabled and active.
+
+Observed restart window from VPS2:
+- both services were healthy before the restart;
+- a brief 502/530 window occurred while the connector had zero active connections;
+- Habbo returned to HTTP 200 and Stremio to HTTP 307 by approximately 4.1 seconds from probe start;
+- later isolated VPS2 request errors were not sustained and matched the previously observed control-host resolver/network flakiness.
+
+Post-restart tunnel state:
+- `cloudflared_tunnel_ha_connections = 4`;
+- four active edge connections: two in `mad05` and two in `bcn01`;
+- tunnel precheck completed with `hard_fail=false`, using HTTP/2;
+- public Habbo and Stremio remained healthy after recovery.
+
+Added `vps1-overlay/cloudflare-ingress-smoke.sh`, live at `/srv/habbo/ops/cloudflare-ingress-smoke.sh`.
+The smoke requires:
+- the shared tunnel unit enabled and active;
+- at least two HA connections and at least two active edge connections;
+- Habbo HTTP 200;
+- Stremio HTTP 307.
+
+It intentionally does not restart the shared tunnel during routine validation.
+Live SHA-256: `966eea7ab7a4073664fd67381881b934c3f2463aaf1e072f0c32b3c15b69421f`.
+`deployment-final-validate.sh` and `verify-latest-backup.sh` now include/require this guard.

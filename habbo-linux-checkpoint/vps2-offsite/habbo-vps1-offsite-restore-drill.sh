@@ -34,10 +34,11 @@ cleanup(){
 trap cleanup EXIT
 
 tar -xzf "$archive" -C "$work"
-(
-  cd "$work"
-  awk '{h=$1; p=$2; sub(".*/", "", p); print h "  " p}' SHA256SUMS | sha256sum -c - >/dev/null
-)
+( cd "$work" && sha256sum -c SHA256SUMS --status ) || { echo 'FAIL: internal SHA256SUMS verification failed' >&2; exit 1; }
+actual_digest=$(find "$work" -maxdepth 1 -mindepth 1 -type f ! -name SHA256SUMS -printf '%f\n' | sort | sha256sum | awk '{print $1}')
+manifest_digest=$(awk '{print $2}' "$work/SHA256SUMS" | sed 's#^\./##' | sort | sha256sum | awk '{print $1}')
+[[ "$actual_digest" == "$manifest_digest" ]] || { echo 'FAIL: internal manifest coverage mismatch' >&2; exit 1; }
+grep -Eq '^[0-9a-f]{64}  (\./)?\.env$' "$work/SHA256SUMS" || { echo 'FAIL: .env missing from internal manifest' >&2; exit 1; }
 
 echo "$EXPECTED_FINAL  $work/habbo-2009-dual-linux-FINAL-v2-20260923.zip" | sha256sum -c - >/dev/null
 echo "$EXPECTED_BUNDLE  $work/havana-source-b550f00.bundle" | sha256sum -c - >/dev/null
@@ -87,6 +88,10 @@ if ! docker image inspect "$MARIADB_REF" >/dev/null 2>&1; then
 fi
 docker rm -f "$CONTAINER" >/dev/null 2>&1 || true
 docker run -d --name "$CONTAINER" --network none --tmpfs /var/lib/mysql:rw,nosuid,nodev,size=384m -e MARIADB_ROOT_PASSWORD=drill-root -e MARIADB_DATABASE=restore_verify "$MARIADB_REF" >/dev/null
+[[ "$(docker inspect "$CONTAINER" --format '{{.HostConfig.NetworkMode}}')" == none ]] || { echo 'FAIL: restore container network mode is not none' >&2; exit 1; }
+[[ -z "$(docker port "$CONTAINER")" ]] || { echo 'FAIL: restore container unexpectedly publishes ports' >&2; exit 1; }
+tmpfs_spec=$(docker inspect "$CONTAINER" --format '{{index .HostConfig.Tmpfs "/var/lib/mysql"}}')
+[[ "$tmpfs_spec" == *'size=384m'* ]] || { echo 'FAIL: restore DB datadir is not expected tmpfs' >&2; exit 1; }
 for i in $(seq 1 60); do
   if docker exec "$CONTAINER" mariadb-admin --protocol=tcp -h127.0.0.1 -uroot -pdrill-root ping --silent >/dev/null 2>&1; then break; fi
   sleep 1
@@ -100,7 +105,7 @@ docker rm -f "$CONTAINER" >/dev/null
 
 now=$(date -u +%Y-%m-%dT%H:%M:%SZ)
 sha=$(sha256sum "$archive" | awk '{print $1}')
-printf 'validated_at_utc=%s\narchive=%s\narchive_sha256=%s\ntables=%s\nnavigator_styles=%s\nRogerVideo=%s\nroom1000=%s\n' "$now" "$archive" "$sha" "$tables" "$nav" "$user" "$room" >/var/backups/habbo-vps1/OFFSITE_RESTORE_DRILL_STATUS
+printf 'validated_at_utc=%s\narchive=%s\narchive_sha256=%s\nmanifest=complete\nworkspace=tmpfs\nnetwork=none\ndb_datadir=tmpfs\ntables=%s\nnavigator_styles=%s\nRogerVideo=%s\nroom1000=%s\n' "$now" "$archive" "$sha" "$tables" "$nav" "$user" "$room" >/var/backups/habbo-vps1/OFFSITE_RESTORE_DRILL_STATUS
 chmod 600 /var/backups/habbo-vps1/OFFSITE_RESTORE_DRILL_STATUS
 name=${archive##*/}
 name=${name%.tar.gz}
@@ -109,7 +114,7 @@ ssh -o BatchMode=yes bridge-old bash -s -- "$now" "$source_backup" "$sha" "$tabl
 set -euo pipefail
 now=$1; backup=$2; sha=$3; tables=$4; nav=$5; user=$6; room=$7
 tmp=/srv/habbo/.OFFSITE_RESTORE_DRILL_STATUS.tmp
-printf 'validated_at_utc=%s\nbackup=%s\narchive_sha256=%s\noffsite_host=VPS2\ntables=%s\nnavigator_styles=%s\nRogerVideo=%s\nroom1000=%s\n' "$now" "$backup" "$sha" "$tables" "$nav" "$user" "$room" >"$tmp"
+printf 'validated_at_utc=%s\nbackup=%s\narchive_sha256=%s\noffsite_host=VPS2\nmanifest=complete\nworkspace=tmpfs\nnetwork=none\ndb_datadir=tmpfs\ntables=%s\nnavigator_styles=%s\nRogerVideo=%s\nroom1000=%s\n' "$now" "$backup" "$sha" "$tables" "$nav" "$user" "$room" >"$tmp"
 chmod 600 "$tmp"
 mv "$tmp" /srv/habbo/OFFSITE_RESTORE_DRILL_STATUS
 cp /srv/habbo/OFFSITE_RESTORE_DRILL_STATUS /run/habbo-offsite-restore-drill
@@ -118,4 +123,4 @@ rm -f /srv/habbo/OFFSITE_RESTORE_DRILL_FAILED /run/habbo-offsite-restore-drill-f
 REMOTE_DRILL_MARKER
 
 echo 'PASS: Habbo VPS1 offsite restore drill on VPS2'
-echo "archive=$archive havana=$EXPECTED_HAVANA compose=resolved cloudflare=coherent units=${#required[@]} db_tables=$tables navigator_styles=$nav RogerVideo=$user room1000=$room"
+echo "archive=$archive havana=$EXPECTED_HAVANA compose=resolved cloudflare=coherent units=${#required[@]} manifest=complete workspace=tmpfs network=none db_datadir=tmpfs db_tables=$tables navigator_styles=$nav RogerVideo=$user room1000=$room"

@@ -10,7 +10,7 @@ cec0a3765ff0437f935d8bc00cbf76b3dda80278c841b4fd85dd644ca99e6726  etc/systemd/sy
 e630f58cc3fc48a6b0302031913ab23fc221a47e3ff9c9117593d70bc401789c  etc/systemd/system/habbo-vps2-control-plane-heartbeat-failed.service
 7e8aa792a3fc36f6eb73d29260ea4b89f4c0eebfb06e3119a0489244208247a6  etc/systemd/system/habbo-vps2-control-plane-heartbeat.service
 a7d84f226f8e1bcafb1141b1b545bf0c9fe52d964c5ebb65bc08e9d4e64fbab6  etc/systemd/system/habbo-vps2-control-plane-heartbeat.timer
-6d939c84b76afa98a76db12497314373788f7c8e40ee1da4276a1b4c379d0ba9  usr/local/sbin/habbo-public-webkit-daily.sh
+660c437451ede52177c2d84ce0d8ea6559427b035508a6bb301b6d785cc732fa  usr/local/sbin/habbo-public-webkit-daily.sh
 b81882a29c57a645ab2ca70adb066152ec7929cfafa3d9560bdaf50275453a54  usr/local/sbin/habbo-public-webkit-failed.sh
 30318a3ab36ec0cb4b5adbbdbf0c11d67d4a70a9a31c5ff661dbcf166f85be2e  usr/local/sbin/habbo-public-webkit-smoke.py
 065a20b72e3e309bd36e63f235695916c3278eef49e34a77fb5872c0643db986  usr/local/sbin/habbo-vps1-offsite-failed.sh

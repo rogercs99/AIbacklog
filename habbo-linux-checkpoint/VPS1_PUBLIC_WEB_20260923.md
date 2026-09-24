@@ -1296,3 +1296,66 @@ Git commits:
 - coordinated pull: `3b43678eea8a6a45c4ffd21802ad6785d8593b1b`
 - shared-lock restore drill: `b095c9cc4b16af7d0da90771f8911bdb3cfc8cba`
 - hourly catch-up timer: `cecabd0b719ec24dc67a91bfe20a686030827d47`
+
+## VPS2 control-plane self-monitoring 2026-09-24
+
+VPS1 now requires a fresh health proof for the VPS2 automation control plane itself, not only fresh historical pull/restore/WebKit results.
+
+VPS2 heartbeat components:
+- `/usr/local/sbin/habbo-vps2-control-plane-heartbeat.sh`;
+- `habbo-vps2-control-plane-heartbeat.service`;
+- `habbo-vps2-control-plane-heartbeat.timer`.
+
+The heartbeat runs hourly at minute `:05`, Persistent=true, with up to 60 seconds randomized delay.
+It validates four timers as enabled + active:
+- `habbo-vps1-offsite-pull.timer`;
+- `habbo-vps1-offsite-restore-drill.timer`;
+- `habbo-public-webkit.timer`;
+- `habbo-vps2-control-plane-heartbeat.timer` itself.
+
+It also rejects any failed Habbo VPS2 unit matching the offsite/WebKit namespace.
+A success writes root-only `/srv/habbo/VPS2_CONTROL_PLANE_STATUS` on VPS1 and clears `/srv/habbo/VPS2_CONTROL_PLANE_FAILED`.
+A detected unhealthy control plane writes both status and failure latch and exits non-zero.
+
+VPS1 `vps2-control-plane-smoke.sh` requires:
+- status mode 0600 root:root;
+- no failure latch;
+- proof age <=7500 seconds;
+- result=success;
+- timers_total=4 and timers_healthy=4;
+- failed_units=0.
+
+Controlled WebKit-timer failure proof:
+- WebKit timer temporarily disabled/stopped;
+- heartbeat exited status1 and wrote failed status/latch;
+- timer restored; next heartbeat succeeded and cleared latch.
+
+Controlled self-monitoring proof:
+- the heartbeat timer itself was temporarily disabled/stopped;
+- a manual heartbeat detected its own disabled/inactive timer and exited status1;
+- VPS1 smoke failed and `habbo-status.sh` reported VPS2 control-plane latch FAILED / proof FAIL / OVERALL DEGRADED;
+- heartbeat timer re-enabled;
+- next heartbeat returned success with 4/4 timers healthy;
+- VPS1 latch cleared and status returned OVERALL READY.
+
+Live/Git identity was explicitly checked after correcting an intermediate stale-copy commit: all seven control-plane artifacts matched byte-for-byte between live files and the project branch.
+
+Live hashes:
+- VPS2 heartbeat: `f1d68b72f472d9dc76340fb8b7078afc73ac4c3776feff84e2d4f5645556c5c2`
+- heartbeat service: `c3d40f7e63baf51c08c881b5e56dec5316a3c1b018b53abd73b8f331528a518b`
+- heartbeat timer: `a7d84f226f8e1bcafb1141b1b545bf0c9fe52d964c5ebb65bc08e9d4e64fbab6`
+- VPS1 control-plane smoke: `f2d71d0a310d44da633641df2e71eddc5246abbc585c65bbb8afa0f7b052e70c`
+- verifier: `26d7cd469f4b1a1100911735d598e38a65cd62da7e5e3c24bf1f4d6d40c11058`
+- final validator: `b467b32d28c060db9768dbe3860eeec910c16766224e37c7b30aaa0b87d25d5f`
+- status: `52d0f767a15aff38646ba0b06109e302020d855002cd2a43f376453b4f4d9929`
+
+Git commits:
+- heartbeat: `49856a8756c63b16f704642a1588387d36f67201`
+- heartbeat service: `37a9a6b61b2bec8837f8b8dec4b41916421087d0`
+- heartbeat timer: `e9eb35ac0cbceffa13127c3435559ed5791d6790`
+- initial VPS1 smoke: `345f2b983302d8234844f83c88c7ff7adda14783`
+- verifier integration: `8a85f852076d2592e132e02e733f11ce769936f1`
+- final validator integration: `2b92b791d08f28895da5bbe1881c3335f99df90b`
+- status integration: `cec55f3bdf39126ef2546972f031dbc30a7cc14e`
+- corrected 4/4 smoke: `5074090a61198bc031deb767c6fbb504c7d3ef65`
+- corrected 4/4 status: `c980bdd9669d655367c974faa77d0627c4c78b01`

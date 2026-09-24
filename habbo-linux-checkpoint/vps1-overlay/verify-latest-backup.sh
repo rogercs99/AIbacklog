@@ -18,6 +18,9 @@ cd "$B"
 sha256sum -c SHA256SUMS
 test -f "$B/.env"
 test -f "$B/DISASTER_RECOVERY_MANIFEST.md"
+test -f "$B/HOST_PREREQUISITES.md"
+test -f "$B/cloudflared-stremio-legacy.service"
+grep -q "cloudflared.*--config /etc/cloudflared-stremio-legacy/config.yml tunnel run" "$B/cloudflared-stremio-legacy.service"
 test -f "$B/havana-source-b550f00.bundle"
 test -f "$B/habbo-library-chunks-sha256.txt"
 test -f "$B/habbo-runtime-prefix-parts-sha256.txt"
@@ -33,7 +36,7 @@ unzip -tqq "$B/habbo-2009-dual-linux-FINAL-v2-20260923.zip" || { echo 'FAIL: bac
 mkdir -p "$WORK/havana-bundle-verify"
 git init -q "$WORK/havana-bundle-verify"
 git -C "$WORK/havana-bundle-verify" bundle verify "$B/havana-source-b550f00.bundle" >/dev/null 2>&1 || { echo 'FAIL: backed-up Havana bundle verification failed' >&2; exit 1; }
-git clone -q "$B/havana-source-b550f00.bundle" "$WORK/Havana-offline" || { echo 'FAIL: backed-up Havana bundle cannot be cloned offline' >&2; exit 1; }
+GIT_CONFIG_COUNT=1 GIT_CONFIG_KEY_0=advice.detachedHead GIT_CONFIG_VALUE_0=false git clone -q "$B/havana-source-b550f00.bundle" "$WORK/Havana-offline" || { echo 'FAIL: backed-up Havana bundle cannot be cloned offline' >&2; exit 1; }
 [[ "$(git -C "$WORK/Havana-offline" rev-parse HEAD)" == 'b550f00f27788145d26723fd19e943aa63504a63' ]] || { echo 'FAIL: offline Havana clone HEAD mismatch' >&2; exit 1; }
 test -f "$WORK/Havana-offline/Dockerfile-Server"
 test -f "$WORK/Havana-offline/Dockerfile-Web"
@@ -82,6 +85,7 @@ test -x "$WORK/ops/habbo-status.sh"
 test -x "$WORK/ops/db-backup-consistency-smoke.sh"
 test -x "$WORK/ops/secret-permissions-smoke.sh"
 test -x "$WORK/ops/disaster-recovery-source-smoke.sh"
+test -x "$WORK/ops/disaster-restore-drill.sh"
 test -x "$WORK/ops/habbo-backup-daily.sh"
 test -f "$B/habbo-backup-daily.service"
 test -f "$B/habbo-backup-daily.timer"

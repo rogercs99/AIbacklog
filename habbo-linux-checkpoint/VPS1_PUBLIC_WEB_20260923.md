@@ -145,3 +145,23 @@ Live hashes:
 - `docker-compose.yml`: `e54aecdff9052ae6d60db2e679cfefcde34950e1463ab8c3ea7e1dfa920b525c`.
 
 FINAL-v2 remains unchanged.
+
+## WebKit iPhone validation 2026-09-24
+
+A real Playwright WebKit run was added from VPS2/control host using the built-in `iPhone 14 Plus` device profile. This goes beyond Chrome with an iPhone user-agent and exercises the WebKit engine.
+
+Results:
+- `/`: HTTP 200, `Habbo 2009 ~ Home`, 0 HTTP failures, 0 request failures, 0 console errors, 0 page errors.
+- `/register`: HTTP 200, `Habbo 2009: Register`, 0 HTTP failures, 0 request failures, 0 console errors, 0 page errors.
+- Physical touchscreen coordinates derived from `visualViewport.scale` successfully focus `#login-username`.
+- A physical touchscreen tap on the visible `REGISTER FOR FREE` link navigates to `/register`.
+- A physical touchscreen tap toggles the registration marketing checkbox without submitting any form.
+- The legacy page intentionally uses the classic 980px layout viewport with no `meta viewport`; WebKit scales it to approximately `0.436735` on the iPhone 14 Plus profile. This matches legacy Safari behavior and was left unchanged to avoid breaking the 2009 layout.
+
+Reusable test:
+- `vps1-overlay/public-web-webkit-smoke.py`
+- live VPS1 copy: `/srv/habbo/ops/public-web-webkit-smoke.py`
+- run it from a control host that has Python Playwright and the WebKit browser installed.
+- SHA-256: `30318a3ab36ec0cb4b5adbbdbf0c11d67d4a70a9a31c5ff661dbcf166f85be2e`.
+
+No forms are submitted by the test and no account is created.

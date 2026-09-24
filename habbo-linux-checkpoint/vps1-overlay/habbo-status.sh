@@ -15,6 +15,11 @@ check 'runtime timer active' systemctl is-active --quiet habbo-runtime-healthche
 check 'runtime timer enabled' systemctl is-enabled --quiet habbo-runtime-healthcheck.timer
 check 'daily backup timer active' systemctl is-active --quiet habbo-backup-daily.timer
 check 'daily backup timer enabled' systemctl is-enabled --quiet habbo-backup-daily.timer
+check 'disaster drill timer active' systemctl is-active --quiet habbo-disaster-drill.timer
+check 'disaster drill timer enabled' systemctl is-enabled --quiet habbo-disaster-drill.timer
+drill_result=$(systemctl show -p Result --value habbo-disaster-drill.service 2>/dev/null || echo unknown)
+[[ "$drill_result" == success ]] || ok=false
+printf '%-28s %s\n' 'disaster drill result' "$drill_result"
 backup_result=$(systemctl show -p Result --value habbo-backup-daily.service 2>/dev/null || echo unknown)
 [[ "$backup_result" == success ]] || ok=false
 printf '%-28s %s\n' 'daily backup last result' "$backup_result"
@@ -53,6 +58,14 @@ runtime_backup=$(awk -F= '$1=="latest_backup" {print $2}' /run/habbo-runtime-hea
 [[ "$runtime_backup" == "$latest" ]] || ok=false
 printf '%-28s %ss\n' 'postboot stamp age' "$post_age"
 printf '%-28s %ss\n' 'runtime stamp age' "$runtime_age"
+if [[ -f /run/habbo-disaster-drill ]]; then
+  drill_ts=$(awk -F= '$1=="validated_at_utc" {print $2}' /run/habbo-disaster-drill)
+  drill_age=$(( $(date -u +%s) - $(date -u -d "$drill_ts" +%s) ))
+else
+  drill_age=999999999
+fi
+[[ "$drill_age" -le 691200 ]] || ok=false
+printf '%-28s %ss\n' 'disaster drill age' "$drill_age"
 printf '%-28s %s\n' 'runtime backup match' "$([[ "$runtime_backup" == "$latest" ]] && echo OK || echo FAIL)"
 
 if [[ -e /run/habbo-runtime-health.failed ]]; then

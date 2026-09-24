@@ -49,6 +49,7 @@ rage=$(( $(date -u +%s) - $(date -u -d "$rts" +%s) ))
 "$ROOT/ops/network-perimeter-smoke.sh"
 "$ROOT/ops/cloudflare-ingress-smoke.sh"
 "$ROOT/ops/disk-health-smoke.sh"
+"$ROOT/ops/backup-publication-smoke.sh"
 "$ROOT/ops/db-backup-consistency-smoke.sh"
 "$ROOT/ops/secret-permissions-smoke.sh"
 "$ROOT/ops/disaster-recovery-source-smoke.sh"

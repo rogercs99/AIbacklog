@@ -32,11 +32,15 @@ if find /dev/shm -maxdepth 1 -mindepth 1 -type d -name 'habbo-restore-verify.*' 
   fail 'stale isolated restore verifier workdir found in /dev/shm'
 fi
 
+if find /dev/shm -maxdepth 1 -mindepth 1 -type d -name 'habbo-drill.*' -mmin +10 -print -quit | grep -q .; then
+  fail 'stale disaster-drill workdir found in /dev/shm'
+fi
+
 latest=$(cat "$ROOT/LATEST_PUBLIC_WEB_BACKUP")
 [[ -d "$latest" ]] || fail 'latest backup path does not exist'
 
 echo 'PASS: Habbo disk health smoke'
-printf 'free_gib=%.2f backups_mib=%.1f backup_count=%s docker_logs=json-file:20m:3 stale_restore_dbs=0 stale_restore_containers=0 stale_restore_workdirs=0\n' \
+printf 'free_gib=%.2f backups_mib=%.1f backup_count=%s docker_logs=json-file:20m:3 stale_restore_dbs=0 stale_restore_containers=0 stale_restore_workdirs=0 stale_disaster_drill_workdirs=0\n' \
   "$(awk -v x="$free_kb" 'BEGIN{print x/1048576}')" \
   "$(awk -v x="$backup_kb" 'BEGIN{print x/1024}')" \
   "$backup_count"

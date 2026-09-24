@@ -300,3 +300,40 @@ Git reconciliation commits:
 - live final validator sync: `07a322117abefe2df4a8d17c05360c1e87bc73e4`
 - live post-boot script sync: `376445ab3cad8ffc253c964415bda106e80cf5ae`
 - live post-boot unit sync: `4dd421566f8fe37b806b73519989de755aded0fc`
+
+## Periodic runtime healthcheck 2026-09-24
+
+A lightweight recurring watchdog was added for the live deployment.
+
+- `/srv/habbo/ops/runtime-healthcheck.sh` runs backend, network perimeter, disk health, shared Cloudflare ingress and public web checks.
+- It retries up to three times with five seconds between attempts.
+- It does not restore the database and does not modify application state.
+- `habbo-runtime-healthcheck.service` is a oneshot service.
+- `habbo-runtime-healthcheck.timer` is enabled and active with `OnCalendar=*:0/15`, `Persistent=true`, and a 30-second randomized delay.
+- On success it writes `/run/habbo-runtime-health` with UTC validation time, latest backup path and FINAL-v2 hash.
+- The aggregate validator requires the timer enabled/active, last service result `success`, a valid bundle hash in the runtime stamp and stamp age <= 1800 seconds.
+- Backups include the runtime service and timer, and the restore verifier requires both units plus the runtime script.
+
+Automatic timer proof:
+- first autonomous firing: 2026-09-24 04:30:22 CEST;
+- completed: 04:30:27 CEST;
+- result: success, exit status 0;
+- runtime checks all PASS on attempt 1/3;
+- next scheduled firing observed: 04:45:24 CEST;
+- resulting stamp: `validated_at_utc=2026-09-24T02:30:27Z`, latest backup `manual-20260924T022749Z`, canonical FINAL-v2 hash.
+
+Live hashes:
+- `runtime-healthcheck.sh`: `294729c66ffbfde1cca34d6fecc74fefc3afafe393b308f3727caabaa8b9feb3`
+- `habbo-runtime-healthcheck.service`: `10b46c1ffb1803b25cc6d8694550547008ec6e53263d91793519fb497a56b27a`
+- `habbo-runtime-healthcheck.timer`: `70384a5d820feef629cf89970ca22971cef09f5042fe16a5ac1f16c44df36939`
+- `backup.sh`: `3212c8d719f00bead7d5db5b83dcce58f4be83ffb8b33f309d1befe89a1bec88`
+- `verify-latest-backup.sh`: `e823ebe57ba56a33197984573e9f963b505c4d67722e793d82428bd212aec32d`
+- `deployment-final-validate.sh`: `1120dcf6c31c6e7a9b476c42ebc060564c9aa39f660ef966880526103d06fe89`
+
+Git commits:
+- runtime script: `5546ce632323b65f47e276529a4a91efcbeb4009`
+- runtime service: `0874b5300038e02722295fca4e2ce3da93e03d50`
+- runtime timer: `c0d50b2f46c2e3258e7998cc78392176fe0e04d2`
+- backup sync: `43ebfbf61f8e02be93be945bf90344bf5f45c8c9`
+- restore verifier sync: `c9ca8bacbd224fd1aa3ae0f3bcdbb0e6858786b6`
+- final validator sync: `4cf3eec13f17ad4e18bb8de275a55a2300b51c78`

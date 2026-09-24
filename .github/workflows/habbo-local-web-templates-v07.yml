@@ -1,0 +1,27 @@
+name: Habbo local web templates v07
+on:
+  push:
+    branches: [project/habbo-2009-dual-linux-vps1-deploy-20260923]
+    paths:
+      - '.github/workflows/habbo-local-web-templates-v07.yml'
+permissions:
+  contents: read
+jobs:
+  templates:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Fetch Havana templates
+        shell: bash
+        run: |
+          set -euxo pipefail
+          git clone --depth 1 --branch v1.5.4 https://github.com/Quackster/Havana.git _havana || git clone --depth 1 https://github.com/Quackster/Havana.git _havana
+          mkdir -p export/tools
+          cp -a _havana/tools/www-tpl export/tools/
+          cp -a _havana/tools/migrations export/tools/
+          find export -type f -print0 | sort -z | xargs -0 sha256sum > export/SHA256SUMS.txt
+      - uses: actions/upload-artifact@v4
+        with:
+          name: habbo-v07-havana-web-templates
+          path: export/
+          retention-days: 7
+          compression-level: 9

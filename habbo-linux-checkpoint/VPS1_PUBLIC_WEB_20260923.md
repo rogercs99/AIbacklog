@@ -209,3 +209,15 @@ The Habbo publication boundary was explicitly audited from both VPS1 and VPS2.
 - The aggregate validator checks enabled/active units, immutable FINAL-v2 SHA-256, backend smoke, network perimeter, public/iPhone asset smoke and a full temporary-database restore of the latest backup.
 - Full aggregate validation against `/srv/habbo/backups/manual-20260924T020550Z`: PASS.
 - `verify-latest-backup.sh` now also requires the network perimeter and aggregate validator scripts to exist in each promoted backup; live SHA-256 `54648f6d379396af136b1917aa52d48ed2df36378c48d80a68ffa293763139b1`.
+
+## Backup disk safety 2026-09-24
+
+The backup workflow now includes a disk-space safety guard.
+
+- `backup.sh` refuses to begin when the filesystem containing `/srv/habbo` has less than 1 GiB free.
+- This check occurs before creating the new backup directory, so a low-space condition cannot advance the latest pointer or leave a half-created promoted backup.
+- Added `vps1-overlay/backup-retention-report.sh`, live at `/srv/habbo/ops/backup-retention-report.sh`.
+- The retention tool is deliberately non-destructive: it reports `KEEP` and `CANDIDATE` entries only. It defaults to preserving the eight newest backups, the known restore milestone `manual-20260923T183558Z`, and the current latest backup. It never deletes anything.
+- Current backup footprint at the time of this validation was about 178 MB across 24 backups, while the root filesystem had about 2.0 GiB free. Backups are therefore not the primary source of disk usage.
+- First backup validated with these tools included: `/srv/habbo/backups/manual-20260924T020824Z`.
+- Live hashes at this point: `backup.sh` = `ac20853b52179953c9e6f4c08b7cef89da18adf176c5962fbc42c4aac3461459`; `backup-retention-report.sh` = `85ba3a33b8ec7f3d076ce413799008230ae9006b63162c38aa22ad3379c1575d`; `verify-latest-backup.sh` = `caac39b9f4acdc39370bab9b704e3f60b4f96986e658ac1e4b51b722cba26585`.

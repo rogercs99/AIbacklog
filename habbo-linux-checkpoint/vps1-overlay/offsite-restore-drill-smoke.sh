@@ -5,6 +5,7 @@ STATUS=$ROOT/OFFSITE_RESTORE_DRILL_STATUS
 MAX_AGE=691200
 fail(){ echo "FAIL: $*" >&2; exit 1; }
 [[ -f "$STATUS" ]] || fail 'offsite restore drill status missing'
+[[ ! -e "$ROOT/OFFSITE_RESTORE_DRILL_FAILED" ]] || fail 'offsite restore drill failure latch present'
 [[ "$(stat -c '%a %U:%G' "$STATUS")" == '600 root:root' ]] || fail 'offsite restore drill status permissions invalid'
 get(){ awk -F= -v k="$1" '$1==k {sub(/^[^=]*=/,""); print; exit}' "$STATUS"; }
 ts=$(get validated_at_utc)

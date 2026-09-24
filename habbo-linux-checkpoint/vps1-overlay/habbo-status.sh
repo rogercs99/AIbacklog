@@ -13,6 +13,11 @@ for u in habbo-stack habbo-static habbo-websockify cloudflared-stremio-legacy ha
 done
 check 'runtime timer active' systemctl is-active --quiet habbo-runtime-healthcheck.timer
 check 'runtime timer enabled' systemctl is-enabled --quiet habbo-runtime-healthcheck.timer
+check 'daily backup timer active' systemctl is-active --quiet habbo-backup-daily.timer
+check 'daily backup timer enabled' systemctl is-enabled --quiet habbo-backup-daily.timer
+backup_result=$(systemctl show -p Result --value habbo-backup-daily.service 2>/dev/null || echo unknown)
+[[ "$backup_result" == success ]] || ok=false
+printf '%-28s %s\n' 'daily backup last result' "$backup_result"
 result=$(systemctl show -p Result --value habbo-runtime-healthcheck.service 2>/dev/null || echo unknown)
 [[ "$result" == success ]] || ok=false
 printf '%-28s %s\n' 'runtime last result' "$result"
@@ -24,6 +29,13 @@ printf '%-28s %s\n' 'FINAL-v2 hash' "$([[ "$actual" == "$EXPECTED" ]] && echo OK
 latest=$(cat "$ROOT/LATEST_PUBLIC_WEB_BACKUP" 2>/dev/null || echo missing)
 [[ -d "$latest" ]] || ok=false
 printf '%-28s %s\n' 'latest backup' "$latest"
+if [[ -d "$latest" ]]; then
+  backup_age=$(( $(date +%s) - $(stat -c %Y "$latest") ))
+else
+  backup_age=999999999
+fi
+[[ "$backup_age" -le 129600 ]] || ok=false
+printf '%-28s %ss\n' 'latest backup age' "$backup_age"
 
 stamp_age(){
   local f=$1 ts now

@@ -8,6 +8,23 @@ fail(){ echo "FAIL: $*" >&2; exit 1; }
 current_work=
 cleanup_work(){ if [[ -n "${current_work:-}" ]]; then rm -rf -- "$current_work"; fi; return 0; }
 trap cleanup_work EXIT
+canonical_recovery_fingerprint(){
+  local root=$1
+  (
+    cd "$root"
+    while IFS= read -r -d '' p; do
+      rel=${p#./}
+      if [[ -L "$p" ]]; then
+        printf 'L\t%s\t%s\n' "$rel" "$(readlink "$p")"
+      elif [[ -f "$p" ]]; then
+        printf 'F\t%s\t%s\t%s:%s\t%s\n' "$rel" "$(stat -c %a "$p")" "$(stat -c %u "$p")" "$(stat -c %g "$p")" "$(sha256sum "$p" | awk '{print $1}')"
+      elif [[ -d "$p" ]]; then
+        printf 'D\t%s\t%s\t%s:%s\n' "$rel" "$(stat -c %a "$p")" "$(stat -c %u "$p")" "$(stat -c %g "$p")"
+      fi
+    done < <(find . -mindepth 1 \( -type f -o -type d -o -type l \) -print0 | sort -z)
+  ) | sha256sum | awk '{print $1}'
+}
+recovery_fingerprint=
 [[ -d "$ROOT" ]] || fail 'offsite store missing'
 [[ "$(stat -c '%a %U:%G' "$ROOT")" == '700 root:root' ]] || fail 'offsite store permissions invalid'
 exec 7>"$LOCK"
@@ -115,6 +132,13 @@ PYKIT
   mapfile -t rehearsal_unit_files < <(find "$rehearsal/etc/systemd/system" -maxdepth 1 -type f -name 'habbo-*' -printf '%p\n' | sort)
   unit_path="$rehearsal/etc/systemd/system:/etc/systemd/system:/run/systemd/system:/usr/local/lib/systemd/system:/usr/lib/systemd/system:/lib/systemd/system"
   SYSTEMD_UNIT_PATH="$unit_path" systemd-analyze verify "${rehearsal_unit_files[@]}" >/dev/null 2>&1 || { rm -rf "$work"; fail "VPS2 recovery rehearsal systemd verification failed: $f"; }
+  fp=$(canonical_recovery_fingerprint "$rehearsal")
+  if [[ -z "$recovery_fingerprint" ]]; then
+    recovery_fingerprint=$fp
+  elif [[ "$fp" != "$recovery_fingerprint" ]]; then
+    rm -rf "$work"
+    fail "VPS2 recovery rehearsal is non-deterministic across retained generations: $f ($fp != $recovery_fingerprint)"
+  fi
   rm -rf "$work"
   current_work=
 done
@@ -124,4 +148,4 @@ fi
 newest=${archives[-1]##*/}
 [[ "$latest_name" == "$newest" ]] || fail "LATEST is not newest archive: $latest_name vs $newest"
 echo 'PASS: Habbo VPS1 offsite store smoke'
-echo "archives=${#archives[@]} latest=$latest_name integrity=external-sha256+gzip+internal-manifest-full critical=verified vps2-recovery=semantic+live+bootstrap permissions=private temp_residue=0"
+echo "archives=${#archives[@]} latest=$latest_name integrity=external-sha256+gzip+internal-manifest-full critical=verified vps2-recovery=semantic+live+bootstrap+deterministic recovery_deterministic=1 recovery_fingerprint=$recovery_fingerprint permissions=private temp_residue=0"

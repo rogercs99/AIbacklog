@@ -27,6 +27,16 @@ echo '77672bee2a6b8f879aa8cb0acbac41b7bc203b4487e1464ebacbc1848564bcb5  '"$B"'/h
 echo '31f607e2c83bbc3859687492236b21b1c5da2439939b1e715abc3eebdb6260d8  '"$B"'/habbo-library-chunks-sha256.txt' | sha256sum -c - >/dev/null
 echo '33574318d69e29e4ddfa2430af4d87467836626432085cac2326f7efdf47fec6  '"$B"'/habbo-runtime-prefix-parts-sha256.txt' | sha256sum -c - >/dev/null
 git bundle list-heads "$B/havana-source-b550f00.bundle" | grep -q '^b550f00f27788145d26723fd19e943aa63504a63 ' || { echo 'FAIL: backed-up Havana bundle commit mismatch' >&2; exit 1; }
+unzip -tqq "$B/habbo-2009-dual-linux-FINAL-v2-20260923.zip" || { echo 'FAIL: backed-up FINAL-v2 ZIP is unreadable' >&2; exit 1; }
+[[ "$(wc -l < "$B/habbo-library-chunks-sha256.txt")" -eq 15 ]] || { echo 'FAIL: Library backend/WWW manifest line count mismatch' >&2; exit 1; }
+[[ "$(wc -l < "$B/habbo-runtime-prefix-parts-sha256.txt")" -eq 7 ]] || { echo 'FAIL: Library runtime/prefix manifest line count mismatch' >&2; exit 1; }
+mkdir -p "$WORK/havana-bundle-verify"
+git init -q "$WORK/havana-bundle-verify"
+git -C "$WORK/havana-bundle-verify" bundle verify "$B/havana-source-b550f00.bundle" >/dev/null 2>&1 || { echo 'FAIL: backed-up Havana bundle verification failed' >&2; exit 1; }
+git clone -q "$B/havana-source-b550f00.bundle" "$WORK/Havana-offline" || { echo 'FAIL: backed-up Havana bundle cannot be cloned offline' >&2; exit 1; }
+[[ "$(git -C "$WORK/Havana-offline" rev-parse HEAD)" == 'b550f00f27788145d26723fd19e943aa63504a63' ]] || { echo 'FAIL: offline Havana clone HEAD mismatch' >&2; exit 1; }
+test -f "$WORK/Havana-offline/Dockerfile-Server"
+test -f "$WORK/Havana-offline/Dockerfile-Web"
 test -f "$B/cloudflared-tunnel-credentials.json"
 test "$(stat -c %a "$B/cloudflared-tunnel-credentials.json")" = 600
 python3 - "$B/cloudflared-stremio-legacy-config.yml" "$B/cloudflared-tunnel-credentials.json" <<'PYCF'

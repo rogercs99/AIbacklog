@@ -1,0 +1,11 @@
+[Unit]
+Description=Run Habbo runtime healthcheck every 15 minutes
+
+[Timer]
+OnCalendar=*:0/15
+Persistent=true
+RandomizedDelaySec=30
+Unit=habbo-runtime-healthcheck.service
+
+[Install]
+WantedBy=timers.target

@@ -7,8 +7,11 @@ EXPECTED_COMMIT=b550f00f27788145d26723fd19e943aa63504a63
 EXPECTED_FINAL=f80bbefc5a486fd0f9cce058a39462ef3925c563253dc2f69ebe647f6a6630ec
 fail(){ echo "FAIL: $*" >&2; exit 1; }
 [[ -d "$B" ]] || fail "backup missing: $B"
+SHM_MIN_KB=524288
+shm_free_kb=$(df -Pk /dev/shm | awk 'NR==2 {print $4}')
+[[ "$shm_free_kb" -ge "$SHM_MIN_KB" ]] || fail "insufficient /dev/shm for disaster drill: ${shm_free_kb} KiB"
 
-TMP=$(mktemp -d /tmp/habbo-drill.XXXXXX)
+TMP=$(mktemp -d /dev/shm/habbo-drill.XXXXXX)
 trap 'rm -rf "$TMP"' EXIT
 R="$TMP/root"
 mkdir -p "$R/srv/habbo" "$R/etc/cloudflared-stremio-legacy" "$R/etc/systemd/system" "$R/final"
@@ -100,4 +103,4 @@ STAMP=/run/habbo-disaster-drill
 } >"$STAMP"
 chmod 0644 "$STAMP"
 echo 'PASS: Habbo disaster restore drill'
-echo "backup=$B havana_commit=$EXPECTED_COMMIT compose=resolved cloudflare=coherent systemd=verified final_v2=verified db_restore=verified"
+echo "backup=$B havana_commit=$EXPECTED_COMMIT compose=resolved cloudflare=coherent systemd=verified final_v2=verified db_restore=verified workspace=tmpfs"

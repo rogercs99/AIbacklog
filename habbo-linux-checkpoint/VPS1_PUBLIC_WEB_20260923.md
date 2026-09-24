@@ -678,3 +678,66 @@ Git commits:
 - Library chunk hashes: `f7e2b39d876dfdb2056d182c24f023be77e6d43e`
 - runtime/prefix hashes: `ac8bbf738e264316272a22a4ba9637a277dc71a1`
 - offline-clone verifier: `ce3ef3fa075f75cc57e416b5ae6b8cd1ef0dad16`
+
+## Host prerequisites and weekly disaster drill 2026-09-24
+
+A host-prerequisite manifest and a non-destructive weekly restore drill were added.
+
+Host recovery manifest:
+- Ubuntu 22.04.5 LTS x86_64 captured host;
+- docker.io 29.1.3-0ubuntu3~22.04.2, containerd 2.2.1-0ubuntu1~22.04.2;
+- Docker Compose v2.27.0, active plugin SHA-256 `f3ba3bf1e4ab18e96c2d36526a075a02a78fb5f8e80d3e3ca9c5bf256d81d0a0`;
+- python3-websockify 0.10.0+dfsg1-2build1;
+- cloudflared 2026.7.3, `/usr/bin/cloudflared`, SHA-256 `9d71c677db00134c1bd4144b7783486b654ad281b1ea62b4972098d19f770f17`;
+- `cloudflared-stremio-legacy.service` is now included in promoted backups alongside config + credential JSON.
+
+The restore drill reconstructs a fresh tree under `/tmp` only and does not start replacement containers or touch production ports. It:
+- restores `.env`, Compose, context, disaster manifest, ops overlay and frontend overlay;
+- clones Havana offline from the backed-up Git bundle;
+- verifies/extracts FINAL-v2;
+- resolves Compose from backed-up `.env` and structurally verifies every published port is loopback-only;
+- verifies the Cloudflare config/credential pair;
+- restores and syntax-checks the 10 required systemd units;
+- invokes the isolated temporary-DB restore verifier.
+
+Successful manual drill:
+- backup: `manual-20260924T035625Z`;
+- result: PASS with `compose=resolved cloudflare=coherent systemd=verified final_v2=verified db_restore=verified`.
+
+Weekly automation:
+- `habbo-disaster-drill.timer` enabled and active;
+- schedule: Sunday 05:40 local time with up to 300 seconds randomized delay, Persistent=true;
+- service timeout: 300 seconds;
+- success stamp: `/run/habbo-disaster-drill`;
+- aggregate validation requires timer enabled/active, last service result success, stamp age <= 8 days and referenced backup still present.
+
+Initial service proof:
+- 2026-09-24 06:00:11 CEST start;
+- 06:00:21 CEST finish;
+- Result=success, ExecMainStatus=0;
+- stamp references `manual-20260924T035956Z`;
+- next scheduled automatic run observed for Sunday 2026-09-27 around 05:44 CEST.
+
+Live hashes:
+- `HOST_PREREQUISITES.md`: `a8aec4c1933c56ab9da3af9fdfa121f8f750dce03d19bf200e8506e06b1faba4`
+- `disaster-restore-drill.sh`: `1778c275cf9babf1d550d4fd5685b6fe2b50fba809d8f9e7f53a8893f536590a`
+- disaster drill service: `a08b4585b2d1c8c92740d68c3dc1350558c192340a77cecfd3af274d935a5f9c`
+- disaster drill timer: `1a3b462231955544ca09a47a84a263237b666e243a03d2c741ec7ac59be87f64`
+- `backup.sh`: `9f8feecbaa526cd69c93809dda12cf7e961ea4337a993bd7b415b8ad98042675`
+- `verify-latest-backup.sh`: `301febcce3e1ca1575c19e4533a55e4962ab41d2b5da6bd9e21d78bae7967d3c`
+- `deployment-final-validate.sh`: `5a37a3a1bc5a44f10e5fa268458f50ec6e89a6e9c0d440391d7bf633df13dc57`
+- `habbo-status.sh`: `121486b179e091234e0c4a5ad587781bab79542a17693eff825957f4fed3eb64`
+
+Git commits:
+- host prerequisites: `8332bd498216bc5f01c1bbae146990d52adf68ce`
+- host-aware backup: `e95939b781c947415dc5198656a8d2f8e5d85ce4`
+- host-aware verifier: `71c9b2a2a860ae986233b2924f84bcebebbfdb4c`
+- shared Cloudflare secret guard: `864c51b321bbb4955a3074d972a0a96a4e37eeec`
+- restore drill: `bce294aced851fa604686a2bedaffcea4ddda897`
+- stamped drill script: `3394e7d7dba740735eac33de45c009d7ee726d5c`
+- drill service: `97d0dcc9f815792090a252e5329cc09db6c7f05e`
+- drill timer: `2bebf67b4ff4315d4b47851bf9cb86bcfdcaec94`
+- backup weekly integration: `6edf62a4ca36a530c31a88172e0d75f4b428ad8e`
+- verifier weekly integration: `dde866868ccb4c3c8e2cfb18b4809b3994f63615`
+- final-validator weekly integration: `d92bb6732373bc0a7d1a7a618fce3fab9f7ac8c3`
+- status weekly integration: `1c2ebd36bd72c99f388f7138ecf6ec61bbf37fce`

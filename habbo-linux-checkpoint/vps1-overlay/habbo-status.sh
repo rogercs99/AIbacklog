@@ -97,6 +97,21 @@ osd_ok=true
 $osd_ok || ok=false
 printf '%-28s %ss\n' 'offsite restore drill age' "$osd_age"
 printf '%-28s %s\n' 'offsite restore proof' "$($osd_ok && echo OK || echo FAIL)"
+webkit_ok=true
+if [[ -f /srv/habbo/WEBKIT_STATUS ]]; then
+  webkit_ts=$(awk -F= '$1=="validated_at_utc" {print $2}' /srv/habbo/WEBKIT_STATUS)
+  webkit_result=$(awk -F= '$1=="result" {print $2}' /srv/habbo/WEBKIT_STATUS)
+  webkit_age=$(( $(date -u +%s) - $(date -u -d "$webkit_ts" +%s) ))
+else
+  webkit_age=999999999; webkit_result=missing; webkit_ok=false
+fi
+[[ "$webkit_age" -le 129600 ]] || webkit_ok=false
+[[ "$webkit_result" == success ]] || webkit_ok=false
+[[ ! -e /srv/habbo/WEBKIT_FAILED ]] || webkit_ok=false
+$webkit_ok || ok=false
+printf '%-28s %ss\n' 'WebKit proof age' "$webkit_age"
+printf '%-28s %s\n' 'WebKit failure latch' "$([[ -e /srv/habbo/WEBKIT_FAILED ]] && echo FAILED || echo clear)"
+printf '%-28s %s\n' 'WebKit iPhone proof' "$($webkit_ok && echo OK || echo FAIL)"
 printf '%-28s %s\n' 'runtime backup match' "$([[ "$runtime_backup" == "$latest" ]] && echo OK || echo FAIL)"
 
 if [[ -e /run/habbo-runtime-health.failed ]]; then

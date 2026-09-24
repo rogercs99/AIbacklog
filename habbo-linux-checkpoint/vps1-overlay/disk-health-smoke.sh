@@ -8,6 +8,8 @@ free_kb=$(df -Pk "$ROOT" | awk 'NR==2 {print $4}')
 
 backup_kb=$(du -sk "$ROOT/backups" | awk '{print $1}')
 [[ "$backup_kb" -lt 1048576 ]] || fail "Habbo backups exceed 1 GiB"
+backup_count=$(find "$ROOT/backups" -mindepth 1 -maxdepth 1 -type d -name 'manual-*' | wc -l)
+[[ "$backup_count" -le 20 ]] || fail "too many local Habbo backups: $backup_count (max 20)"
 
 for c in habbo-mariadb-1 habbo-havana-server-1 habbo-havana-web-1; do
   type=$(docker inspect "$c" --format '{{.HostConfig.LogConfig.Type}}')
@@ -34,6 +36,7 @@ latest=$(cat "$ROOT/LATEST_PUBLIC_WEB_BACKUP")
 [[ -d "$latest" ]] || fail 'latest backup path does not exist'
 
 echo 'PASS: Habbo disk health smoke'
-printf 'free_gib=%.2f backups_mib=%.1f docker_logs=json-file:20m:3 stale_restore_dbs=0 stale_restore_containers=0 stale_restore_workdirs=0\n' \
+printf 'free_gib=%.2f backups_mib=%.1f backup_count=%s docker_logs=json-file:20m:3 stale_restore_dbs=0 stale_restore_containers=0 stale_restore_workdirs=0\n' \
   "$(awk -v x="$free_kb" 'BEGIN{print x/1048576}')" \
-  "$(awk -v x="$backup_kb" 'BEGIN{print x/1024}')"
+  "$(awk -v x="$backup_kb" 'BEGIN{print x/1024}')" \
+  "$backup_count"

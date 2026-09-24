@@ -3,8 +3,19 @@ set -euo pipefail
 umask 077
 DEST=/var/backups/habbo-vps1
 REMOTE=bridge-old
+LOCK=/run/lock/habbo-vps1-offsite.lock
+exec 8>"$LOCK"
+flock -w 120 8 || { echo "FAIL: offsite lock unavailable after 120s" >&2; exit 1; }
 mkdir -p "$DEST"
 chmod 700 "$DEST"
+
+backup_state=$(ssh -o BatchMode=yes "$REMOTE" 'systemctl show -p ActiveState --value habbo-backup-daily.service')
+case "$backup_state" in
+  active|activating|reloading|deactivating)
+    echo "FAIL: VPS1 daily backup state is $backup_state; refusing to bless the previous generation" >&2
+    exit 1
+    ;;
+esac
 
 remote_backup=$(ssh -o BatchMode=yes "$REMOTE" 'cat /srv/habbo/LATEST_PUBLIC_WEB_BACKUP')
 name=${remote_backup##*/}

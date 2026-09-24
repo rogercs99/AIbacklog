@@ -1018,3 +1018,82 @@ Git commits:
 - verifier: `3c8eb87420a3811825cd6f2df352e9eadb866052`
 - final validator: `f19181f527391d3cfc160a7cfd03ee3465ea0674`
 - status: `6b1b5cfee2991a23940cdedcf1e997cb170f24ea`
+
+## Immediate VPS2 failure latches and disk preflight 2026-09-24
+
+VPS2 off-host jobs now report failure immediately to VPS1 instead of relying only on proof expiry.
+
+Added shared VPS2 failure recorder:
+- `/usr/local/sbin/habbo-vps1-offsite-failed.sh`;
+- records unit result, exit status and recent journal;
+- writes root-only latch files on VPS1.
+
+Pull path:
+- `habbo-vps1-offsite-pull.service` now has `OnFailure=habbo-vps1-offsite-pull-failed.service`;
+- failure latch: `/srv/habbo/OFFSITE_BACKUP_FAILED`;
+- a later successful pull removes the latch automatically.
+
+Restore drill path:
+- `habbo-vps1-offsite-restore-drill.service` now has `OnFailure=habbo-vps1-offsite-restore-drill-failed.service`;
+- failure latch: `/srv/habbo/OFFSITE_RESTORE_DRILL_FAILED`;
+- a later successful restore drill removes the latch automatically.
+
+Restore drill disk preflight:
+- VPS2 `/` must have at least 800 MiB free;
+- VPS2 `/dev/shm` must have at least 512 MiB free;
+- failure occurs before pulling MariaDB if the threshold is not met;
+- the MariaDB image is removed only when the drill itself downloaded it.
+
+Controlled pull-failure proof:
+- only the offsite pull service was temporarily overridden to `/bin/false`;
+- Result=exit-code / ExecMainStatus=1;
+- failure recorder service succeeded;
+- VPS1 received `OFFSITE_BACKUP_FAILED` mode 0600 with journal evidence;
+- offsite pull timer remained active;
+- override removed; real pull succeeded and cleared the latch.
+
+Controlled restore-drill failure proof:
+- only the offsite restore service was temporarily overridden to `/bin/false`;
+- Result=exit-code / ExecMainStatus=1;
+- failure recorder service succeeded;
+- VPS1 received `OFFSITE_RESTORE_DRILL_FAILED` mode 0600;
+- restore timer remained active;
+- preflight observed about 944 MiB root free and ~1.9 GiB `/dev/shm` free;
+- real restore drill then passed with 88 tables, 40 navigator_styles, RogerVideo=1 and room1000=1;
+- latch cleared and temporary MariaDB image was absent after cleanup.
+
+VPS1 health integration:
+- `offsite-backup-smoke.sh` fails while the pull failure latch exists;
+- `offsite-restore-drill-smoke.sh` fails while the restore-drill latch exists;
+- `habbo-status.sh` reports both latches independently.
+
+VPS1 disk investigation:
+- the temporary drop from ~1.77 to ~1.59 GiB free was not caused by Habbo backups or MariaDB growth;
+- two regenerable APT caches created at 06:34 consumed about 151 MB total;
+- only `/var/cache/apt/pkgcache.bin` and `/var/cache/apt/srcpkgcache.bin` were removed;
+- unrelated `/tmp` trees were intentionally left untouched;
+- disk smoke returned PASS with about 1.74 GiB free afterward.
+
+Live hashes:
+- VPS2 shared failure recorder: `4dae632c55f3a8ac267039f81d2322de0f4253166a7439f696831e77de2621b9`
+- VPS2 pull script: `a4eb4b0e9549751ce101f21cb6c1b33c15435e45d09312c2b3dec3ba3eb862e9`
+- VPS2 restore drill: `80a127fdf5f688f4a087ac71f58f487d42513ef94605138d12dc65155aceaabd`
+- pull service: `de44db23dbee2f13ef47d822a07cdcf6a60013a1b3e038eb75600bf8d17b4d25`
+- pull failure service: `9bac1f78e3fbb906b48b166afa6f3d0d039e2673e1994ae3ad5641c565b2336a`
+- restore service: `cec0a3765ff0437f935d8bc00cbf76b3dda80278c841b4fd85dd644ca99e6726`
+- restore failure service: `aaef7bf1fb0b697ffc3d18da55ed0e5b90063aa8cef52c18ae0f4b97e1b87932`
+- VPS1 offsite backup smoke: `06df5313659cb6fef2b5cb1ff18d8c03869beb57afa7dbdcf9aa2a3058208f62`
+- VPS1 offsite restore smoke: `75bcfd33fa53440139a73b958add228514c9879bf0b4b541581121de8cf228a1`
+- VPS1 status: `5bc32cd9e115c69fe6742133e60767e82c74a70d8b69128efebbfd00ba92c3e2`
+
+Git commits:
+- failure recorder: `164185f840895d0158e21c003d740605434ce7d9`
+- pull latch recovery: `af62cff5fd49f5c7da839afae7f02d8241728136`
+- restore preflight/latch recovery: `eb26ce4d19cbe93f8456f28e4ce9643921b86553`
+- pull service OnFailure: `3a715b230f2af8d93619b1816250d31434f2e197`
+- pull failure service: `ba67a4e684f5b249f391c4633e408e135decedee`
+- restore service OnFailure: `c6b219f0f5af537c77fc230ee62da8a568f0f9d5`
+- restore failure service: `a02a27b757b5adbf573ca276a7fc89ca29dfd979`
+- VPS1 pull smoke latch: `2f028f985d90fb104bc8754498c50db6a93cb776`
+- VPS1 restore smoke latch: `2bb5e688e9aaaf045843f73e72b78f1ac061df14`
+- VPS1 status latches: `2bb1e51de5035c9764536b119363514cb2671de0`

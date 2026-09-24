@@ -1,0 +1,24 @@
+name: Habbo py7zr wheels v07
+on:
+  push:
+    branches: [project/habbo-2009-dual-linux-vps1-deploy-20260923]
+    paths:
+      - '.github/workflows/habbo-py7zr-wheels-v07.yml'
+permissions:
+  contents: read
+jobs:
+  wheels:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Download py7zr and dependencies
+        shell: bash
+        run: |
+          set -euxo pipefail
+          python -m pip download --dest wheels py7zr
+          sha256sum wheels/* > wheels/SHA256SUMS.txt
+      - uses: actions/upload-artifact@v4
+        with:
+          name: habbo-v07-py7zr-wheels
+          path: wheels/
+          retention-days: 7
+          compression-level: 0

@@ -1134,3 +1134,61 @@ Live hashes:
 Git commits:
 - isolated verifier: `8c834f1c38066b4dcd7b4828ca97451b39ccd8a0`
 - stale isolated verifier guards: `3c61ac9fa3164f562e5c96bfd22fddc15a3870b6`
+
+## Atomic backup publication 2026-09-24
+
+The backup publisher was hardened so a failed or concurrent backup can never masquerade as a completed `manual-...Z` generation.
+
+Publication protocol:
+- exclusive `flock` on `/run/lock/habbo-backup.lock` rejects concurrent runs;
+- work is created under hidden staging path `.manual-<timestamp>.incomplete`;
+- failure cleanup removes the staging directory through an EXIT trap;
+- SHA256SUMS is generated with relocation-safe relative paths;
+- the staged backup is fully verified before publication;
+- staging is renamed atomically on the same filesystem to `manual-<timestamp>`;
+- `LATEST_PUBLIC_WEB_BACKUP` is written through a temporary file and atomically renamed.
+
+Controlled failure proof:
+- `tar` was shadowed through a temporary PATH entry and forced to exit 99 after staging began;
+- backup returned rc=99;
+- `LATEST_PUBLIC_WEB_BACKUP` remained `manual-20260924T052222Z`;
+- no `.manual-*.incomplete` directory survived.
+
+Controlled concurrency proof:
+- the backup lock was held externally while a second backup was started;
+- second backup failed with `another Habbo backup is already running`;
+- LATEST remained unchanged and no staging residue was created.
+
+First successful atomic generation:
+- `manual-20260924T052813Z`;
+- physical growth 884 KiB;
+- checksum manifest uses relative filenames and re-verifies after publication;
+- FINAL-v2 and Havana bundle retained hardlink dedupe to the previous generation;
+- VPS2 offsite pull accepted the relative manifest and verified the resulting archive;
+- VPS1 returned from expected offsite lag DEGRADED state to OVERALL READY.
+
+Added `backup-publication-smoke.sh`:
+- validates LATEST path and permissions;
+- requires relative/parent-safe, duplicate-free checksum entries;
+- re-verifies SHA256SUMS;
+- rejects stale `.manual-*.incomplete` staging dirs;
+- rejects stale temporary LATEST files;
+- requires backup lock availability infrastructure.
+
+Controlled stale-staging proof:
+- a dummy `.manual-19990101T000000Z.incomplete` aged 20 minutes caused the smoke to FAIL;
+- after removal the smoke returned PASS.
+
+Live hashes:
+- `backup.sh`: `9674803a4db0b60159a45f6a50e2ce1c0b8dbed209fc75b5b19d1a9428de32ac`
+- `backup-publication-smoke.sh`: `aeb6afb580753be07902a33232553c75c3c1bb6003a736dcdbe16725fa0e0c33`
+- `verify-latest-backup.sh`: `17ba79dd868bf37b6207e0bd8a1047188d4188726173e7ee3ed070d9d7f50af8`
+- `deployment-final-validate.sh`: `1c85b88884dd3487a3f18fef325a042e73887647585802e689c2d01af41d3cee`
+- `habbo-status.sh`: `f2440ff42bd130090d699be1eb4c9cf643fe9cbf4624c5608967393a5631baf8`
+
+Git commits:
+- atomic backup publisher: `1d718efe959cff337fcd87b81b10f87840f192bf`
+- publication smoke: `4df81b718450bc0ce9acd8e62fef927f827b5c5e`
+- verifier integration: `632c2a2eab1931e46f524f03bf7771d235e8d8ea`
+- final validator integration: `348b2de6dfcb33e7a571e36767e94b87f3228971`
+- status integration: `21090bb1462a8ee7178030aae155012adefc9b11`

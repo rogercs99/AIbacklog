@@ -17,6 +17,16 @@ trap cleanup EXIT
 cd "$B"
 sha256sum -c SHA256SUMS
 test -f "$B/.env"
+test -f "$B/DISASTER_RECOVERY_MANIFEST.md"
+test -f "$B/havana-source-b550f00.bundle"
+test -f "$B/habbo-library-chunks-sha256.txt"
+test -f "$B/habbo-runtime-prefix-parts-sha256.txt"
+test -f "$B/habbo-2009-dual-linux-FINAL-v2-20260923.zip"
+echo 'f80bbefc5a486fd0f9cce058a39462ef3925c563253dc2f69ebe647f6a6630ec  '"$B"'/habbo-2009-dual-linux-FINAL-v2-20260923.zip' | sha256sum -c - >/dev/null
+echo '77672bee2a6b8f879aa8cb0acbac41b7bc203b4487e1464ebacbc1848564bcb5  '"$B"'/havana-source-b550f00.bundle' | sha256sum -c - >/dev/null
+echo '31f607e2c83bbc3859687492236b21b1c5da2439939b1e715abc3eebdb6260d8  '"$B"'/habbo-library-chunks-sha256.txt' | sha256sum -c - >/dev/null
+echo '33574318d69e29e4ddfa2430af4d87467836626432085cac2326f7efdf47fec6  '"$B"'/habbo-runtime-prefix-parts-sha256.txt' | sha256sum -c - >/dev/null
+git bundle list-heads "$B/havana-source-b550f00.bundle" | grep -q '^b550f00f27788145d26723fd19e943aa63504a63 ' || { echo 'FAIL: backed-up Havana bundle commit mismatch' >&2; exit 1; }
 test -f "$B/cloudflared-tunnel-credentials.json"
 test "$(stat -c %a "$B/cloudflared-tunnel-credentials.json")" = 600
 python3 - "$B/cloudflared-stremio-legacy-config.yml" "$B/cloudflared-tunnel-credentials.json" <<'PYCF'
@@ -61,6 +71,7 @@ test -x "$WORK/ops/runtime-healthcheck-failed.sh"
 test -x "$WORK/ops/habbo-status.sh"
 test -x "$WORK/ops/db-backup-consistency-smoke.sh"
 test -x "$WORK/ops/secret-permissions-smoke.sh"
+test -x "$WORK/ops/disaster-recovery-source-smoke.sh"
 test -x "$WORK/ops/habbo-backup-daily.sh"
 test -f "$B/habbo-backup-daily.service"
 test -f "$B/habbo-backup-daily.timer"

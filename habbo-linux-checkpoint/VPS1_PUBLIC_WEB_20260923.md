@@ -2450,3 +2450,43 @@ Git commits:
 - refreshed VPS2 recovery manifest `8a98ecb25ab3b9da4e4167ac6cb7a6b3c816a67f`.
 
 Live↔Git identity for these six artifacts: 6/6 exact match.
+
+## Registration CAPTCHA Safari fix 2026-09-24
+
+A real iPhone/Safari registration screenshot exposed a broken CAPTCHA help bubble rendering escaped HTML and literal `\\n` sequences.
+
+Root cause:
+- `register.tpl` built `register.message.captcha_js_form` by concatenating generated locale keys;
+- the final locale value already contained escaped HTML (`\\n`, escaped quotes and escaped tag delimiters);
+- applying template JS escaping again caused the JavaScript value to contain literal escape text instead of usable HTML.
+
+Production fix:
+- added persistent overlay `/srv/habbo/web-frontend-assets/templates/register.tpl`;
+- replaced only `register.message.captcha_js_form` with normal HTML markup inside the JavaScript string;
+- reused normal locale entries for the two visible CAPTCHA texts;
+- CAPTCHA image URL now uses the controller-provided `randomNum` cache buster;
+- mounted the overlay read-only at `/havana-web/tools/www-tpl/default/register.tpl` from `docker-compose.yml`;
+- recreated only `havana-web`; MariaDB and Havana game server were not restarted.
+
+Validation:
+- rendered `/register` no longer contains escaped CAPTCHA markup;
+- real Playwright WebKit with iPhone Safari UA returned `literal_backslash_n=False` and `literal_backslash_gt=False`;
+- the L10N value contained a real `<div>` tree and parsed as one HTML child;
+- public web smoke PASS;
+- dynamic iPhone asset audit PASS with 25 direct assets.
+
+Account provisioning performed as part of the user request:
+- normal user `Roger` created as user id 2;
+- rank 1, male look cloned from the existing local test user, one `users_statistics` row;
+- password stored using Argon2id parameters compatible with Havana;
+- real `/account/submit` login returned 302 to `/security_check`;
+- authenticated `/security_check` returned 200 and `/me` rendered `Roger`;
+- plaintext credential is intentionally not recorded in this runbook.
+
+Live hashes:
+- registration template overlay: `7664f5083c577377e1540c30fcb7b18e9c287b7a9c140934bb4d554dd6bf6bbe`
+- docker compose: `a70639dc5326450ff9775251243e2103aaeff97aa271a13ffe262a9226dbb391`
+
+Git commits:
+- registration template overlay: `8622d0e45823663bbb3c9b314c269258804b0c2c`
+- compose mount: `42beae0aaa5d7ec341d3b0901fd48b85d6931a81`

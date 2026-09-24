@@ -419,3 +419,44 @@ Additional autonomous watchdog proof:
 - runtime stamp automatically advanced from backup `manual-20260924T023231Z` to `manual-20260924T024249Z`;
 - latch remained clear;
 - next timer execution was scheduled for 05:00:02 CEST.
+
+## Operator status command 2026-09-24
+
+A concise read-only deployment status command was added:
+
+`/srv/habbo/ops/habbo-status.sh`
+
+It does not restore the database or mutate application state. It summarizes:
+- active/enabled state of Habbo stack, static service, websockify, Cloudflare and post-boot validator;
+- runtime timer enabled/active state and last service result;
+- immutable FINAL-v2 hash;
+- latest backup path;
+- post-boot and runtime stamp ages;
+- unresolved runtime failure latch state;
+- Cloudflare HA connection count;
+- free disk and physical backup usage;
+- Habbo and Stremio public HTTP codes;
+- next/previous runtime timer schedule.
+
+It exits 0 with `OVERALL READY` only when the summarized health criteria pass; otherwise it exits 1 with `OVERALL DEGRADED`.
+
+Validation at introduction:
+- all required services/timer OK;
+- runtime last result `success`;
+- FINAL-v2 hash OK;
+- latest backup `manual-20260924T025022Z`;
+- failure latch clear;
+- Cloudflare HA connections: 4;
+- about 1.82 GiB free;
+- about 312 MiB physical backup usage;
+- Habbo HTTP 200;
+- Stremio HTTP 307;
+- final result: `OVERALL READY`.
+
+SHA-256:
+- `habbo-status.sh`: `1a639e315d091b46f0f0ccd1c0ce523d0c5bdbad78b7f315788fa8fc5ab3e215`
+- `verify-latest-backup.sh`: `54945be1e5254873fba00eb0dd4dba436b068ff92701cc4e52971cfd273f7b0f`
+
+Git commits:
+- status command: `6521df10dabe956bffac92aa75e7ec632270a2ad`
+- verifier requirement: `432adb1e4c1fa36c6d256b622fdd1037881f8ffd`

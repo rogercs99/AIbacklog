@@ -1506,3 +1506,53 @@ Live heartbeat hash after fix:
 
 Git commit:
 - `73dcef7c217dbd332ba65477be3af292257c1dd7`
+
+## Full VPS2 offsite retention store scrub 2026-09-24
+
+The VPS2 control plane now validates all three retained offsite generations, not only the current LATEST archive.
+
+Added `/usr/local/sbin/habbo-vps1-offsite-store-smoke.sh` on VPS2.
+It acquires the shared offsite lock (45-second wait) and requires:
+- store directory mode 0700 root:root;
+- LATEST mode 0600 root:root and path matching `manual-YYYYMMDDTHHMMSSZ.tar.gz`;
+- exactly three retained tar.gz archives;
+- one root-only SHA sidecar for each archive;
+- archive size >1 MiB;
+- sidecar SHA syntax + exact sidecar path;
+- SHA-256 verification of all three archives;
+- `gzip -t` structural verification of all three archives;
+- no `.tmp` / `.partial` residue;
+- LATEST must point at the lexically newest retained generation.
+
+The hourly VPS2 control-plane heartbeat now runs this scrub and publishes:
+- `offsite_store_healthy=1`;
+- `offsite_archives=3`.
+
+VPS1 `vps2-control-plane-smoke.sh` now requires both fields, and `habbo-status.sh` reports `VPS2 offsite store` plus archive count.
+
+Controlled store-count regression:
+- a temporary empty `manual-19990101T000000Z.tar.gz` was added as a fourth archive;
+- standalone store smoke failed with `offsite archive count mismatch: 4 (expected 3)`;
+- file removed and standalone smoke returned PASS.
+
+End-to-end heartbeat regression:
+- the same temporary fourth archive caused heartbeat Result=exit-code / ExecMainStatus=1;
+- heartbeat published `offsite_store_healthy=0`, `offsite_archives=0` and detail from the scrub;
+- VPS1 received the control-plane failure latch;
+- VPS1 reported store FAIL and OVERALL DEGRADED;
+- temporary archive removed;
+- next heartbeat published `offsite_store_healthy=1`, `offsite_archives=3`, cleared the latch and returned VPS1 to OVERALL READY.
+
+A Bash presentation bug found during integration (`OK` accidentally executed through nested command substitution) was fixed before promotion; the logical readiness calculation itself had remained correct.
+
+Live hashes:
+- offsite store scrub: `7c1fe74afb44de91f8aeb814b37ebff6939a38c28fdce5a0e4910016db0ac397`
+- VPS2 heartbeat: `1293c84412687e66c2c5d0269d307c6deb09f69830770615e4178b9ece865ac2`
+- VPS1 control-plane smoke: `c564901bd256488afca2deb8053272c936b4a9b5754ad205604f16a1bfff261f`
+- VPS1 status: `2433b2fe406c2e42c106a8497663d9b8c3fd7321e47676c11e99946f72c2c5f7`
+
+Git commits:
+- store scrub: `176d9979920756805d5a843f3ff73b5ccddd762f`
+- heartbeat integration: `c8cfb622c73bb4fc4bbb207378c2cffb3cfba027`
+- VPS1 guard: `59485a8c1ede94a36d82937da92ef182846cd8b1`
+- VPS1 status: `2e637fd872e4e53581d58e0c6c28c2404caaf094`

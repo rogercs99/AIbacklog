@@ -6,4 +6,6 @@ OUT=$($ROOT/ops/backup.sh | tee /tmp/habbo-daily-backup.log | tail -1)
 systemctl start habbo-runtime-healthcheck.service
 stamp=$(awk -F= '$1=="latest_backup" {print $2}' /run/habbo-runtime-health)
 [[ "$stamp" == "$OUT" ]] || { echo "FAIL: runtime stamp did not advance to $OUT" >&2; exit 1; }
+APPLY=1 KEEP_RECENT=14 "$ROOT/ops/backup-retention-prune.sh"
+[[ -d "$OUT" ]] || { echo "FAIL: retention removed current backup $OUT" >&2; exit 1; }
 echo "PASS: daily Habbo backup promoted and runtime-validated: $OUT"

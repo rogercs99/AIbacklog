@@ -1,0 +1,11 @@
+[Unit]
+Description=Run Habbo disaster restore drill weekly
+
+[Timer]
+OnCalendar=Sun *-*-* 05:40:00
+Persistent=true
+RandomizedDelaySec=300
+Unit=habbo-disaster-drill.service
+
+[Install]
+WantedBy=timers.target

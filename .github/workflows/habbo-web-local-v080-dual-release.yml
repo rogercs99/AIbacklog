@@ -1,0 +1,65 @@
+name: Habbo web local v0.8.0 dual checkpoint release
+
+on:
+  push:
+    branches:
+      - project/habbo-2009-dual-linux
+    paths:
+      - "habbo-linux-checkpoint/local-web-v0.8.0-dual/**"
+      - ".github/workflows/habbo-web-local-v080-dual-release.yml"
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Build source checkpoint asset
+        shell: bash
+        run: |
+          set -euxo pipefail
+          ZIP=habbo-web-local-v0.8.0-dual-source-checkpoint-20260925.zip
+          zip -r "$ZIP" habbo-linux-checkpoint/local-web-v0.8.0-dual
+          sha256sum "$ZIP" > "$ZIP.sha256"
+
+      - name: Create GitHub release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: bash
+        run: |
+          set -euxo pipefail
+          TAG=habbo-web-local-v0.8.0-dual-20260925
+          ZIP=habbo-web-local-v0.8.0-dual-source-checkpoint-20260925.zip
+          cat > notes.md <<'EOF'
+          Dual-client local checkpoint for Habbo web v0.8.0.
+
+          Same clean Havana backend:
+          b550f00f27788145d26723fd19e943aa63504a63
+
+          V31:
+          - real SSO, TCP 12321, room 1000, visible avatar, real WALK
+          - clean movement diff: 5,053 pixels
+          - lifecycle start/status/stop PASS
+
+          R39:
+          - native Adobe Flash Player Linux x86_64 32.0.0.465
+          - verified player SHA-256: 0bdd5116aa4e8dc88fb9e705c85c1f7ef4a29415ffb9b2132a3eb1aeafaae7b0
+          - real SSO, direct TCP 12323, room 1000, visible avatar, real WALK
+          - clean movement diff: 3,769 pixels
+          - Ruffle not used for final certification
+
+          Full recoverable bundle:
+          ChatGPT Library /Habbo 2009 Dual Linux/habbo-web-local-v0.8.0-dual-pass-20260925.zip
+          SHA-256: 7f971feab3522ba0c82a3c6a6aa8e1dc6599ce6cd12e9652e89ab7a944151db8
+          Size: 11,268,363 bytes
+
+          Production and canonical FINAL-v2 were not modified.
+          EOF
+          if gh release view "$TAG" >/dev/null 2>&1; then
+            gh release upload "$TAG" "$ZIP" "$ZIP.sha256" --clobber
+          else
+            gh release create "$TAG" "$ZIP" "$ZIP.sha256"               --target "$GITHUB_SHA"               --title "Habbo web local v0.8.0 — dual-client PASS"               --notes-file notes.md
+          fi

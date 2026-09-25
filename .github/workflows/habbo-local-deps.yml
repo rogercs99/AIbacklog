@@ -31,8 +31,7 @@ jobs:
             /usr/lib/x86_64-linux-gnu/libwoff2dec.so.1.0.2 \
             /usr/lib/x86_64-linux-gnu/libwoff2common.so.1.0.2 \
             /usr/lib/x86_64-linux-gnu/libjpeg.so.8 \
-            /usr/lib/x86_64-linux-gnu/libGLESv2.so.2 \
-            /usr/lib/x86_64-linux-gnu/libglapi.so.0
+            /usr/lib/x86_64-linux-gnu/libGLESv2.so.2
           do
             test -e "$lib"
             cp -L "$lib" artifact/deps/"$(basename "$lib")"

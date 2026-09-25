@@ -29,6 +29,7 @@ jobs:
             /usr/lib/x86_64-linux-gnu/libicui18n.so.74 \
             /usr/lib/x86_64-linux-gnu/libicuuc.so.74 \
             /usr/lib/x86_64-linux-gnu/libwoff2dec.so.1.0.2 \
+            /usr/lib/x86_64-linux-gnu/libwoff2common.so.1.0.2 \
             /usr/lib/x86_64-linux-gnu/libjpeg.so.8
           do
             test -e "$lib"

@@ -1,4 +1,4 @@
-name: Habbo rebuild Havana b550
+name: Habbo rebuild Havana Web b550
 on:
   push:
     branches: [tmp-habbo-dual-video-20260921]
@@ -9,9 +9,9 @@ permissions:
   contents: read
 
 jobs:
-  build-havana:
+  build-havana-web:
     runs-on: ubuntu-latest
-    timeout-minutes: 25
+    timeout-minutes: 30
     steps:
       - name: Checkout exact Havana source
         shell: bash
@@ -27,23 +27,24 @@ jobs:
           distribution: temurin
           java-version: "17"
 
-      - name: Build Havana Server fat JAR
+      - name: Build Havana Web fat JAR
         shell: bash
         run: |
           set -euxo pipefail
           cd havana
           chmod +x gradlew
-          ./gradlew :Havana-Server:clean :Havana-Server:shadowJar --no-daemon
+          ./gradlew :Havana-Web:clean :Havana-Web:shadowJar --no-daemon
           mkdir -p ../artifact
-          cp Havana-Server/build/libs/*.jar ../artifact/Havana-Server-b550.jar
+          cp Havana-Web/build/libs/*.jar ../artifact/Havana-Web-b550.jar
+          cp -a Havana-Web/www ../artifact/www
           cd ..
-          sha256sum artifact/Havana-Server-b550.jar | tee artifact/SHA256SUMS.txt
-          jar tf artifact/Havana-Server-b550.jar | grep 'org/alexdev/havana/messages/outgoing/rooms/user/USER_OBJECTS.class'
+          sha256sum artifact/Havana-Web-b550.jar | tee artifact/SHA256SUMS.txt
+          test -f artifact/www/flash_client.tpl
 
-      - name: Upload exact server build
+      - name: Upload exact web build
         uses: actions/upload-artifact@v4.6.2
         with:
-          name: habbo-havana-b550-server
+          name: habbo-havana-b550-web
           path: artifact/
           retention-days: 1
           compression-level: 0

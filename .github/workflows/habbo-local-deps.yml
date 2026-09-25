@@ -1,4 +1,4 @@
-name: Habbo rebuild Havana Web b550
+name: Habbo lab Playwright WebKit 1.57
 on:
   push:
     branches: [tmp-habbo-dual-video-20260921]
@@ -9,45 +9,27 @@ permissions:
   contents: read
 
 jobs:
-  build-havana-web:
-    runs-on: ubuntu-latest
-    timeout-minutes: 30
+  webkit:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
     steps:
-      - name: Checkout exact Havana source
+      - name: Fetch exact Playwright WebKit
         shell: bash
         run: |
           set -euxo pipefail
-          git clone https://github.com/Quackster/Havana.git havana
-          git -C havana checkout b550f00f27788145d26723fd19e943aa63504a63
-          test "$(git -C havana rev-parse HEAD)" = "b550f00f27788145d26723fd19e943aa63504a63"
+          node --version
+          npx -y playwright@1.57.0 install webkit
+          test -x "$HOME/.cache/ms-playwright/webkit-2227/pw_run.sh"
+          "$HOME/.cache/ms-playwright/webkit-2227/pw_run.sh" --version || true
+          mkdir -p artifact
+          tar -czf artifact/playwright-webkit-1.57.0-linux.tar.gz             -C "$HOME/.cache/ms-playwright" webkit-2227
+          sha256sum artifact/playwright-webkit-1.57.0-linux.tar.gz > artifact/SHA256SUMS.txt
+          du -h artifact/playwright-webkit-1.57.0-linux.tar.gz
 
-      - name: Set up Java 17
-        uses: actions/setup-java@v5
-        with:
-          distribution: temurin
-          java-version: "17"
-
-      - name: Build Havana Web fat JAR
-        shell: bash
-        run: |
-          set -euxo pipefail
-          cd havana
-          chmod +x gradlew
-          ./gradlew :Havana-Web:clean :Havana-Web:shadowJar --no-daemon
-          mkdir -p ../artifact
-          cp Havana-Web/build/libs/*.jar ../artifact/Havana-Web-b550.jar
-          cp -a tools/www-tpl ../artifact/www-tpl
-          cp -a tools/www ../artifact/www-static
-          cp tools/docker/web-entrypoint.sh ../artifact/
-          cd ..
-          sha256sum artifact/Havana-Web-b550.jar | tee artifact/SHA256SUMS.txt
-          test -f artifact/www-tpl/default/client_flash.tpl
-          test -f artifact/www-tpl/default/client.tpl
-
-      - name: Upload exact web build
+      - name: Upload WebKit runtime
         uses: actions/upload-artifact@v4.6.2
         with:
-          name: habbo-havana-b550-web
+          name: habbo-playwright-webkit-1.57.0
           path: artifact/
           retention-days: 1
           compression-level: 0

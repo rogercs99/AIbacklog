@@ -36,8 +36,13 @@ jobs:
           ./gradlew :Havana-Web:clean :Havana-Web:shadowJar --no-daemon
           mkdir -p ../artifact
           cp Havana-Web/build/libs/*.jar ../artifact/Havana-Web-b550.jar
+          cp -a tools/www-tpl ../artifact/www-tpl
+          cp -a tools/www ../artifact/www-static
+          cp tools/docker/web-entrypoint.sh ../artifact/
           cd ..
           sha256sum artifact/Havana-Web-b550.jar | tee artifact/SHA256SUMS.txt
+          test -f artifact/www-tpl/default/client_flash.tpl
+          test -f artifact/www-tpl/default/client.tpl
 
       - name: Upload exact web build
         uses: actions/upload-artifact@v4.6.2

@@ -13,23 +13,37 @@ jobs:
     runs-on: ubuntu-24.04
     timeout-minutes: 20
     steps:
-      - name: Fetch exact Playwright WebKit
+      - name: Fetch exact Playwright WebKit and host runtime deps
         shell: bash
         run: |
           set -euxo pipefail
           node --version
           npx -y playwright@1.57.0 install webkit
+          sudo npx -y playwright@1.57.0 install-deps webkit
           test -x "$HOME/.cache/ms-playwright/webkit-2227/pw_run.sh"
-          "$HOME/.cache/ms-playwright/webkit-2227/pw_run.sh" --version || true
-          mkdir -p artifact
-          tar -czf artifact/playwright-webkit-1.57.0-linux.tar.gz             -C "$HOME/.cache/ms-playwright" webkit-2227
-          sha256sum artifact/playwright-webkit-1.57.0-linux.tar.gz > artifact/SHA256SUMS.txt
-          du -h artifact/playwright-webkit-1.57.0-linux.tar.gz
+          mkdir -p artifact/deps
+          tar -czf artifact/playwright-webkit-1.57.0-linux.tar.gz \
+            -C "$HOME/.cache/ms-playwright" webkit-2227
+          for lib in \
+            /usr/lib/x86_64-linux-gnu/libicudata.so.74 \
+            /usr/lib/x86_64-linux-gnu/libicui18n.so.74 \
+            /usr/lib/x86_64-linux-gnu/libicuuc.so.74 \
+            /usr/lib/x86_64-linux-gnu/libwoff2dec.so.1.0.2 \
+            /usr/lib/x86_64-linux-gnu/libjpeg.so.8
+          do
+            test -e "$lib"
+            cp -L "$lib" artifact/deps/"$(basename "$lib")"
+          done
+          LD_LIBRARY_PATH="$PWD/artifact/deps:$HOME/.cache/ms-playwright/webkit-2227/minibrowser-wpe/lib:$HOME/.cache/ms-playwright/webkit-2227/minibrowser-wpe/sys/lib" \
+            ldd "$HOME/.cache/ms-playwright/webkit-2227/minibrowser-wpe/bin/MiniBrowser" | tee artifact/wpe-ldd.txt
+          ! grep -q 'not found' artifact/wpe-ldd.txt
+          (cd artifact && sha256sum playwright-webkit-1.57.0-linux.tar.gz deps/* > SHA256SUMS.txt)
+          du -h artifact/playwright-webkit-1.57.0-linux.tar.gz artifact/deps/*
 
       - name: Upload WebKit runtime
         uses: actions/upload-artifact@v4.6.2
         with:
-          name: habbo-playwright-webkit-1.57.0
+          name: habbo-playwright-webkit-1.57.0-with-deps
           path: artifact/
           retention-days: 1
           compression-level: 0

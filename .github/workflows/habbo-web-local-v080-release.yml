@@ -1,0 +1,57 @@
+name: Habbo web local v0.8.0 checkpoint release
+
+on:
+  push:
+    branches:
+      - project/habbo-2009-dual-linux
+    paths:
+      - "habbo-linux-checkpoint/local-web-v0.8.0/**"
+      - ".github/workflows/habbo-web-local-v080-release.yml"
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Build source checkpoint asset
+        shell: bash
+        run: |
+          set -euxo pipefail
+          ZIP=habbo-web-local-v0.8.0-source-checkpoint-20260925.zip
+          zip -r "$ZIP" habbo-linux-checkpoint/local-web-v0.8.0
+          sha256sum "$ZIP" > "$ZIP.sha256"
+
+      - name: Create or refresh GitHub release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: bash
+        run: |
+          set -euxo pipefail
+          TAG=habbo-web-local-v0.8.0-20260925
+          ZIP=habbo-web-local-v0.8.0-source-checkpoint-20260925.zip
+          cat > notes.md <<'EOF'
+          Local v0.8.0 checkpoint for the V31 Linux runtime/backend repair.
+
+          Proven locally:
+          - V31 SSO + TCP 12321 + room 1000 + visible avatar.
+          - real WALK and framebuffer movement.
+          - lifecycle start/status/stop with no residual v0.8.0 runtime processes.
+          - root cause of Director Object expected isolated to incompatible USER_OBJECTS serialization in a patched Havana JAR.
+          - clean Havana source commit: b550f00f27788145d26723fd19e943aa63504a63.
+
+          Full binary/evidence bundle is persisted in ChatGPT Library:
+          /Habbo 2009 Dual Linux/habbo-web-local-v0.8.0-v31-repair-20260925.zip
+          SHA-256:
+          7ca8aac0dcc26f44776e8a81fffd392c6146d6a4930e0cb4ed13ff1008768206
+
+          Production and canonical FINAL-v2 were not modified.
+          EOF
+          if gh release view "$TAG" >/dev/null 2>&1; then
+            gh release upload "$TAG" "$ZIP" "$ZIP.sha256" --clobber
+          else
+            gh release create "$TAG" "$ZIP" "$ZIP.sha256"               --target "$GITHUB_SHA"               --title "Habbo web local v0.8.0 — V31 repair checkpoint"               --notes-file notes.md
+          fi

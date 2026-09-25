@@ -22,7 +22,7 @@ jobs:
           test "$(git -C havana rev-parse HEAD)" = "b550f00f27788145d26723fd19e943aa63504a63"
 
       - name: Set up Java 17
-        uses: actions/setup-java@v4
+        uses: actions/setup-java@v5
         with:
           distribution: temurin
           java-version: "17"
@@ -36,10 +36,8 @@ jobs:
           ./gradlew :Havana-Web:clean :Havana-Web:shadowJar --no-daemon
           mkdir -p ../artifact
           cp Havana-Web/build/libs/*.jar ../artifact/Havana-Web-b550.jar
-          cp -a Havana-Web/www ../artifact/www
           cd ..
           sha256sum artifact/Havana-Web-b550.jar | tee artifact/SHA256SUMS.txt
-          test -f artifact/www/flash_client.tpl
 
       - name: Upload exact web build
         uses: actions/upload-artifact@v4.6.2

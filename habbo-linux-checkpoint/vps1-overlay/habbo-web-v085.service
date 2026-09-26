@@ -17,6 +17,7 @@ Environment=HABBO_V31_RUNTIME_CONTROL=/srv/habbo/releases/v0.8.5-prod-20260926/b
 Environment=HABBO_V31_INJECTOR=/srv/habbo/releases/v0.8.5-prod-20260926/bin/v31-inject
 Environment=HABBO_V31_ASSET_ORIGIN=http://127.0.0.1:18080
 Environment=HABBO_V31_PROXY_ORIGIN=http://127.0.0.1:18100
+Environment=HABBO_V31_INJECT_TIMEOUT=25
 Environment=HABBO_V31_WS_URL=wss://habbo.gamemodai.pro/v31-websockify
 Environment=HABBO_R39_RUNTIME_CONTROL=/srv/habbo/releases/v0.8.5-prod-20260926/bin/r39-control
 Environment=HABBO_R39_WS_URL=wss://habbo.gamemodai.pro/r39-websockify

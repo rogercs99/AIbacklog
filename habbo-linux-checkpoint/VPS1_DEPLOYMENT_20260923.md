@@ -351,3 +351,9 @@ Operational rule: production remains untouched. Any future promotion must start 
 - Canonical generation /srv/habbo/backups/manual-20260926T124015Z passed local restore, VPS2 copy/store smoke, VPS2 isolated restore, runtime health, disaster drill and aggregate final validation.
 - Offsite SHA256: 8837884e4c5702116ad936a7175e5c371de78a9459fc15dba2136267b2556274; recovery fingerprint: 1a1e4b01016f2d5ef331ee35e127276ebf774312a128759ad7e8dd97dc539c5a.
 - Backup retention was exercised by the real daily service and pruned stale generations while preserving latest, referenced and milestone backups.
+
+### Chromium executable resolver hardening (2026-09-26)
+- The daily Chromium desktop smoke now discovers the highest executable cached Chromium/headless-shell revision instead of hardcoding revision 1181. `HABBO_CHROMIUM_EXECUTABLE` remains available as an explicit override.
+- Resolver contract test PASS and official Chromium gameplay smoke PASS (`home+register+login+me+V31+R39`, attempts=1, latch clear).
+- Recovery kit regenerated; canonical generation `/srv/habbo/backups/manual-20260926T130444Z` passed local restore, VPS2 store smoke, VPS2 isolated restore, runtime health, VPS1 disaster drill and aggregate validator.
+- Offsite SHA256 `a4b4d17b8941492c40a3a71d89ca73a70c996bc37d2582d633f5efdc7344f5ae`; recovery fingerprint `fea9619ea4e0b810d852cef0368282e7c1dd349d32c07756488c1bb9e7f5a223`.

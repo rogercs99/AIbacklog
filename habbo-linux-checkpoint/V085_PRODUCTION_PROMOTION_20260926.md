@@ -199,3 +199,15 @@ A pre-v0.8.5 Cloudflare config backup was retained on VPS1. Rollback is to resto
 - Runtime health and disaster drill both reference manual-20260926T124015Z.
 - Daily backup retention is operational, not merely configured: the 2026-09-26 12:29 UTC run applied KEEP_RECENT=14, preserved milestones/referenced generations and pruned two stale backups; the daily service itself completed successfully.
 - Final aggregate deployment validator PASS with both Chromium desktop and WebKit iPhone full gameplay proofs.
+
+## Chromium executable resolver hardening
+- The periodic Chromium smoke no longer pins Playwright revision 1181 in source. It resolves the highest executable cached Chromium/headless-shell revision under `PLAYWRIGHT_BROWSERS_PATH`, with an explicit `HABBO_CHROMIUM_EXECUTABLE` override for controlled recovery/debug cases.
+- Resolver regression PASS; current cache contains Chromium/headless-shell revision 1181 and selects the working headless-shell path automatically.
+- Official Chromium systemd smoke PASS after the resolver change: desktop 1440x900, `home+register+login+me+V31+R39`, attempts=1, failure latch clear.
+- VPS2 recovery kit regenerated successfully with 29 files / 14 scripts / 15 units and bootstrap rehearsal PASS.
+- Canonical post-resolver generation: `/srv/habbo/backups/manual-20260926T130444Z`.
+- Offsite SHA256: `a4b4d17b8941492c40a3a71d89ca73a70c996bc37d2582d633f5efdc7344f5ae`.
+- Fresh VPS2 isolated restore of `130444Z` PASS: tmpfs, network=none, 88 tables, 40 navigator styles, RogerVideo=1, room1000=1.
+- Recovery fingerprint: `fea9619ea4e0b810d852cef0368282e7c1dd349d32c07756488c1bb9e7f5a223`.
+- Runtime health and disaster drill both reference `manual-20260926T130444Z`.
+- Final aggregate validator PASS with Chromium + WebKit full gameplay proofs and fresh offsite restore.

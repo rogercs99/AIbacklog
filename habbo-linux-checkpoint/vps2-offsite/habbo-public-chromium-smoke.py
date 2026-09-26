@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 from playwright.sync_api import sync_playwright
 import os
+from pathlib import Path
 from urllib.parse import urlparse
 
 BASE = 'https://habbo.gamemodai.pro'
@@ -8,6 +9,28 @@ USER = os.environ.get('HABBO_CHROMIUM_USER', '')
 PASSWORD = os.environ.get('HABBO_CHROMIUM_PASSWORD', '')
 if not USER or not PASSWORD:
     raise SystemExit('authenticated smoke credentials missing')
+
+def chromium_executable():
+    override = os.environ.get('HABBO_CHROMIUM_EXECUTABLE', '').strip()
+    if override:
+        path = Path(override)
+        if not path.is_file() or not os.access(path, os.X_OK):
+            raise SystemExit(f'configured Chromium executable is unavailable: {path}')
+        return str(path)
+
+    root = Path(os.environ.get('PLAYWRIGHT_BROWSERS_PATH', '/root/.cache/ms-playwright'))
+    candidates = []
+    for pattern in ('chromium_headless_shell-*/chrome-linux/headless_shell', 'chromium-*/chrome-linux/chrome'):
+        for path in root.glob(pattern):
+            try:
+                revision = int(path.parents[1].name.rsplit('-', 1)[1])
+            except (IndexError, ValueError):
+                continue
+            if path.is_file() and os.access(path, os.X_OK):
+                candidates.append((revision, 1 if 'headless_shell' in path.as_posix() else 0, path))
+    if not candidates:
+        raise SystemExit(f'no executable cached Chromium found under {root}')
+    return str(max(candidates)[2])
 
 def physical_center(page, selector):
     return page.evaluate('''sel => {
@@ -38,7 +61,7 @@ def assert_first_party_clean(page, bad, failed, errors, label):
         raise SystemExit(f'{label}: JS errors: {errors}')
 
 with sync_playwright() as p:
-    browser = p.chromium.launch(headless=True, executable_path='/root/.cache/ms-playwright/chromium_headless_shell-1181/chrome-linux/headless_shell')
+    browser = p.chromium.launch(headless=True, executable_path=chromium_executable())
     context = browser.new_context(viewport={'width':1440,'height':900})
     page = context.new_page()
     bad, failed, errors = [], [], []
@@ -125,7 +148,7 @@ with sync_playwright() as p:
     bad.clear(); failed.clear(); errors.clear()
     response = page.goto(BASE + '/play/v31', wait_until='domcontentloaded', timeout=35000)
     if response.status != 200:
-        raise SystemExit(f'V31 page failed: status={response.status} url={page.url}')
+        raise SystemExit(f'V31 page failed: status={response.status} url={page.url} body={response.text()[:240]!r}')
     page.wait_for_function("window.__habboV31 && window.__habboV31.connected === true", timeout=35000)
     v31_html = page.content().lower()
     if 'sso.ticket=' in v31_html or '<object' in v31_html or '<embed' in v31_html:
@@ -138,7 +161,7 @@ with sync_playwright() as p:
     bad.clear(); failed.clear(); errors.clear()
     response = page.goto(BASE + '/play/r39', wait_until='domcontentloaded', timeout=35000)
     if response.status != 200:
-        raise SystemExit(f'R39 page failed: status={response.status} url={page.url}')
+        raise SystemExit(f'R39 page failed: status={response.status} url={page.url} body={response.text()[:240]!r}')
     page.wait_for_function("window.__habboR39 && window.__habboR39.connected === true", timeout=35000)
     r39_html = page.content().lower()
     if 'sso.ticket=' in r39_html or '"sso.ticket"' in r39_html or '<object' in r39_html or '<embed' in r39_html:

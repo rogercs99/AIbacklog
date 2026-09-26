@@ -40,6 +40,7 @@ tar -C "$ROOT" -czf "$OUT/ops-overlay.tar.gz" ops
 install -m 600 /etc/systemd/system/habbo-stack.service "$OUT/habbo-stack.service"
 install -m 600 /etc/systemd/system/habbo-static.service "$OUT/habbo-static.service"
 install -m 600 /etc/systemd/system/habbo-websockify.service "$OUT/habbo-websockify.service"
+install -m 600 /etc/systemd/system/habbo-web-v085.service "$OUT/habbo-web-v085.service"
 install -m 600 /etc/systemd/system/habbo-postboot-validate.service "$OUT/habbo-postboot-validate.service"
 install -m 600 /etc/systemd/system/habbo-runtime-healthcheck.service "$OUT/habbo-runtime-healthcheck.service"
 install -m 600 /etc/systemd/system/habbo-runtime-healthcheck-failed.service "$OUT/habbo-runtime-healthcheck-failed.service"
@@ -54,6 +55,7 @@ test -n "$CF_CRED"
 test -f "$CF_CRED"
 install -m 600 "$CF_CRED" "$OUT/cloudflared-tunnel-credentials.json"
 tar -C "$ROOT" -czf "$OUT/web-frontend-overlay.tar.gz" web-frontend-assets
+tar --exclude='v0.8.5-prod-20260926/overlay/__pycache__' --exclude='v0.8.5-prod-20260926/scripts/__pycache__' -C "$ROOT/releases" -czf "$OUT/habbo-web-v0.8.5-production.tar.gz" v0.8.5-prod-20260926
 install -m 600 "$ROOT/v31/client/vars.txt" "$OUT/v31-vars.txt"
 install -m 600 "$ROOT/web/client/v39/gamedata/external_variables_vps1.txt" "$OUT/r39-external_variables_vps1.txt"
 readlink "$ROOT/web/gordon/RELEASE39-22643-22891-200911110035_07c3a2a30713fd5bea8a8caf07e33438/config_habbo.xml" > "$OUT/r39-config_habbo-symlink.txt"

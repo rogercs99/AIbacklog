@@ -227,3 +227,12 @@ Operational rule: production remains untouched. Any future promotion must start 
 - Non-secret ingress fragment is versioned at `habbo-linux-checkpoint/vps1-overlay/cloudflared-v085-habbo-ingress.yml`.
 - Deployment record commit: `77a1216` on `project/habbo-2009-dual-linux-vps1-deploy-20260923`.
 - Pre-v0.8.5 Cloudflare configuration backup retained on VPS1 for rollback.
+
+### v0.8.5 production recovery closure (2026-09-26)
+- Persistent public cutover is complete: `habbo-web-v085.service` serves `127.0.0.1:18100`; Cloudflare routes V31 WS -> `18131`, R39 WS -> `18139`, historical assets -> `18080`, Habbo catchall -> `18100`.
+- Public WebKit/iPhone 14 Plus and Chromium desktop both passed authenticated V31 -> R39 noVNC E2E after the persistent cutover. R39 uses native Adobe Flash Player server-side; browsers receive only noVNC. No SSO ticket or plugin object/embed is exposed in browser HTML.
+- Recovery contract was reconciled with the actual canonical release `/srv/habbo/releases/v0.8.5-prod-20260926`: backup includes the release tarball plus `habbo-web-v085.service`, and verifier checks upstream/bind ports, V31 proxy origin, WebSocket routes and Cloudflare metrics pin.
+- Canonical post-deploy backup `/srv/habbo/backups/manual-20260926T090032Z` passed complete manifest verification and isolated DB restore (88 tables / 40 navigator styles / RogerVideo=1 / room1000=1).
+- Matching VPS2 offsite archive and store smoke PASS; local backup retention reduced to 16 protected generations.
+- Runtime health marker and disaster drill both reference `manual-20260926T090032Z`; disaster restore drill PASS in tmpfs.
+- Final aggregate deployment validator PASS. Production v0.8.5 is therefore deployed, recoverable and covered by the normal health/backup/disaster pipeline.

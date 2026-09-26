@@ -1,0 +1,29 @@
+[Unit]
+Description=Habbo web v0.8.5 browser runtime proxy
+After=network-online.target habbo-stack.service habbo-static.service
+Wants=network-online.target
+Requires=habbo-stack.service habbo-static.service
+
+[Service]
+Type=simple
+User=root
+WorkingDirectory=/srv/habbo/releases/v0.8.5-prod-20260926/overlay
+Environment=HABBO_UPSTREAM_HOST=127.0.0.1
+Environment=HABBO_UPSTREAM_PORT=18081
+Environment=HABBO_BIND_HOST=127.0.0.1
+Environment=HABBO_BIND_PORT=18100
+Environment=HABBO_NOVNC_ROOT=/usr/share/novnc
+Environment=HABBO_V31_RUNTIME_CONTROL=/srv/habbo/releases/v0.8.5-prod-20260926/bin/v31-control
+Environment=HABBO_V31_INJECTOR=/srv/habbo/releases/v0.8.5-prod-20260926/bin/v31-inject
+Environment=HABBO_V31_ASSET_ORIGIN=http://127.0.0.1:18080
+Environment=HABBO_V31_PROXY_ORIGIN=http://127.0.0.1:18100
+Environment=HABBO_V31_WS_URL=wss://habbo.gamemodai.pro/v31-websockify
+Environment=HABBO_R39_RUNTIME_CONTROL=/srv/habbo/releases/v0.8.5-prod-20260926/bin/r39-control
+Environment=HABBO_R39_WS_URL=wss://habbo.gamemodai.pro/r39-websockify
+ExecStart=/usr/bin/python3 /srv/habbo/releases/v0.8.5-prod-20260926/overlay/frontend_proxy.py
+Restart=always
+RestartSec=2
+TimeoutStopSec=15
+
+[Install]
+WantedBy=multi-user.target

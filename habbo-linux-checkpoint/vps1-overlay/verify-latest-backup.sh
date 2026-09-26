@@ -39,7 +39,9 @@ test -f "$B/HOST_PREREQUISITES.md"
 test -f "$B/cloudflared-stremio-legacy.service"
 test -f "$B/bridge-reverse-ssh.service"
 grep -F -- '-R 127.0.0.1:22022:127.0.0.1:22 bridge-new' "$B/bridge-reverse-ssh.service" >/dev/null
-grep -q "cloudflared.*--config /etc/cloudflared-stremio-legacy/config.yml tunnel run" "$B/cloudflared-stremio-legacy.service"
+grep -Fq -- "--config /etc/cloudflared-stremio-legacy/config.yml" "$B/cloudflared-stremio-legacy.service"
+grep -Fq -- "--metrics 127.0.0.1:20241" "$B/cloudflared-stremio-legacy.service"
+grep -Fq -- "tunnel run" "$B/cloudflared-stremio-legacy.service"
 test -f "$B/havana-source-b550f00.bundle"
 test -f "$B/habbo-library-chunks-sha256.txt"
 test -f "$B/habbo-runtime-prefix-parts-sha256.txt"
@@ -47,7 +49,7 @@ test -f "$B/vps2-control-plane-overlay.tar.gz"
 test -f "$B/vps2-control-plane-files-sha256.txt"
 test -f "$B/habbo-2009-dual-linux-FINAL-v2-20260923.zip"
 echo 'f80bbefc5a486fd0f9cce058a39462ef3925c563253dc2f69ebe647f6a6630ec  '"$B"'/habbo-2009-dual-linux-FINAL-v2-20260923.zip' | sha256sum -c - >/dev/null
-echo '77672bee2a6b8f879aa8cb0acbac41b7bc203b4487e1464ebacbc1848564bcb5  '"$B"'/havana-source-b550f00.bundle' | sha256sum -c - >/dev/null
+echo '9e3ee88b2670e7156c7c05bca13646b9d5378e1b8d83f3a7f2eb53fefa344a4f  '"$B"'/havana-source-b550f00.bundle' | sha256sum -c - >/dev/null
 echo '31f607e2c83bbc3859687492236b21b1c5da2439939b1e715abc3eebdb6260d8  '"$B"'/habbo-library-chunks-sha256.txt' | sha256sum -c - >/dev/null
 echo '33574318d69e29e4ddfa2430af4d87467836626432085cac2326f7efdf47fec6  '"$B"'/habbo-runtime-prefix-parts-sha256.txt' | sha256sum -c - >/dev/null
 git bundle list-heads "$B/havana-source-b550f00.bundle" | grep '^b550f00f27788145d26723fd19e943aa63504a63 ' >/dev/null || { echo 'FAIL: backed-up Havana bundle commit mismatch' >&2; exit 1; }
@@ -62,6 +64,7 @@ git init -q "$WORK/havana-bundle-verify"
 git -C "$WORK/havana-bundle-verify" bundle verify "$B/havana-source-b550f00.bundle" >/dev/null 2>&1 || { echo 'FAIL: backed-up Havana bundle verification failed' >&2; exit 1; }
 GIT_CONFIG_COUNT=1 GIT_CONFIG_KEY_0=advice.detachedHead GIT_CONFIG_VALUE_0=false git clone -q "$B/havana-source-b550f00.bundle" "$WORK/Havana-offline" || { echo 'FAIL: backed-up Havana bundle cannot be cloned offline' >&2; exit 1; }
 [[ "$(git -C "$WORK/Havana-offline" rev-parse HEAD)" == 'b550f00f27788145d26723fd19e943aa63504a63' ]] || { echo 'FAIL: offline Havana clone HEAD mismatch' >&2; exit 1; }
+git -C "$WORK/Havana-offline" fsck --full --no-dangling >/dev/null || { echo FAIL: offline Havana clone object graph is incomplete >&2; exit 1; }
 test -f "$WORK/Havana-offline/Dockerfile-Server"
 test -f "$WORK/Havana-offline/Dockerfile-Web"
 test -f "$B/cloudflared-tunnel-credentials.json"
@@ -105,6 +108,29 @@ test -x "$WORK/ops/backup-publication-smoke.sh"
 test -x "$WORK/ops/cloudflare-ingress-smoke.sh"
 test -x "$WORK/ops/postboot-validate.sh"
 test -f "$B/habbo-postboot-validate.service"
+test -f "$B/habbo-web-v085.service"
+grep -Fq -- "--metrics 127.0.0.1:20241" "$B/cloudflared-stremio-legacy.service"
+test -f "$B/habbo-web-v0.8.5-production.tar.gz"
+grep -Fq 'ExecStart=/usr/bin/python3 /srv/habbo/releases/v0.8.5-prod-20260926/overlay/frontend_proxy.py' "$B/habbo-web-v085.service"
+grep -Fq 'Environment=HABBO_UPSTREAM_PORT=18081' "$B/habbo-web-v085.service"
+grep -Fq 'Environment=HABBO_BIND_PORT=18100' "$B/habbo-web-v085.service"
+grep -Fq 'Environment=HABBO_V31_PROXY_ORIGIN=http://127.0.0.1:18100' "$B/habbo-web-v085.service"
+grep -Fq 'path: ^/v31-websockify(/.*)?$' "$B/cloudflared-stremio-legacy-config.yml"
+grep -Fq 'service: http://127.0.0.1:18131' "$B/cloudflared-stremio-legacy-config.yml"
+grep -Fq 'path: ^/r39-websockify(/.*)?$' "$B/cloudflared-stremio-legacy-config.yml"
+grep -Fq 'service: http://127.0.0.1:18139' "$B/cloudflared-stremio-legacy-config.yml"
+grep -Fq 'service: http://127.0.0.1:18100' "$B/cloudflared-stremio-legacy-config.yml"
+mkdir -p "$WORK/v085-release"
+tar -C "$WORK/v085-release" -xzf "$B/habbo-web-v0.8.5-production.tar.gz"
+test -f "$WORK/v085-release/v0.8.5-prod-20260926/overlay/frontend_proxy.py"
+test -f "$WORK/v085-release/v0.8.5-prod-20260926/original/frontend_proxy.py.canonical"
+test -x "$WORK/v085-release/v0.8.5-prod-20260926/bin/v31-control"
+test -x "$WORK/v085-release/v0.8.5-prod-20260926/bin/v31-inject"
+test -x "$WORK/v085-release/v0.8.5-prod-20260926/bin/r39-control"
+test -x "$WORK/v085-release/v0.8.5-prod-20260926/scripts/v31_stream_runtime.sh"
+test -x "$WORK/v085-release/v0.8.5-prod-20260926/scripts/r39_stream_runtime.sh"
+test -x "$WORK/v085-release/v0.8.5-prod-20260926/scripts/v31_ticket_injector.py"
+test -x "$WORK/v085-release/v0.8.5-prod-20260926/scripts/runtime/qemu-wine-wrapper"
 test -x "$WORK/ops/runtime-healthcheck.sh"
 test -x "$WORK/ops/runtime-healthcheck-failed.sh"
 test -x "$WORK/ops/habbo-status.sh"

@@ -30,12 +30,18 @@ for f in \
   havana-source-b550f00.bundle \
   habbo-library-chunks-sha256.txt \
   habbo-runtime-prefix-parts-sha256.txt \
-  habbo-2009-dual-linux-FINAL-v2-20260923.zip
+  habbo-2009-dual-linux-FINAL-v2-20260923.zip \
+  habbo-web-v085.service \
+  habbo-web-v0.8.5-production.tar.gz
  do
   [[ -f "$latest/$f" ]] || fail "latest backup missing disaster source: $f"
  done
 [[ "$(sha "$latest/habbo-2009-dual-linux-FINAL-v2-20260923.zip")" == "$EXPECTED_FINAL" ]] || fail 'backed-up FINAL-v2 hash mismatch'
 [[ "$(sha "$latest/havana-source-b550f00.bundle")" == "$EXPECTED_BUNDLE" ]] || fail 'backed-up Havana bundle hash mismatch'
+tar -tzf "$latest/habbo-web-v0.8.5-production.tar.gz" | grep -Fx 'v0.8.5-prod-20260926/overlay/frontend_proxy.py' >/dev/null || fail 'v0.8.5 production release missing frontend proxy'
+grep -Fq 'v0.8.5-prod-20260926/overlay/frontend_proxy.py' "$latest/habbo-web-v085.service" || fail 'v0.8.5 service does not point at promoted release'
+grep -Fq 'service: http://127.0.0.1:18100' "$latest/cloudflared-stremio-legacy-config.yml" || fail 'backed-up Cloudflare config does not promote v0.8.5 frontend' 
+grep -Fq -- "--metrics 127.0.0.1:20241" "$latest/cloudflared-stremio-legacy.service" || fail "backed-up cloudflared unit does not pin metrics port 20241"
 
 echo 'PASS: Habbo disaster recovery source smoke'
-echo 'final_v2=verified havana_bundle=verified havana_checkout=clean mariadb_digest=pinned library_assets=manifested'
+echo 'final_v2=verified havana_bundle=verified havana_checkout=clean mariadb_digest=pinned library_assets=manifested web_v085=promoted+recoverable'

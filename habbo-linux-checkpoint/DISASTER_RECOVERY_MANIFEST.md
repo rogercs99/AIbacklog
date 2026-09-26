@@ -18,8 +18,8 @@ The VPS backup does retain the canonical FINAL-v2 bundle and an offline Git bund
 - `havana-source-b550f00.bundle`
   - source upstream: `https://github.com/Quackster/Havana.git`
   - commit: `b550f00f27788145d26723fd19e943aa63504a63`
-  - SHA-256: `77672bee2a6b8f879aa8cb0acbac41b7bc203b4487e1464ebacbc1848564bcb5`
-  - size: 4304844 bytes
+  - SHA-256: `9e3ee88b2670e7156c7c05bca13646b9d5378e1b8d83f3a7f2eb53fefa344a4f`
+  - size: 11319854 bytes
 - Production MariaDB image target:
   - `mariadb:11.5.2`
   - registry digest: `sha256:2d50fe0f77dac919396091e527e5e148a9de690e58f32875f113bef6506a17f5`
@@ -87,3 +87,13 @@ The current `/srv/habbo/web` (~756 MB) and `/srv/habbo/v31` (~1.3 GB) trees are 
 Promoted backups include the reproducible VPS2 control-plane recovery overlay and its per-file SHA manifest. The current kit contains 22 files: 10 scripts and 12 systemd units, including `habbo-vps2-control-plane-bootstrap.sh`. The bootstrap supports offline rehearsal and real apply mode, installs exact modes, seeds three offsite generations, enables the four control-plane timers and runs pull/WebKit/restore/heartbeat verification.
 
 `bridge-reverse-ssh.service` is also included in every promoted VPS1 backup. SSH private keys are deliberately excluded. Restore the `bridge-new` and `bridge-old` credentials through the operator secret path and verify the fingerprints documented in `HOST_PREREQUISITES.md` before applying the VPS2 bootstrap.
+
+
+## Production web v0.8.5 promotion — 2026-09-26
+
+The promoted browser-compatible frontend is /srv/habbo/releases/v0.8.5-prod-20260926 and is managed by habbo-web-v085.service on loopback port 18100.
+Cloudflare keeps historical binary/static paths on 18080, routes /v31-websockify to 18131, /r39-websockify to 18139, and sends the Habbo catchall to 18100.
+Each promoted backup includes habbo-web-v085.service and habbo-web-v0.8.5-production.tar.gz, restoring the exact frontend proxy, CSS/JS, V31/R39 runtime controllers, ticket injector and QEMU/Wine wrapper used by production.
+The v0.8.5 production env is configuration-only and must not contain credentials; DB and Cloudflare secrets remain in their established protected files.
+After recovery, enable/start habbo-web-v085.service, restore the recorded Cloudflare config, and require the public WebKit authenticated smoke plus V31/R39 noVNC transport proof before declaring the deployment recovered.
+The production cloudflared systemd unit pins its metrics endpoint to 127.0.0.1:20241 so runtime healthchecks remain deterministic after tunnel restarts.

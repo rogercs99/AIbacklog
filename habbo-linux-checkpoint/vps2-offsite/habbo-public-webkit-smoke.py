@@ -1,7 +1,13 @@
 #!/usr/bin/env python3
 from playwright.sync_api import sync_playwright
+import os
+from urllib.parse import urlparse
 
 BASE = 'https://habbo.gamemodai.pro'
+USER = os.environ.get('HABBO_WEBKIT_USER', '')
+PASSWORD = os.environ.get('HABBO_WEBKIT_PASSWORD', '')
+if not USER or not PASSWORD:
+    raise SystemExit('authenticated smoke credentials missing')
 
 def physical_center(page, selector):
     return page.evaluate('''sel => {
@@ -62,5 +68,38 @@ with sync_playwright() as p:
     if before == after:
         raise SystemExit('register touch control did not toggle')
 
-    print(f"PASS: WebKit iPhone smoke home+register, scale={order['scale']:.6f}, layout_width={order['width']}")
+    bad.clear(); failed.clear(); errors.clear()
+    auth_seen = []
+    def record_auth(r):
+        path = urlparse(r.url).path
+        if path in ('/account/submit', '/security_check', '/me'):
+            auth_seen.append((path, r.status))
+    page.on('response', record_auth)
+
+    response = page.goto(BASE + '/', wait_until='networkidle', timeout=30000)
+    if response.status != 200:
+        raise SystemExit(f'login home failed: status={response.status}')
+    pos = physical_center(page, '#login-username')
+    page.touchscreen.tap(pos['x'], pos['y'])
+    page.keyboard.type(USER)
+    pos = physical_center(page, '#login-password')
+    page.touchscreen.tap(pos['x'], pos['y'])
+    page.keyboard.type(PASSWORD)
+    pos = physical_center(page, '#login-submit-new-button')
+    with page.expect_navigation(wait_until='domcontentloaded', timeout=20000):
+        page.touchscreen.tap(pos['x'], pos['y'])
+    page.wait_for_url('**/me', wait_until='domcontentloaded', timeout=20000)
+    page.locator('body').wait_for(state='visible', timeout=10000)
+    if urlparse(page.url).path != '/me':
+        raise SystemExit(f'authenticated final URL failed: {page.url}')
+    if not any(path == '/security_check' and status == 200 for path, status in auth_seen):
+        raise SystemExit(f'security_check response missing: {auth_seen}')
+    if not any(path == '/me' and status == 200 for path, status in auth_seen):
+        raise SystemExit(f'me response missing: {auth_seen}')
+    body = page.locator('body').inner_text()
+    if USER not in body:
+        raise SystemExit('authenticated username missing from /me')
+    assert_clean(page, bad, failed, errors, 'authenticated')
+
+    print(f"PASS: WebKit iPhone smoke home+register+login+me, scale={order['scale']:.6f}, layout_width={order['width']}, auth_user={USER}")
     context.close(); browser.close()

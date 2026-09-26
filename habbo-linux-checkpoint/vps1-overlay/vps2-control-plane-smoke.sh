@@ -25,8 +25,8 @@ offsite_archives=$(get offsite_archives)
 age=$(( $(date -u +%s) - $(date -u -d "$ts" +%s) ))
 [[ "$age" -ge 0 && "$age" -le "$MAX_AGE" ]] || fail "VPS2 control-plane proof stale (${age}s)"
 [[ "$result" == success ]] || fail "VPS2 control-plane result=$result"
-[[ "$total" == 5 ]] || fail "VPS2 timer inventory mismatch: $total"
-[[ "$healthy" == 5 ]] || fail "VPS2 healthy timer count mismatch: $healthy"
+[[ "$total" == 6 ]] || fail "VPS2 timer inventory mismatch: $total"
+[[ "$healthy" == 6 ]] || fail "VPS2 healthy timer count mismatch: $healthy"
 [[ "$failed" == 0 ]] || fail "VPS2 failed unit count: $failed"
 [[ "$root_free" =~ ^[0-9]+$ && "$root_free" -ge 819200 ]] || fail "VPS2 root free space insufficient: $root_free KiB"
 [[ "$shm_free" =~ ^[0-9]+$ && "$shm_free" -ge 524288 ]] || fail "VPS2 /dev/shm free space insufficient: $shm_free KiB"
@@ -37,4 +37,4 @@ age=$(( $(date -u +%s) - $(date -u -d "$ts" +%s) ))
 [[ "$offsite_fingerprint" =~ ^[0-9a-f]{64}$ ]] || fail "VPS2 recovery fingerprint invalid: $offsite_fingerprint"
 [[ "$offsite_archives" == 3 ]] || fail "VPS2 offsite archive count mismatch: $offsite_archives"
 echo 'PASS: Habbo VPS2 control-plane smoke'
-echo "age_seconds=$age timers=5/5 failed_units=0 root_free_kb=$root_free shm_free_kb=$shm_free offsite_store=$offsite_archives/3-deep-bootstrap-deterministic recovery_fingerprint=$offsite_fingerprint latch=clear"
+echo "age_seconds=$age timers=6/6 failed_units=0 root_free_kb=$root_free shm_free_kb=$shm_free offsite_store=$offsite_archives/3-deep-bootstrap-deterministic recovery_fingerprint=$offsite_fingerprint latch=clear"

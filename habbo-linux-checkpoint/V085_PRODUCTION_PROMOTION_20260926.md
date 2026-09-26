@@ -285,3 +285,30 @@ A pre-v0.8.5 Cloudflare config backup was retained on VPS1. Rollback is to resto
 - A real systemd runtime-healthcheck run passed on attempt 1/3 and logged smoke_credential=0600, smoke_temp_residue=0 and smoke_backup_copy=0.
 - Canonical backup after periodic enforcement: /srv/habbo/backups/manual-20260926T153753Z; local isolated restore PASS, VPS2 store PASS, VPS2 isolated restore PASS, runtime health PASS and disaster drill PASS.
 - Offsite archive SHA256: 8d934f6107c2a613d0269f6ee987b63613385dc26f1e7db31c5e1c554f93eec3. Final aggregate deployment validator PASS.
+
+## Guarded daily backup cycle end-to-end proof
+- The official `/srv/habbo/ops/habbo-backup-daily.sh` wrapper was executed manually as a production-equivalent cycle and completed with exit code 0.
+- The wrapper refreshed the VPS2 recovery kit first; current recovery inventory is 29 files / 14 scripts / 15 systemd units and bootstrap rehearsal PASS.
+- A new backup generation was created and the integrated retention policy ran automatically before runtime health, proving there is no lock/deadlock issue between `backup.sh` and `backup-retention-prune.sh`.
+- Retention reduced 19 local generations to 16 protected generations (`KEEP_RECENT=14` plus referenced/milestone pins), preventing the `>20 backups` disk-health failure from recurring under normal daily operation.
+- Canonical generation from this cycle: `/srv/habbo/backups/manual-20260926T154654Z`.
+- Runtime health advanced to that exact generation; daily backup service result/exit status are success/0.
+- The same generation was pulled to VPS2, passed deep store smoke and an isolated offsite restore in tmpfs with network disabled: 88 tables, 40 navigator styles, RogerVideo=1, room1000=1.
+- VPS1 disaster drill also advanced to `manual-20260926T154654Z` and PASS.
+- Current recovery fingerprint: `350d044edf0688a16f5b11255b3cefa82b0a20a7dd0f3f5cdb272eec37c5c9fe`.
+- Final aggregate validator PASS after the whole daily-cycle proof, including remote Chromium desktop and WebKit iPhone scenarios `home+register+login+me+V31+R39`.
+
+## Autonomous immutable live-drift watch closure
+- Promoted the manual live↔Git drift gate into a recoverable autonomous VPS2 monitor without introducing a dependency on a mutable Git checkout.
+- Added a deterministic immutable baseline builder. Two independent builds were byte-identical; installed baseline SHA256 is `d8dcdd8b127a36f0f4647c43decc36e18c6ab656763bb08685ffa5a2547d0b30`.
+- The baseline contains the tracked operational VPS1/VPS2 surface plus the promoted-v0.8.5 critical release manifest, while deliberately excluding the historical untracked `v31-web-touch-lab.sh` and the recursively generated control-plane manifest.
+- Full live/repository audit after reconciliation: `matches=88 drifts=0 missing=0 notes=1`; the one note is the intentionally untracked historical lab file.
+- Autonomous watch proof using the immutable baseline: `release_files=14`, `release_verified=1`, tracked summary `matches=87 drifts=0 missing=0 notes=0`; durable failure latch clear.
+- VPS2 heartbeat now supervises 6/6 timers, including `habbo-live-drift-watch.timer`; the failure handler persists drift failures to VPS1 so `habbo-status.sh` degrades until a later proven-successful watch clears the latch.
+- Recovery/bootstrap now carries the drift watcher, baseline archive + sidecar and timer/failure units. Refreshed kit PASS with 35 files / 15 scripts / 18 systemd units and bootstrap rehearsal.
+- Generated control-plane manifest was re-synchronized after the baseline install; final manual auditor remained `88/0/0/1`.
+- Canonical recovery generation after the autonomous drift integration: `/srv/habbo/backups/manual-20260926T155914Z`.
+- Matching VPS2 offsite archive SHA256: `338efe3e008b07c9c8882c99bde218870bbd9bf6e24d66e3a84404dbcbd090b3`; isolated offsite restore PASS with tmpfs/network-none, 88 tables, 40 navigator styles, RogerVideo=1 and room1000=1.
+- Runtime health and VPS1 disaster drill both advanced to `manual-20260926T155914Z`.
+- Recovery fingerprint: `6d6d423178c4499f49a629c4147be37ae290a37b7b2e502a255994a85fbd4d8d`.
+- Final aggregate deployment validator PASS, including Chromium desktop, WebKit iPhone, immutable live-drift proof, offsite restore and recovery bootstrap.

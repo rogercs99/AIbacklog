@@ -1,0 +1,10 @@
+[Unit]
+Description=Habbo immutable live drift watch
+After=network-online.target
+Wants=network-online.target
+OnFailure=habbo-live-drift-watch-failed.service
+
+[Service]
+Type=oneshot
+ExecStart=/usr/local/sbin/habbo-live-drift-watch.sh
+TimeoutStartSec=120

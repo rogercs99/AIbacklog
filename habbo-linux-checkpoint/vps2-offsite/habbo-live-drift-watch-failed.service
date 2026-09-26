@@ -1,0 +1,7 @@
+[Unit]
+Description=Record Habbo live drift watch failure on VPS1
+
+[Service]
+Type=oneshot
+ExecStart=/usr/local/sbin/habbo-vps1-offsite-failed.sh drift habbo-live-drift-watch.service
+TimeoutStartSec=30

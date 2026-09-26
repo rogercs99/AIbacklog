@@ -6,6 +6,9 @@ REMOTE=bridge-new
 DISASTER=$ROOT/releases/disaster
 LOCK=/run/lock/habbo-backup.lock
 PATHS=(
+  usr/local/sbin/habbo-live-drift-watch.sh
+  usr/local/share/habbo-live-drift-baseline.tar.gz
+  usr/local/share/habbo-live-drift-baseline.tar.gz.sha256
   usr/local/sbin/habbo-public-chromium-daily.sh
   usr/local/sbin/habbo-public-chromium-failed.sh
   usr/local/sbin/habbo-public-chromium-smoke.py
@@ -20,6 +23,9 @@ PATHS=(
   usr/local/sbin/habbo-vps2-control-plane-bootstrap.sh
   usr/local/sbin/habbo-vps2-control-plane-heartbeat.sh
   usr/local/sbin/habbo-vps2-space-preflight.sh
+  etc/systemd/system/habbo-live-drift-watch-failed.service
+  etc/systemd/system/habbo-live-drift-watch.service
+  etc/systemd/system/habbo-live-drift-watch.timer
   etc/systemd/system/habbo-public-chromium-failed.service
   etc/systemd/system/habbo-public-chromium.service
   etc/systemd/system/habbo-public-chromium.timer
@@ -38,7 +44,7 @@ PATHS=(
 )
 fail(){ echo "FAIL: $*" >&2; exit 1; }
 [[ $(id -u) -eq 0 ]] || fail "must run as root"
-[[ "${#PATHS[@]}" -eq 29 ]] || fail "builder path count mismatch"
+[[ "${#PATHS[@]}" -eq 35 ]] || fail "builder path count mismatch"
 ssh -o BatchMode=yes -o ConnectTimeout=5 "$REMOTE" true || fail "bridge-new unavailable"
 work=$(mktemp -d /dev/shm/habbo-vps2-kit-refresh.XXXXXX)
 cleanup(){ rm -rf -- "$work"; }
@@ -75,7 +81,7 @@ tar -xzf "$work/vps2-control-plane-overlay.tar.gz" -C "$rootfs"
   printf "%s\0" "${PATHS[@]}" | sort -z | xargs -0 sha256sum --
 ) >"$work/vps2-control-plane-files-sha256.txt"
 chmod 600 "$work/vps2-control-plane-files-sha256.txt"
-[[ "$(wc -l < "$work/vps2-control-plane-files-sha256.txt")" -eq 29 ]] || fail "generated manifest count mismatch"
+[[ "$(wc -l < "$work/vps2-control-plane-files-sha256.txt")" -eq 35 ]] || fail "generated manifest count mismatch"
 (cd "$rootfs" && sha256sum -c "$work/vps2-control-plane-files-sha256.txt" --status) || fail "generated manifest hash mismatch"
 install -m 600 "$work/vps2-control-plane-overlay.tar.gz" "$stage/vps2-control-plane-overlay.tar.gz"
 install -m 600 "$work/vps2-control-plane-files-sha256.txt" "$stage/vps2-control-plane-files-sha256.txt"
@@ -92,4 +98,4 @@ flock -u 9
 "$ROOT/ops/vps2-control-plane-recovery-smoke.sh" "$DISASTER"
 "$ROOT/ops/disaster-recovery-source-smoke.sh"
 echo "PASS: refreshed Habbo VPS2 control-plane recovery kit"
-echo "files=29 scripts=14 units=15 overlay_sha256=$(sha256sum "$DISASTER/vps2-control-plane-overlay.tar.gz" | awk '{print $1}') manifest_sha256=$(sha256sum "$DISASTER/vps2-control-plane-files-sha256.txt" | awk '{print $1}')"
+echo "files=35 scripts=15 units=18 overlay_sha256=$(sha256sum "$DISASTER/vps2-control-plane-overlay.tar.gz" | awk '{print $1}') manifest_sha256=$(sha256sum "$DISASTER/vps2-control-plane-files-sha256.txt" | awk '{print $1}')"

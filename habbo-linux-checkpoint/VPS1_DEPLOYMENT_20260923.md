@@ -410,3 +410,19 @@ Operational rule: production remains untouched. Any future promotion must start 
 - The 15-minute runtime healthcheck now runs secret-permissions-smoke.sh, continuously enforcing the 0600 browser-smoke credential, no temporary login-env residue and no smoke credential copy in backup/disaster payloads.
 - First real periodic-style run PASS on attempt 1/3.
 - Backup /srv/habbo/backups/manual-20260926T153753Z passed local restore, VPS2 store/restore, runtime health, disaster drill and final validation; offsite SHA256 8d934f6107c2a613d0269f6ee987b63613385dc26f1e7db31c5e1c554f93eec3.
+
+### Guarded daily backup cycle E2E proof (2026-09-26)
+- Ran the real `habbo-backup-daily.sh` path end-to-end. Recovery refresh PASS (29 files / 14 scripts / 15 units), backup creation PASS, retention PASS, runtime health PASS, service exit 0.
+- Integrated retention proved operational: 19 local backups -> 16 protected generations before health validation, so normal daily operation will not drift into the `>20` health failure.
+- New canonical generation `/srv/habbo/backups/manual-20260926T154654Z` was copied to VPS2 and passed store smoke + isolated offsite restore; VPS1 disaster drill and runtime health reference the same generation.
+- Recovery fingerprint `350d044edf0688a16f5b11255b3cefa82b0a20a7dd0f3f5cdb272eec37c5c9fe`.
+- Aggregate deployment validator PASS, including full Chromium and WebKit V31 -> R39 gameplay proofs.
+
+### Autonomous immutable live-drift watch (2026-09-26)
+- The previous manual live↔Git drift gate is now a recoverable autonomous VPS2 timer using a deterministic immutable audit baseline rather than a mutable Git checkout.
+- Baseline SHA256 `d8dcdd8b127a36f0f4647c43decc36e18c6ab656763bb08685ffa5a2547d0b30`; independent rebuilds are byte-identical.
+- Final direct auditor: 88 matches / 0 drifts / 0 missing / 1 deliberate historical note. Autonomous baseline watch: 87 matches / 0 drifts / 0 missing, plus exact verification of 14 promoted v0.8.5 release files.
+- Drift success/failure state is durably mirrored to VPS1 and is part of `habbo-status.sh`/final validation. VPS2 heartbeat now expects 6/6 control-plane timers.
+- Recovery kit now contains 35 files / 15 scripts / 18 units and rehearses installation of the immutable baseline, watcher and timer.
+- Canonical generation `/srv/habbo/backups/manual-20260926T155914Z` passed local restore, VPS2 store smoke, VPS2 isolated restore, runtime health, VPS1 disaster drill and aggregate final validation.
+- Offsite SHA256 `338efe3e008b07c9c8882c99bde218870bbd9bf6e24d66e3a84404dbcbd090b3`; recovery fingerprint `6d6d423178c4499f49a629c4147be37ae290a37b7b2e502a255994a85fbd4d8d`.

@@ -16,6 +16,10 @@ case "$kind" in
     remote=/srv/habbo/VPS2_CONTROL_PLANE_FAILED
     runtime=/run/habbo-vps2-control-plane-failed
     ;;
+  drift)
+    remote=/srv/habbo/LIVE_DRIFT_FAILED
+    runtime=/run/habbo-live-drift-failed
+    ;;
   *) echo "unsupported kind: $kind" >&2; exit 2 ;;
 esac
 now=$(date -u +%Y-%m-%dT%H:%M:%SZ)
@@ -37,5 +41,8 @@ case "$kind" in
     ;;
   control)
     cat "$marker" | ssh -o BatchMode=yes bridge-old 'set -e; tmp=/srv/habbo/.VPS2_CONTROL_PLANE_FAILED.tmp; cat >"$tmp"; chmod 600 "$tmp"; mv "$tmp" /srv/habbo/VPS2_CONTROL_PLANE_FAILED; cp /srv/habbo/VPS2_CONTROL_PLANE_FAILED /run/habbo-vps2-control-plane-failed; chmod 0644 /run/habbo-vps2-control-plane-failed'
+    ;;
+  drift)
+    cat "$marker" | ssh -o BatchMode=yes bridge-old 'set -e; tmp=/srv/habbo/.LIVE_DRIFT_FAILED.tmp; cat >"$tmp"; chmod 600 "$tmp"; mv "$tmp" /srv/habbo/LIVE_DRIFT_FAILED; cp /srv/habbo/LIVE_DRIFT_FAILED /run/habbo-live-drift-failed; chmod 0644 /run/habbo-live-drift-failed'
     ;;
 esac

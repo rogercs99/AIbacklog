@@ -1,6 +1,10 @@
 #!/usr/bin/env bash
 set -euo pipefail
-REPO_ROOT=$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)
+if [[ -n "${HABBO_DRIFT_BASELINE_ROOT:-}" ]]; then
+  REPO_ROOT=$(readlink -f "$HABBO_DRIFT_BASELINE_ROOT")
+else
+  REPO_ROOT=$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)
+fi
 VPS1_DIR="$REPO_ROOT/habbo-linux-checkpoint/vps1-overlay"
 VPS2_DIR="$REPO_ROOT/habbo-linux-checkpoint/vps2-offsite"
 CONTROL=$(mktemp -u /tmp/habbo-drift-ctrl.XXXXXX)

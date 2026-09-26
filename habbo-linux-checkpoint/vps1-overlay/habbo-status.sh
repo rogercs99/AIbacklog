@@ -178,6 +178,27 @@ printf '%-28s %s\n' 'Chromium failure latch' "$([[ -e /srv/habbo/CHROMIUM_FAILED
 printf '%-28s %s\n' 'Chromium desktop proof' "$($chromium_ok && echo OK || echo FAIL)"
 printf '%-28s %s\n' 'Chromium scenario' "$chromium_scenario"
 printf '%-28s %s\n' 'Chromium attempts' "$chromium_attempts"
+drift_ok=true
+if [[ -f /srv/habbo/LIVE_DRIFT_STATUS ]]; then
+  drift_ts=$(awk -F= '$1=="validated_at_utc" {print $2}' /srv/habbo/LIVE_DRIFT_STATUS)
+  drift_result=$(awk -F= '$1=="result" {print $2}' /srv/habbo/LIVE_DRIFT_STATUS)
+  drift_sha=$(awk -F= '$1=="baseline_sha256" {print $2}' /srv/habbo/LIVE_DRIFT_STATUS)
+  drift_release_files=$(awk -F= '$1=="release_files" {print $2}' /srv/habbo/LIVE_DRIFT_STATUS)
+  drift_release_verified=$(awk -F= '$1=="release_verified" {print $2}' /srv/habbo/LIVE_DRIFT_STATUS)
+  drift_summary=$(awk '$0 ~ /^tracked_summary=/ {sub(/^[^=]*=/,""); print}' /srv/habbo/LIVE_DRIFT_STATUS)
+  drift_age=$(( $(date -u +%s) - $(date -u -d "$drift_ts" +%s) ))
+else
+  drift_age=999999999; drift_result=missing; drift_sha=missing; drift_release_files=0; drift_release_verified=0; drift_summary=missing; drift_ok=false
+fi
+[[ "$drift_age" -le 27000 ]] || drift_ok=false
+[[ "$drift_result" == success && "$drift_sha" =~ ^[0-9a-f]{64}$ && "$drift_release_files" == 14 && "$drift_release_verified" == 1 ]] || drift_ok=false
+[[ "$drift_summary" == *"drifts=0"* && "$drift_summary" == *"missing=0"* ]] || drift_ok=false
+[[ ! -e /srv/habbo/LIVE_DRIFT_FAILED ]] || drift_ok=false
+$drift_ok || ok=false
+printf '%-28s %ss\n' 'live drift proof age' "$drift_age"
+printf '%-28s %s\n' 'live drift failure latch' "$([[ -e /srv/habbo/LIVE_DRIFT_FAILED ]] && echo FAILED || echo clear)"
+printf '%-28s %s\n' 'live drift proof' "$($drift_ok && echo OK || echo FAIL)"
+printf '%-28s %.16s\n' 'live drift baseline' "$drift_sha"
 vps2cp_ok=true
 if [[ -f /srv/habbo/VPS2_CONTROL_PLANE_STATUS ]]; then
   vps2cp_ts=$(awk -F= '$1=="validated_at_utc" {print $2}' /srv/habbo/VPS2_CONTROL_PLANE_STATUS)
@@ -198,7 +219,7 @@ else
   vps2cp_age=999999999; vps2cp_result=missing; vps2cp_total=0; vps2cp_healthy=0; vps2cp_failed=999; vps2cp_root=0; vps2cp_shm=0; vps2cp_store=0; vps2cp_deep=0; vps2cp_bootstrap=0; vps2cp_deterministic=0; vps2cp_fingerprint=missing; vps2cp_archives=0; vps2cp_ok=false
 fi
 [[ "$vps2cp_age" -le 7500 ]] || vps2cp_ok=false
-[[ "$vps2cp_result" == success && "$vps2cp_total" == 5 && "$vps2cp_healthy" == 5 && "$vps2cp_failed" == 0 ]] || vps2cp_ok=false
+[[ "$vps2cp_result" == success && "$vps2cp_total" == 6 && "$vps2cp_healthy" == 6 && "$vps2cp_failed" == 0 ]] || vps2cp_ok=false
 [[ "$vps2cp_root" =~ ^[0-9]+$ && "$vps2cp_root" -ge 819200 ]] || vps2cp_ok=false
 [[ "$vps2cp_shm" =~ ^[0-9]+$ && "$vps2cp_shm" -ge 524288 ]] || vps2cp_ok=false
 [[ "$vps2cp_store" == 1 && "$vps2cp_deep" == 1 && "$vps2cp_bootstrap" == 1 && "$vps2cp_deterministic" == 1 && "$vps2cp_fingerprint" =~ ^[0-9a-f]{64}$ && "$vps2cp_archives" == 3 ]] || vps2cp_ok=false

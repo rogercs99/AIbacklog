@@ -58,6 +58,7 @@ rage=$(( $(date -u +%s) - $(date -u -d "$rts" +%s) ))
 "$ROOT/ops/offsite-restore-drill-smoke.sh"
 "$ROOT/ops/public-chromium-remote-smoke.sh"
 "$ROOT/ops/public-webkit-remote-smoke.sh"
+"$ROOT/ops/live-drift-remote-smoke.sh"
 "$ROOT/ops/vps2-control-plane-smoke.sh"
 "$ROOT/ops/public-web-smoke.sh"
 "$ROOT/ops/verify-latest-backup.sh"

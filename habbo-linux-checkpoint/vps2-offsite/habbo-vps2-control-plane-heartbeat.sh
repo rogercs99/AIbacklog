@@ -2,7 +2,7 @@
 set -euo pipefail
 umask 077
 REMOTE=bridge-old
-TIMERS=(habbo-public-chromium.timer habbo-vps1-offsite-pull.timer habbo-vps1-offsite-restore-drill.timer habbo-public-webkit.timer habbo-vps2-control-plane-heartbeat.timer)
+TIMERS=(habbo-live-drift-watch.timer habbo-public-chromium.timer habbo-vps1-offsite-pull.timer habbo-vps1-offsite-restore-drill.timer habbo-public-webkit.timer habbo-vps2-control-plane-heartbeat.timer)
 now=$(date -u +%Y-%m-%dT%H:%M:%SZ)
 issues=()
 healthy=0
@@ -47,11 +47,11 @@ for t in "${TIMERS[@]}"; do
     [[ "$active" == active ]] || issues+=("$t active=$active")
   fi
 done
-mapfile -t failed < <(systemctl --failed --no-legend --plain 2>/dev/null | awk '{print $1}' | grep -E '^habbo-(vps1-offsite|public-chromium|public-webkit|vps2-control-plane)' || true)
+mapfile -t failed < <(systemctl --failed --no-legend --plain 2>/dev/null | awk '{print $1}' | grep -E '^habbo-(live-drift|vps1-offsite|public-chromium|public-webkit|vps2-control-plane)' || true)
 ((${#failed[@]}==0)) || issues+=("failed_units=${failed[*]}")
 if ((${#issues[@]}==0)); then
   result=success
-  detail="timers=${healthy}/5-enabled+active failed_units=0 root_free_kb=$root_free_kb shm_free_kb=$shm_free_kb offsite_store=${offsite_archives}/3-deep-bootstrap-deterministic recovery_fingerprint=$offsite_recovery_fingerprint"
+  detail="timers=${healthy}/6-enabled+active failed_units=0 root_free_kb=$root_free_kb shm_free_kb=$shm_free_kb offsite_store=${offsite_archives}/3-deep-bootstrap-deterministic recovery_fingerprint=$offsite_recovery_fingerprint"
 else
   result=failed
   detail=$(printf '%s; ' "${issues[@]}")
@@ -61,7 +61,7 @@ else
 fi
 marker=$(mktemp /dev/shm/habbo-vps2-control.XXXXXX)
 trap 'rm -f "$marker"' EXIT
-printf 'validated_at_utc=%s\nresult=%s\ntimers_total=5\ntimers_healthy=%s\nfailed_units=%s\nroot_free_kb=%s\nshm_free_kb=%s\noffsite_store_healthy=%s\noffsite_deep_verified=%s\noffsite_bootstrap_verified=%s\noffsite_recovery_deterministic=%s\noffsite_recovery_fingerprint=%s\noffsite_archives=%s\ndetail=%s\n' \
+printf 'validated_at_utc=%s\nresult=%s\ntimers_total=6\ntimers_healthy=%s\nfailed_units=%s\nroot_free_kb=%s\nshm_free_kb=%s\noffsite_store_healthy=%s\noffsite_deep_verified=%s\noffsite_bootstrap_verified=%s\noffsite_recovery_deterministic=%s\noffsite_recovery_fingerprint=%s\noffsite_archives=%s\ndetail=%s\n' \
   "$now" "$result" "$healthy" "${#failed[@]}" "$root_free_kb" "$shm_free_kb" "$offsite_store_healthy" "$offsite_deep_verified" "$offsite_bootstrap_verified" "$offsite_recovery_deterministic" "$offsite_recovery_fingerprint" "$offsite_archives" "$detail" >"$marker"
 if [[ "$result" == success ]]; then
   cat "$marker" | ssh -o BatchMode=yes "$REMOTE" 'set -e; tmp=/srv/habbo/.VPS2_CONTROL_PLANE_STATUS.tmp; cat >"$tmp"; chmod 600 "$tmp"; mv "$tmp" /srv/habbo/VPS2_CONTROL_PLANE_STATUS; rm -f /srv/habbo/VPS2_CONTROL_PLANE_FAILED; cp /srv/habbo/VPS2_CONTROL_PLANE_STATUS /run/habbo-vps2-control-plane-status; chmod 0644 /run/habbo-vps2-control-plane-status; rm -f /run/habbo-vps2-control-plane-failed'

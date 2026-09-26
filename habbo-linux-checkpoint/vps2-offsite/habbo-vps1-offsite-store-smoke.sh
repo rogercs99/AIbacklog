@@ -72,8 +72,9 @@ for f in "${archives[@]}"; do
   [[ -f "$work/vps2-control-plane-files-sha256.txt" ]] || { rm -rf "$work"; fail "VPS2 recovery manifest missing inside backup: $f"; }
   kit_manifest_count=$(wc -l < "$work/vps2-control-plane-files-sha256.txt")
   case "$kit_manifest_count" in
-    23) expected_scripts=11; expected_units=12; expected_links=4; chromium_required=0 ;;
-    29) expected_scripts=14; expected_units=15; expected_links=5; chromium_required=1 ;;
+    23) expected_scripts=11; expected_units=12; expected_links=4; chromium_required=0; drift_required=0 ;;
+    29) expected_scripts=14; expected_units=15; expected_links=5; chromium_required=1; drift_required=0 ;;
+    35) expected_scripts=15; expected_units=18; expected_links=6; chromium_required=1; drift_required=1 ;;
     *) rm -rf "$work"; fail "VPS2 recovery manifest file count mismatch ($kit_manifest_count): $f" ;;
   esac
   if [[ "$f" == "$latest" ]]; then
@@ -132,6 +133,12 @@ PYKIT
   if [[ "$chromium_required" == 1 ]]; then
     [[ -f "$kit/usr/local/sbin/habbo-public-chromium-smoke.py" ]] || { rm -rf "$work"; fail "required Chromium recovery smoke missing: $f"; }
     [[ -f "$kit/etc/systemd/system/habbo-public-chromium.timer" ]] || { rm -rf "$work"; fail "required Chromium recovery timer missing: $f"; }
+  fi
+  if [[ "$drift_required" == 1 ]]; then
+    [[ -f "$kit/usr/local/sbin/habbo-live-drift-watch.sh" ]] || { rm -rf "$work"; fail "required drift watch missing: $f"; }
+    [[ -f "$kit/etc/systemd/system/habbo-live-drift-watch.timer" ]] || { rm -rf "$work"; fail "required drift timer missing: $f"; }
+    [[ -f "$kit/usr/local/share/habbo-live-drift-baseline.tar.gz" && -f "$kit/usr/local/share/habbo-live-drift-baseline.tar.gz.sha256" ]] || { rm -rf "$work"; fail "required drift baseline missing: $f"; }
+    (cd "$kit/usr/local/share" && sha256sum -c habbo-live-drift-baseline.tar.gz.sha256 --status) || { rm -rf "$work"; fail "drift baseline sidecar mismatch: $f"; }
   fi
   bootstrap="$kit/usr/local/sbin/habbo-vps2-control-plane-bootstrap.sh"
   HABBO_VPS2_SOURCE_ROOT="$kit" "$bootstrap" --check-prereqs >/dev/null || { rm -rf "$work"; fail "VPS2 recovery bootstrap prerequisites failed: $f"; }

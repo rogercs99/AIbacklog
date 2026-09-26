@@ -12,6 +12,7 @@ EXPECTED_PLAYWRIGHT='1.55.0'
 EXPECTED_WEBKIT='/root/.cache/ms-playwright/webkit-2203/pw_run.sh'
 EXPECTED_CHROMIUM='/root/.cache/ms-playwright/chromium_headless_shell-1181/chrome-linux/headless_shell'
 TIMERS=(
+  habbo-live-drift-watch.timer
   habbo-public-chromium.timer
   habbo-vps1-offsite-pull.timer
   habbo-vps1-offsite-restore-drill.timer
@@ -25,9 +26,14 @@ validate_source(){
   [[ -d "$SRC/usr/local/sbin" && -d "$SRC/etc/systemd/system" ]] || fail "invalid source root: $SRC"
   mapfile -t scripts < <(find "$SRC/usr/local/sbin" -maxdepth 1 -type f -name 'habbo-*' -printf '%p\n' | sort)
   mapfile -t units < <(find "$SRC/etc/systemd/system" -maxdepth 1 -type f -name 'habbo-*' -printf '%p\n' | sort)
-  [[ "${#scripts[@]}" -eq 14 ]] || fail "source script count mismatch: ${#scripts[@]} (expected 14)"
-  [[ "${#units[@]}" -eq 15 ]] || fail "source unit count mismatch: ${#units[@]} (expected 15)"
+  [[ "${#scripts[@]}" -eq 15 ]] || fail "source script count mismatch: ${#scripts[@]} (expected 15)"
+  [[ "${#units[@]}" -eq 18 ]] || fail "source unit count mismatch: ${#units[@]} (expected 18)"
   [[ -f "$SRC/usr/local/sbin/habbo-vps2-control-plane-bootstrap.sh" ]] || fail 'bootstrap missing from source kit'
+  [[ -f "$SRC/usr/local/share/habbo-live-drift-baseline.tar.gz" ]] || fail 'drift baseline missing from source kit'
+  [[ -f "$SRC/usr/local/share/habbo-live-drift-baseline.tar.gz.sha256" ]] || fail 'drift baseline sidecar missing from source kit'
+  [[ "$(stat -c '%a %U:%G' "$SRC/usr/local/share/habbo-live-drift-baseline.tar.gz")" == '600 root:root' ]] || fail 'drift baseline source permissions invalid'
+  [[ "$(stat -c '%a %U:%G' "$SRC/usr/local/share/habbo-live-drift-baseline.tar.gz.sha256")" == '600 root:root' ]] || fail 'drift baseline sidecar source permissions invalid'
+  (cd "$SRC/usr/local/share" && sha256sum -c habbo-live-drift-baseline.tar.gz.sha256 --status) || fail 'drift baseline source SHA mismatch'
   for f in "${scripts[@]}"; do
     case "$f" in
       *.sh) bash -n "$f" || fail "Bash syntax invalid: ${f#$SRC/}" ;;
@@ -84,8 +90,10 @@ PY
 
 install_tree(){
   local target=$1
-  install -d -m 755 "$target/usr/local/sbin" "$target/etc/systemd/system"
+  install -d -m 755 "$target/usr/local/sbin" "$target/usr/local/share" "$target/etc/systemd/system"
   for f in "$SRC"/usr/local/sbin/habbo-*; do install -m 700 "$f" "$target/usr/local/sbin/${f##*/}"; done
+  install -m 600 "$SRC/usr/local/share/habbo-live-drift-baseline.tar.gz" "$target/usr/local/share/habbo-live-drift-baseline.tar.gz"
+  install -m 600 "$SRC/usr/local/share/habbo-live-drift-baseline.tar.gz.sha256" "$target/usr/local/share/habbo-live-drift-baseline.tar.gz.sha256"
   for f in "$SRC"/etc/systemd/system/habbo-*; do install -m 644 "$f" "$target/etc/systemd/system/${f##*/}"; done
   install -d -m 700 "$target/var/backups/habbo-vps1"
 }
@@ -100,11 +108,14 @@ validate_installed_root(){
   local target=$1
   mapfile -t scripts < <(find "$target/usr/local/sbin" -maxdepth 1 -type f -name 'habbo-*' -printf '%p\n' | sort)
   mapfile -t units < <(find "$target/etc/systemd/system" -maxdepth 1 -type f -name 'habbo-*' -printf '%p\n' | sort)
-  [[ "${#scripts[@]}" -eq 14 ]] || fail "installed script count mismatch: ${#scripts[@]}"
-  [[ "${#units[@]}" -eq 15 ]] || fail "installed unit count mismatch: ${#units[@]}"
+  [[ "${#scripts[@]}" -eq 15 ]] || fail "installed script count mismatch: ${#scripts[@]}"
+  [[ "${#units[@]}" -eq 18 ]] || fail "installed unit count mismatch: ${#units[@]}"
   for f in "${scripts[@]}"; do [[ "$(stat -c '%a %U:%G' "$f")" == '700 root:root' ]] || fail "script mode invalid: $f"; done
   for f in "${units[@]}"; do [[ "$(stat -c '%a %U:%G' "$f")" == '644 root:root' ]] || fail "unit mode invalid: $f"; done
   [[ "$(stat -c '%a %U:%G' "$target/var/backups/habbo-vps1")" == '700 root:root' ]] || fail 'offsite store mode invalid in target root'
+  [[ "$(stat -c '%a %U:%G' "$target/usr/local/share/habbo-live-drift-baseline.tar.gz")" == '600 root:root' ]] || fail 'installed drift baseline mode invalid'
+  [[ "$(stat -c '%a %U:%G' "$target/usr/local/share/habbo-live-drift-baseline.tar.gz.sha256")" == '600 root:root' ]] || fail 'installed drift baseline sidecar mode invalid'
+  (cd "$target/usr/local/share" && sha256sum -c habbo-live-drift-baseline.tar.gz.sha256 --status) || fail 'installed drift baseline SHA mismatch'
   for timer in "${TIMERS[@]}"; do
     link="$target/etc/systemd/system/timers.target.wants/$timer"
     [[ -L "$link" && "$(readlink "$link")" == "../$timer" ]] || fail "offline enable link invalid: $timer"
@@ -161,7 +172,7 @@ case "$mode" in
     enable_offline "$target"
     validate_installed_root "$target"
     echo 'PASS: Habbo VPS2 control-plane bootstrap rehearsal'
-    echo "source=$SRC target=$target files=29 scripts=14 units=15 timers=5 modes=verified offline_enable=verified secrets=external"
+    echo "source=$SRC target=$target files=35 scripts=15 units=18 timers=6 modes=verified offline_enable=verified secrets=external"
     ;;
   --check-prereqs)
     check_prereqs
@@ -177,6 +188,7 @@ case "$mode" in
     systemctl daemon-reload
     systemctl enable --now "${TIMERS[@]}"
     systemctl start habbo-vps1-offsite-pull.service
+    systemctl start habbo-live-drift-watch.service
     systemctl start habbo-public-chromium.service
     systemctl start habbo-public-webkit.service
     systemctl start habbo-vps1-offsite-restore-drill.service
@@ -184,7 +196,7 @@ case "$mode" in
     systemctl start habbo-vps2-control-plane-heartbeat.service
     /usr/local/sbin/habbo-vps1-offsite-store-smoke.sh
     echo 'PASS: Habbo VPS2 control plane bootstrapped'
-    echo 'files=29 scripts=14 units=15 timers=5 offsite_seed=3 verification=pull+chromium+webkit+restore+heartbeat secrets=external'
+    echo 'files=35 scripts=15 units=18 timers=6 offsite_seed=3 verification=pull+drift+chromium+webkit+restore+heartbeat secrets=external'
     ;;
   *) usage ;;
 esac

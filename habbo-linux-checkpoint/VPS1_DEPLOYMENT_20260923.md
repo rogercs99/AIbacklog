@@ -308,3 +308,10 @@ Operational rule: production remains untouched. Any future promotion must start 
 - Matching VPS2 pull + isolated offsite restore PASS; VPS1 disaster drill + aggregate deployment validator PASS on the same generation.
 - `habbo-postboot-validate.service` was restarted deliberately as a boot-path rehearsal and PASSed immediately, refreshing the postboot stamp to `104813Z`; Habbo public HTTP remained 200.
 - `systemd-analyze verify` on all relevant Habbo units/timers across VPS1/VPS2 found no Habbo-specific syntax, ordering or dependency errors.
+
+### Wide mirror + natural runtime timer proof (2026-09-26)
+- Extended the live/repo drift audit beyond the earlier critical subset. VPS2 remained zero-drift; VPS1 showed 9 EOF-only differences and 3 functional repo-only lags for already-proven live v0.8.5 smoke validators.
+- Mirrored the exact live validators into Git: Cloudflare ingress checks now include `18100/18131/18139`, perimeter checks cover the v0.8.5 frontend/WebSocket paths, and public-web smoke includes `/play`, localized assets and noVNC `rfb.js`.
+- No production runtime file changed during reconciliation.
+- Observed the 15-minute runtime health timer fire naturally at 13:00:06 CEST; service exit=0 at 13:00:15 and `/run/habbo-runtime-health` continued to reference `manual-20260926T104813Z`.
+- All Habbo recovery/health timers on both VPSs are enabled and use `Persistent=true`.

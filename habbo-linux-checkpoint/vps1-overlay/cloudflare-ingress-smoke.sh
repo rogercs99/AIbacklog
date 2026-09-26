@@ -3,6 +3,12 @@ set -euo pipefail
 UNIT=cloudflared-stremio-legacy
 METRICS=http://127.0.0.1:20241/metrics
 fail(){ echo "FAIL: $*" >&2; exit 1; }
+CFG=/etc/cloudflared-stremio-legacy/config.yml
+grep -Fq 'path: ^/v31-websockify(/.*)?$' "$CFG" || fail 'V31 WebSocket ingress route missing'
+grep -Fq 'service: http://127.0.0.1:18131' "$CFG" || fail 'V31 WebSocket ingress target mismatch'
+grep -Fq 'path: ^/r39-websockify(/.*)?$' "$CFG" || fail 'R39 WebSocket ingress route missing'
+grep -Fq 'service: http://127.0.0.1:18139' "$CFG" || fail 'R39 WebSocket ingress target mismatch'
+grep -Fq 'service: http://127.0.0.1:18100' "$CFG" || fail 'Habbo v0.8.5 frontend ingress target mismatch' 
 
 systemctl is-active --quiet "$UNIT" || fail "$UNIT is not active"
 systemctl is-enabled --quiet "$UNIT" || fail "$UNIT is not enabled"

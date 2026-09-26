@@ -9,7 +9,7 @@ TMP=$(mktemp)
 trap 'rm -f "$TMP"' EXIT
 fetch "$BASE/" >"$TMP"
 grep -q 'Habbo 2009 ~ Home' "$TMP"
-for path in   /register   /web-gallery/static/js/landing.js   /web-gallery/v2/styles/frontpage.css   /web-gallery/v2/favicon.ico   /web-gallery/v2/images/dialogs/grey-tl.gif   /images/progress_bubbles.gif   /styles/local/uk.css   /js/local/uk.js   /c_images/Frontpage_images/frontpg_misc_01.gif   /client/v39/gamedata/external_variables_vps1.txt   /dcr/v31/habbo.dcr
+for path in   /register   /play   /local-web/habbo-modern.css   /local-web/habbo-es.js   /local-web/novnc/core/rfb.js   /web-gallery/static/js/landing.js   /web-gallery/v2/styles/frontpage.css   /web-gallery/v2/favicon.ico   /web-gallery/v2/images/dialogs/grey-tl.gif   /images/progress_bubbles.gif   /styles/local/uk.css   /js/local/uk.js   /c_images/Frontpage_images/frontpg_misc_01.gif   /client/v39/gamedata/external_variables_vps1.txt   /dcr/v31/habbo.dcr
 do
   fetch -o /dev/null "$BASE$path"
 done

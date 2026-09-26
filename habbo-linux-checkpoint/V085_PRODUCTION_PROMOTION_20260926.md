@@ -146,3 +146,12 @@ A pre-v0.8.5 Cloudflare config backup was retained on VPS1. Rollback is to resto
 - VPS2 pulled and restored `104813Z` successfully; VPS1 disaster drill and aggregate final validator also passed against `104813Z`.
 - Re-ran the real `habbo-postboot-validate.service`; it passed on attempt 1 and refreshed `/run/habbo-postboot-validated` to `manual-20260926T104813Z`, while public Habbo remained HTTP 200 (~73 ms).
 - `systemd-analyze verify` across the Habbo production/recovery units on VPS1 and VPS2 reported no Habbo unit errors or dependency/order cycles. Only unrelated host warnings from snapd/rc-local were emitted.
+
+## Wide operational mirror audit closure
+- A broader live-vs-repository audit was run after the scheduled/postboot rehearsal, beyond the earlier critical-file subset.
+- VPS2 remained byte-identical for the mapped operational files.
+- VPS1 exposed 12 repository drifts: 9 were final-newline-only and 3 were real repository lags in already-live validators (`cloudflare-ingress-smoke.sh`, `network-perimeter-smoke.sh`, `public-web-smoke.sh`).
+- The live validators already enforced v0.8.5 behavior: frontend `18100`, V31/R39 WebSocket routes `18131/18139`, `/play`, localized JS/CSS and noVNC asset availability.
+- Those proven live bytes, plus the nine EOF-only files, were mirrored into `vps1-overlay`; production was not modified.
+- Syntax/systemd validation PASS; the 12-file captured live comparison is now byte-identical and the preceding VPS2 audit remains zero-drift.
+- Natural timer observation also confirmed `habbo-runtime-healthcheck.timer` fired itself at 13:00:06 CEST, exited 0 at 13:00:15 and retained `manual-20260926T104813Z` as the validated latest backup.

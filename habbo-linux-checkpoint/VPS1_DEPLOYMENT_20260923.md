@@ -128,3 +128,43 @@ Canonical regression helper: `/srv/habbo/ops/v31-final-validate.sh`; versioned c
 
 **No fresh graphical acceptance item remains pending.**
 
+## Local web gate v0.8.5 — Chrome + Safari/WebKit PASS (2026-09-26)
+
+This section records a **local ChatGPT lab checkpoint only**. It was **not deployed to VPS1 production** and does not replace the deployment architecture above.
+
+Canonical Library checkpoint:
+- `/Habbo 2009 Dual Linux/habbo-web-local-v0.8.5-chrome-safari-pass-20260926.zip`
+- SHA-256 `4fb36dd2daa0f2e7a191a10649859ad7910020793ad29b0378c24f45409b0a4c`
+
+Validated local topology:
+- MariaDB `127.0.0.1:3307`;
+- Havana V31 `12321`, MUS `12322`, R39 `12323`, RCON `12309`;
+- legacy binary/assets origin `127.0.0.1:18080`;
+- Havana-Web `18091`;
+- frontend/proxy `18100`;
+- both V31 and R39 are exposed to the browser through noVNC, so the user installs no plugin.
+
+Chrome/PC integrated gate is PASS, including desktop/mobile responsive UI, Spanish controls, no SSO ticket in HTML, V31 and R39 gameplay after runtime restart, and no browser plugin requirement.
+
+Safari/WebKit gate is PASS using Playwright 1.57.0 / WebKit build 2227 with Safari 26.0 / AppleWebKit 605.1.15 UA. Final gameplay proof:
+- V31 room 1000 + touch WALK `AKRBQB`;
+- R39 room 1000 + touch WALK `AKPBSA`;
+- lifecycle R39 connected -> switch to V31 -> V31 connected -> explicit Reconectar -> V31 connected again;
+- final reconnect measured at about 5.1 s;
+- no SSO ticket in HTML;
+- no `<object>` / `<embed>` plugin tags.
+
+Safari/WebKit fixes persisted in the v0.8.5 checkpoint:
+1. rewrite absolute legacy `http://localhost/...` web URLs to the local proxy;
+2. mobile login layout exposes the real submit button instead of the legacy off-screen margin;
+3. V31 startup tolerates clean transient RFB disconnects;
+4. RFB connection watchdog retries a hung first connection attempt;
+5. stale RFB callbacks cannot mutate a newer connection generation;
+6. V31 restart cleans orphan listeners on dedicated VNC/noVNC ports `59131/18131`.
+
+Git milestone:
+- commit `3b6345092d93369c94242dbe5bf0cf421f2c78d4`;
+- tag `habbo-web-local-v0.8.5-20260926`.
+
+Operational rule: production remains untouched. Any future promotion must start from the v0.8.5 checkpoint and requires an explicit deployment gate.
+

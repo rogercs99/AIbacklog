@@ -109,3 +109,13 @@ A pre-v0.8.5 Cloudflare config backup was retained on VPS1. Rollback is to resto
 - Exact audit result after synchronization: `VPS1_EXACT_DIFFS=0`, `VPS2_EXACT_DIFFS=0` across the audited critical scripts/units.
 - The old Havana bundle SHA `77672bee...` in the historical public-web notes is now explicitly labelled historical/superseded; current recovery pin remains `9e3ee88b2670e7156c7c05bca13646b9d5378e1b8d83f3a7f2eb53fefa344a4f`.
 - Retention dry-run after the closure: 16 managed backups, 16 kept, 0 candidates, `KEEP_RECENT=14`; daily backup already runs retention before creating the next generation.
+
+## First autonomous production cycle proof
+- After the periodic gameplay/recovery hardening was committed, the normal timers produced a newer backup generation without operator intervention: `/srv/habbo/backups/manual-20260926T100752Z`.
+- That generation passed the normal latest-backup verifier and isolated local restore: 88 tables, 40 navigator styles, RogerVideo=1, room1000=1, network=none, tmpfs datadir, no published restore ports and live DB untouched.
+- The scheduled offsite pull published the same generation to VPS2; `offsite latest match` remained OK and the store smoke kept 3 deeply verified deterministic generations.
+- The offsite restore drill then restored `manual-20260926T100752Z` itself, SHA256 `8ab94f7b366366e0102f69e743cae5e6960d37b9906c45450bcd41b1bbac3380`, with the same DB invariants and full isolation.
+- VPS2 heartbeat subsequently reported 4/4 timers healthy, no failed units, clear latch and recovery fingerprint `b2c2efa39e6f702ce6f77ad3dc8d19a61b3febf616fafd9b9929f1d46e9ccfbf`.
+- Local backup retention also self-converged back to 16 protected generations.
+- Aggregate `deployment-final-validate.sh` PASS against the automatic `100752Z` generation, including full WebKit scenario `home+register+login+me+V31+R39`, fresh offsite restore proof, recovery/bootstrap checks and public HTTP 200.
+- `habbo-status.sh` remained `OVERALL READY` throughout the autonomous cycle.

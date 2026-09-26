@@ -281,3 +281,10 @@ Operational rule: production remains untouched. Any future promotion must start 
 - Final exact mirror audit: `VPS1_EXACT_DIFFS=0`, `VPS2_EXACT_DIFFS=0` for the audited critical set.
 - No live production behavior changed during this mirror reconciliation; the already-green runtime, backup, WebKit gameplay, offsite restore and disaster-recovery state remained untouched.
 - Historical Havana bundle SHA `77672bee...` is explicitly documented as superseded by current recovery pin `9e3ee88b2670e7156c7c05bca13646b9d5378e1b8d83f3a7f2eb53fefa344a4f`.
+
+### First autonomous post-hardening cycle (2026-09-26)
+- The normal timers generated `/srv/habbo/backups/manual-20260926T100752Z` without manual intervention after the gameplay/recovery hardening.
+- Latest backup verification + isolated local restore PASS; scheduled VPS2 pull matched latest; offsite restore drill restored that exact generation with SHA256 `8ab94f7b366366e0102f69e743cae5e6960d37b9906c45450bcd41b1bbac3380`.
+- VPS2 control-plane heartbeat: 4/4 timers healthy, no failed units, latch clear, recovery fingerprint `b2c2efa39e6f702ce6f77ad3dc8d19a61b3febf616fafd9b9929f1d46e9ccfbf`.
+- Local retention self-pruned to 16 protected backups.
+- Final aggregate deployment validator PASS against `100752Z`; Habbo remained HTTP 200 and `OVERALL READY`.

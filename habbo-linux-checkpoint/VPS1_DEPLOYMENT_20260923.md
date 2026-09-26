@@ -315,3 +315,10 @@ Operational rule: production remains untouched. Any future promotion must start 
 - No production runtime file changed during reconciliation.
 - Observed the 15-minute runtime health timer fire naturally at 13:00:06 CEST; service exit=0 at 13:00:15 and `/run/habbo-runtime-health` continued to reference `manual-20260926T104813Z`.
 - All Habbo recovery/health timers on both VPSs are enabled and use `Persistent=true`.
+
+### Canonical continuity redirect after v0.8.5 closure
+- The old Relay handoff `/srv/chat-session-relay/data/task-inputs/20260926/HABBO_2009_CONTINUIDAD_CHROME_V08_SAFARI.txt` is now explicitly historical and begins with a redirect warning.
+- Current Relay authority for this completed phase: `/srv/chat-session-relay/data/task-inputs/20260926/HABBO_2009_V085_PRODUCTION_FINAL_CONTINUITY.txt`.
+- Repository copy: `habbo-linux-checkpoint/HABBO_2009_V085_PRODUCTION_FINAL_CONTINUITY_20260926.txt`.
+- Do not execute the old Chrome/Safari `SIGUIENTE PASO EXACTO`, rebuild the local lab, rerun the pre-promotion gate, or redeploy v0.8.5 unless a new regression is demonstrated.
+- Current continuation rule: verify live health/deriva first; if `OVERALL READY` and latches are clear, this phase remains TERMINATED and only useful maintenance/observability work should continue.

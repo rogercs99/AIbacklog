@@ -1,81 +1,79 @@
 HABBO 2009 — CONTINUIDAD CANÓNICA POST-v0.8.5 PRODUCCIÓN
 ========================================================
 
-ESTADO: TAREA CERRADA / PRODUCCIÓN ESTABLE
+ESTADO: TAREA FUNCIONAL CERRADA / PRODUCCIÓN ESTABLE / OPERACIÓN AUTÓNOMA
 
-Este fichero SUPERA y sustituye como continuidad operativa a los handoffs de gate Chrome/Safari y preflight anteriores.
-No reiniciar la promoción, no volver a reconstruir el lab y no repetir trabajo ya verificado salvo que exista una regresión nueva.
+Este fichero SUPERA y sustituye como continuidad operativa a los handoffs Chrome/Safari, lab y preflight anteriores.
+NO reconstruyas el lab, NO repitas la promoción y NO redepliegues v0.8.5 salvo que una regresión nueva esté demostrada.
 
-OBJETIVO YA CONSEGUIDO
-- v0.8.5 desplegada en producción.
-- Chrome/PC y WebKit/iPhone 14 Plus: gameplay público V31 -> R39 mediante noVNC PASS.
-- R39 ejecuta Adobe Flash Player nativo en servidor; el navegador no recibe plugin legacy.
-- WebKit periódico exige escenario exacto home+register+login+me+V31+R39.
-- Sin fuga de SSO ni object/embed en V31/R39.
-- Backup local, copia offsite VPS2, restore offsite aislado, runtime health, disaster drill y validador agregado PASS.
-- habbo-status.sh: OVERALL READY.
+OBJETIVO CONSEGUIDO
+- v0.8.5 está desplegada en producción en VPS1 (`bridge-old`, hostname `secureme`, raíz `/srv/habbo`).
+- V31 y R39 funcionan públicamente mediante noVNC; R39 ejecuta Adobe Flash Player nativo en servidor, nunca como plugin en el navegador.
+- WebKit/iPhone 14 Plus y Chromium/desktop prueban periódicamente el escenario completo `home+register+login+me+V31+R39`.
+- Los smokes exigen conexión noVNC de V31 y R39 y bloquean fuga de SSO / `<object>` / `<embed>`.
+- Backup local, offsite VPS2, restore offsite aislado, runtime health, disaster drill, postboot y validador agregado están automatizados.
+- `habbo-status.sh` debe terminar en `OVERALL READY` para considerar sana esta fase.
 
-ESTADO OPERATIVO RECIENTE
-- VPS1 producción: bridge-old / hostname secureme / raíz /srv/habbo.
-- Última generación observada durante soak: /srv/habbo/backups/manual-20260926T104813Z.
-- Offsite correspondiente: /var/backups/habbo-vps1/manual-20260926T104813Z.tar.gz.
-- SHA256 offsite: 3fd2f4ad7850b8f7cb5ebc200e76444101c63a761ccfa7e88426eb2e6d25e2c4.
-- Restore offsite de esa misma generación: PASS, network=none, tmpfs, 88 tablas, 40 navigator_styles, RogerVideo=1, room1000=1.
-- WebKit oficial fresco: PASS, attempts=1, scenario=home+register+login+me+V31+R39.
-- Recovery fingerprint observado: b2c2efa39e6f702ce6f77ad3dc8d19a61b3febf616fafd9b9929f1d46e9ccfbf.
-- Local backup count observado: 16; retención funcionando.
-- Public Habbo HTTP: 200.
+ESTADO OPERATIVO VERIFICADO AL REFRESCAR ESTA CONTINUIDAD
+- Último backup observado: `/srv/habbo/backups/manual-20260926T163308Z`.
+- Offsite: `/var/backups/habbo-vps1/manual-20260926T163308Z.tar.gz`.
+- SHA256 offsite: `d01b35b8473201ce2454a903fc3132da8a0005b6967fdaedabd9b7f848132545`.
+- Restore offsite de esa generación: PASS, `network=none`, datadir en tmpfs, 88 tablas, 40 `navigator_styles`, RogerVideo=1, room1000=1.
+- WebKit: PASS, attempts=1, escenario `home+register+login+me+V31+R39`.
+- Chromium: PASS, escenario `home+register+login+me+V31+R39`.
+- Live drift autónomo: PASS, `matches=87 drifts=0 missing=0`, release manifest de 14 ficheros verificado.
+- Baseline inmutable live-drift SHA256: `eaa9387fdef3813296acc0a824bc2a63d67fb37c4047a13831cc3b40bf4617be`.
+- VPS2 control plane: 6/6 timers habilitados/sanos, 0 failed units.
+- Recovery fingerprint: `cdd96139db112b2bc73638f11e6b94e0f013ebe7b02dcf916d21b19447fea131`.
+- Retención local: 16 backups observados; `habbo-backup-daily.sh` aplica `KEEP_RECENT=14` automáticamente.
+- Habbo público: HTTP 200.
+- Estado global observado: `OVERALL READY`.
+
+AUTOMATIZACIÓN / PERSISTENCIA
+VPS1:
+- runtime health cada 15 min;
+- backup diario con refresh/rehearsal previo del recovery kit + retención;
+- disaster drill periódico;
+- postboot validation con latch durable de fallo.
+
+VPS2:
+- WebKit/iPhone gameplay smoke;
+- Chromium/desktop gameplay smoke;
+- offsite pull;
+- offsite restore drill con pull fresco requerido;
+- control-plane heartbeat;
+- live-drift watch autónomo contra baseline inmutable recuperable.
+
+Todos los timers relevantes se comprobaron `enabled`, `Persistent=true` cuando aplica, con failure routing/latches y orden de red correcto. La auditoría de persistencia/reboot y `systemd-analyze verify` están cerradas.
+
+DRIFT: POLÍTICA ACTUAL
+- La antigua limitación «live↔Git solo manual porque recovery no restaura el checkout» YA NO describe el monitor autónomo actual.
+- El control periódico NO depende del checkout Git mutable: usa un baseline inmutable incluido/rehearsado en el recovery kit, por lo que es seguro tras disaster recovery.
+- `tools/habbo-live-drift-audit.sh` sigue siendo útil como auditoría manual/deploy adicional, pero el watch autónomo recuperable ya cubre deriva crítica en producción.
 
 REPO
-- rogercs99/AIbacklog
-- rama: project/habbo-2009-dual-linux-vps1-deploy-20260923
-- checkout operativo: /root/AIbacklog-habbo-touch-20260924
-- el fichero histórico no trackeado habbo-linux-checkpoint/vps1-overlay/v31-web-touch-lab.sh se deja deliberadamente intacto.
+- `rogercs99/AIbacklog`
+- rama: `project/habbo-2009-dual-linux-vps1-deploy-20260923`
+- checkout: `/root/AIbacklog-habbo-touch-20260924`
+- hito previo de persistencia/reboot: `9b80984c85a89f1619d3de9e0a9fa46fa7eb36be`, tag `habbo-web-v0.8.5-reboot-persistence-audit-20260926`.
+- tag de este refresh de continuidad: `habbo-web-v0.8.5-final-continuity-refresh-20260926`.
+- `habbo-linux-checkpoint/vps1-overlay/v31-web-touch-lab.sh` es histórico y deliberadamente no trackeado; no tocarlo salvo motivo explícito.
 
 REGLA DE CONTINUIDAD
-1. Verificar primero `git status`, `git log`, `habbo-status.sh` y el último backup; no asumir que este snapshot sigue siendo el más reciente.
-2. Si `OVERALL READY` y no hay latch/fallo nuevo, NO redeplegar v0.8.5 ni rehacer gates cerrados.
-3. Continuar solo con mantenimiento/observabilidad o una regresión nueva demostrada.
-4. Si aparece una regresión real, corregirla con rollback/backup/recovery conservando la arquitectura actual.
-5. Persistir cada hito real en Git + tag + knowledge.
-6. No tocar `v31-web-touch-lab.sh` salvo motivo explícito.
+1. Al entrar en una nueva rotación, comprobar primero `git status`, `git log`, `/srv/habbo/ops/habbo-status.sh`, último backup y latches; no asumir que este snapshot sigue siendo el más reciente.
+2. Si el estado es `OVERALL READY`, los latches están clear y no existe regresión nueva, esta fase sigue TERMINADA.
+3. NO repetir gates Chrome/Safari, preflight, canary ni promoción de v0.8.5.
+4. Continuar únicamente con mantenimiento/observabilidad útil o con una regresión demostrada.
+5. Ante regresión real: conservar arquitectura, usar backup/rollback/recovery, validar y persistir cada hito en Git + tag + knowledge.
+6. No tocar el laboratorio histórico no trackeado.
 
 SIGUIENTE PASO EXACTO
 - No hay trabajo funcional pendiente.
-- En una nueva rotación, empezar por comprobar salud/deriva actual.
-- Si todo sigue READY, tratar esta tarea como TERMINADA y no recrear trabajo histórico.
+- Verifica salud/deriva actual.
+- Si sigue `OVERALL READY`, no inventes trabajo histórico: trata la fase como TERMINADA.
+- Solo avanza en mantenimiento que reduzca un riesgo concreto o corrige una regresión nueva observada.
 
 FORMATO RELAY
 Estado de la tarea: terminada
 Progreso aproximado: 100%
-Resumen para continuar: v0.8.5 está en producción y validada; solo continuar ante mantenimiento útil o regresión nueva, sin repetir gates históricos.
-
-ÚLTIMA OBSERVACIÓN AUTÓNOMA (2026-09-26 13:26 CEST)
-- OVERALL READY tras varias horas adicionales sin intervención.
-- Backup actual observado: /srv/habbo/backups/manual-20260926T104813Z.
-- WebKit periódico: PASS, attempts=1, escenario completo home+register+login+me+V31+R39.
-- Offsite restore de 104813Z: PASS.
-- deployment-final-validate.sh fresco: PASS.
-- Drift audit read-only: VPS1 31/31 exacto; VPS2 23/23 exacto.
-- No se modificó producción; la fase sigue TERMINADA y estable.
-
-ÚLTIMA AUDITORÍA DE HIGIENE / ZERO-DRIFT (2026-09-26 15:52 CEST)
-- Producción sigue OVERALL READY.
-- Generación canónica observada: /srv/habbo/backups/manual-20260926T133735Z.
-- Offsite SHA256: d979e65f9010f4d537a4f986448bf75a160e0dfc0df5bb5ff5fa6604757728cb.
-- Recovery fingerprint: 350d044edf0688a16f5b11255b3cefa82b0a20a7dd0f3f5cdb272eec37c5c9fe.
-- WebKit/iPhone y Chromium/desktop conservan PASS del escenario completo home+register+login+me+V31+R39.
-- Auditoría live↔Git: scripts críticos de WebKit, Chromium, offsite pull/restore, heartbeat, backup, verifier, status, postboot y validadores coinciden por SHA256.
-- Auditoría systemd live↔Git: unidades/timers/failure units críticas de VPS1 y VPS2 coinciden por SHA256; timers esperados habilitados y activos.
-- Se eliminaron únicamente temporales habbo-public-* / habbo-v085-* de /tmp y /dev/shm después de comprobar que ningún unit/script/proceso activo los referenciaba.
-- deployment-final-validate.sh posterior a la limpieza: PASS completo.
-- El fichero histórico no trackeado habbo-linux-checkpoint/vps1-overlay/v31-web-touch-lab.sh continúa deliberadamente intacto.
-
-AUDITORÍA LIVE↔GIT Y POLÍTICA DE EJECUCIÓN (2026-09-26 16:13+ CEST)
-- `tools/habbo-live-drift-audit.sh` ejecutado de nuevo contra producción/control plane reales: `matches=83 drifts=0 missing=0 notes=1`.
-- La única nota sigue siendo el histórico no trackeado `v31-web-touch-lab.sh`, deliberadamente intacto.
-- `deployment-final-validate.sh` ejecutado de nuevo contra la generación canónica `/srv/habbo/backups/manual-20260926T133735Z`: PASS completo.
-- VPS1 y VPS2 no presentan unidades Habbo fallidas; backup local/offsite coinciden y ambos browser proofs siguen PASS con `home+register+login+me+V31+R39`.
-- El auditor live↔Git queda deliberadamente como gate manual/deploy y NO como timer fatal autónomo mientras el recovery bootstrap no restaure el checkout Git `/root/AIbacklog-habbo-touch-20260924`.
-- Motivo: los timers autónomos deben depender solo de artefactos incluidos en el recovery kit; añadir una dependencia no recuperable del checkout Git degradaría un rebuild limpio.
-- Si en el futuro el checkout Git pasa a formar parte explícita del recovery/bootstrap, entonces sí puede promoverse el auditor a control periódico con latch.
+Resumen para continuar: v0.8.5 está estable y autónomamente monitorizada; WebKit+Chromium+live-drift+backup/offsite/restore/health/drill están persistidos y recuperables; si sigue OVERALL READY no repetir trabajo histórico.

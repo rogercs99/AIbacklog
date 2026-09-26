@@ -472,3 +472,10 @@ Operational rule: production remains untouched. Any future promotion must start 
 - Official VPS2 recovery smoke PASS after reconciliation: 35 files / 15 scripts / 18 units, hashes verified, exact inventory, syntax verified, bootstrap rehearsed.
 - Final audit: `matches=88 drifts=0 missing=0 notes=1`; the only note remains the deliberately untracked historical `v31-web-touch-lab.sh`.
 - Commit carrying the generated-manifest reconciliation: `55ced30cbc90f04afaf290cabded7cfe9c4a3f30`.
+
+### Historical checkpoint supersession indexed for knowledge (2026-09-26)
+- `habbo-linux-checkpoint/CHECKPOINT_VERIFIED.txt` is preserved as historical byte-verification evidence from 2026-09-21 and is explicitly marked `HISTÓRICO / SUPERSEDED`.
+- Its old statement that final Habbo gameplay remained pending is historical only and must never be interpreted as current operational state.
+- Current authority is `habbo-linux-checkpoint/HABBO_2009_V085_PRODUCTION_FINAL_CONTINUITY_20260926.txt` together with this deployment record and `V085_PRODUCTION_PROMOTION_20260926.md`.
+- Regression `tools/test_historical_checkpoint_supersession_v085.py` ensures the historical checkpoint cannot regress to an unqualified “gameplay pending” state.
+- Operational state remains unchanged: v0.8.5 is in production, WebKit+Chromium prove `home+register+login+me+V31+R39`, autonomous drift/recovery checks are healthy and `habbo-status.sh` is `OVERALL READY`.

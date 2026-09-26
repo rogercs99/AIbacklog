@@ -15,9 +15,9 @@ OBJETIVO CONSEGUIDO
 - `habbo-status.sh` debe terminar en `OVERALL READY` para considerar sana esta fase.
 
 ESTADO OPERATIVO VERIFICADO AL REFRESCAR ESTA CONTINUIDAD
-- Último backup observado: `/srv/habbo/backups/manual-20260926T181406Z`.
-- Offsite: `/var/backups/habbo-vps1/manual-20260926T181406Z.tar.gz`.
-- SHA256 offsite: `beb0bb1292c0aff2b79a457719703a4386d5e3ca70b704d1a0bd984d23fbb9e3`.
+- Último backup observado: `/srv/habbo/backups/manual-20260926T190051Z`.
+- Offsite: `/var/backups/habbo-vps1/manual-20260926T190051Z.tar.gz`.
+- SHA256 offsite: `bb160eb03a2cc3a74728f61c4758330a0a716c5ddb6841793402f27515612941`.
 - Restore offsite de esa generación: PASS, `network=none`, datadir en tmpfs, 88 tablas, 40 `navigator_styles`, RogerVideo=1, room1000=1.
 - WebKit: PASS, attempts=1, escenario `home+register+login+me+V31+R39`.
 - Chromium: PASS, escenario `home+register+login+me+V31+R39`.
@@ -25,7 +25,7 @@ ESTADO OPERATIVO VERIFICADO AL REFRESCAR ESTA CONTINUIDAD
 - Baseline inmutable live-drift SHA256: `698f2f698ed86c61726ee7ba093382bfdecf11b1806cf15c74d6ff4fdebf9b6e`.
 - VPS2 control plane: 6/6 timers habilitados/sanos, 0 failed units.
 - Recovery fingerprint: `055bdf7848783cd6bf4ab57e0de3ba1bc83e00522a2c1d0de8f426f5dc58606d`.
-- Retención local: 19 backups observados; `habbo-backup-daily.sh` aplica `KEEP_RECENT=14` automáticamente.
+- Retención local: 16 backups observados tras una poda real de 20→16; `habbo-backup-daily.sh` aplica `KEEP_RECENT=14` automáticamente.
 - Habbo público: HTTP 200.
 - Estado global observado: `OVERALL READY`.
 
@@ -58,6 +58,7 @@ REPO
 - hito previo de persistencia/reboot: `9b80984c85a89f1619d3de9e0a9fa46fa7eb36be`, tag `habbo-web-v0.8.5-reboot-persistence-audit-20260926`.
 - tag de este refresh de continuidad: `habbo-web-v0.8.5-final-continuity-refresh-20260926`.
 - tag del resync vivo posterior: `habbo-web-v0.8.5-continuity-live-resync-20260926`.
+- tag del soak natural de scheduler: `habbo-web-v0.8.5-natural-scheduler-soak-20260926`.
 - `habbo-linux-checkpoint/vps1-overlay/v31-web-touch-lab.sh` es histórico y deliberadamente no trackeado; no tocarlo salvo motivo explícito.
 
 RESYNC OPERATIVO VIVO (2026-09-26 20:19 CEST)
@@ -104,3 +105,17 @@ RESYNC NOCTURNO DE SALUD (2026-09-26 20:50 CEST)
 - VPS2 control plane: 6/6 timers sanos, 0 failed units del control plane, fingerprint `055bdf7848783cd6bf4ab57e0de3ba1bc83e00522a2c1d0de8f426f5dc58606d`.
 - `deployment-final-validate.sh`: PASS completo después del live-drift forzado.
 - No se detectó ninguna regresión funcional nueva; no se modificó producción en este resync.
+
+
+SOAK NATURAL DE SCHEDULER (2026-09-26 21:06 CEST)
+- Producción continúa `OVERALL READY`; Habbo público HTTP 200 y todos los latches Habbo están clear.
+- Se ejecutó manualmente el servicio systemd oficial `habbo-backup-daily.service` (sin modificar su timer) para validar exactamente el path diario real: refresh/rehearsal del recovery kit → backup → retention → runtime health.
+- Ese ciclo creó `/srv/habbo/backups/manual-20260926T190051Z`, lo verificó/restauró localmente y la retención actuó bajo presión real: `total=20 keep=16 candidates=4`, manteniendo milestones, referenced y latest.
+- Offsite VPS2 vigente: `/var/backups/habbo-vps1/manual-20260926T190051Z.tar.gz`, SHA256 `bb160eb03a2cc3a74728f61c4758330a0a716c5ddb6841793402f27515612941`.
+- Restore offsite de `190051Z`: PASS en tmpfs/network-none, 88 tablas, 40 navigator_styles, RogerVideo=1, room1000=1.
+- El timer REAL `habbo-runtime-healthcheck.timer` se disparó autónomamente a las 21:00:19 CEST y el servicio terminó success/0.
+- El timer REAL `habbo-vps2-control-plane-heartbeat.timer` se disparó autónomamente a las 21:05:40 CEST, terminó success/0 y reprogramó la siguiente ejecución para ~22:05.
+- Disaster drill VPS1 referencia `190051Z` y PASS; aggregate `deployment-final-validate.sh` PASS contra la misma generación.
+- Auditoría live↔Git posterior al ciclo: `matches=88 drifts=0 missing=0 notes=1`; la única nota sigue siendo el histórico deliberadamente no trackeado `v31-web-touch-lab.sh`.
+- Recovery kit actual: 35 ficheros / 15 scripts / 18 units; fingerprint `055bdf7848783cd6bf4ab57e0de3ba1bc83e00522a2c1d0de8f426f5dc58606d`.
+- No se cambió código funcional/producto durante este soak; solo se ejercitó la operación real y se refrescó continuidad.

@@ -168,3 +168,11 @@ Git milestone:
 
 Operational rule: production remains untouched. Any future promotion must start from the v0.8.5 checkpoint and requires an explicit deployment gate.
 
+
+### Post-close reproducibility audit v0.8.5 (2026-09-26)
+- Re-materialized the canonical Library ZIP and independently recomputed SHA256: `4fb36dd2daa0f2e7a191a10649859ad7910020793ad29b0378c24f45409b0a4c` (exact match).
+- Full internal `SHA256SUMS` manifest: PASS.
+- Python compile audit: PASS.
+- Critical regression scripts: PASS for Safari localhost rewrite/mobile layout, V31 Safari startup retry, stalled-RFB watchdog, stale VNC/websockify cleanup, V31 injector/socket contract, R39 native noVNC contract, and dual-runtime exclusion.
+- Runtime closure audit: only local static listener `127.0.0.1:18080` remained; V31/R39/noVNC runtime listeners were not left running.
+- Production remained untouched. Any promotion remains a separate explicit human deployment gate.

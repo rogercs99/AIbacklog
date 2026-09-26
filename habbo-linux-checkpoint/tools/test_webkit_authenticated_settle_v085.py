@@ -10,4 +10,8 @@ assert "wait_for_load_state('networkidle'" not in head, 'fragile final networkid
 assert "page.locator('body').wait_for(state='visible', timeout=10000)" in head, 'bounded visible-body settle missing'
 assert "path == '/security_check' and status == 200" in s
 assert "path == '/me' and status == 200" in s
+
+assert "reason == 'Load request cancelled' and urlparse(url).path == '/security_check'" in s, 'guarded WebKit security_check cancellation filter missing'
+assert "path == '/security_check' and status == 200" in s, 'HTTP 200 prerequisite for cancellation filter missing'
+
 print('PASS: authenticated WebKit /me settle avoids fragile networkidle and preserves response assertions')

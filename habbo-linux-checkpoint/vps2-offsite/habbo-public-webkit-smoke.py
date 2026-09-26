@@ -99,6 +99,11 @@ with sync_playwright() as p:
     body = page.locator('body').inner_text()
     if USER not in body:
         raise SystemExit('authenticated username missing from /me')
+    # WebKit may emit requestfailed=Load request cancelled for the successful
+    # security_check navigation while also reporting its HTTP 200 response.
+    if any(path == '/security_check' and status == 200 for path, status in auth_seen):
+        failed[:] = [(reason, url) for reason, url in failed
+                     if not (reason == 'Load request cancelled' and urlparse(url).path == '/security_check')]
     assert_clean(page, bad, failed, errors, 'authenticated')
 
     print(f"PASS: WebKit iPhone smoke home+register+login+me, scale={order['scale']:.6f}, layout_width={order['width']}, auth_user={USER}")

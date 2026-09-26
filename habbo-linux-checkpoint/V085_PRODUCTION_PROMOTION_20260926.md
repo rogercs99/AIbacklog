@@ -336,3 +336,11 @@ A pre-v0.8.5 Cloudflare config backup was retained on VPS1. Rollback is to resto
 - The offsite restore proof refreshed to `validated_at_utc=2026-09-26T16:19:36Z`, `manifest=complete`, `workspace=tmpfs`, `network=none`, 88 tables, 40 navigator styles, RogerVideo=1 and room1000=1.
 - That runtime override was also removed; the timer returned to its canonical weekly schedule `Sun *-*-* 06:20:00`, `Persistent=true`, `RandomizedDelaySec=300`, with the next natural run on 2026-09-27 around 06:20 CEST.
 - A full post-proof `deployment-final-validate.sh` remained PASS, including Chromium/WebKit gameplay proofs, autonomous live-drift proof, offsite store + restore, deterministic VPS2 recovery and public web.
+
+## WebKit timer-dispatch page-crash hardening
+- A runtime-only timer dispatch rehearsal proved `habbo-public-webkit.timer` actually starts the full WebKit gameplay service, but the first dispatched run exposed a transient Playwright `Page.goto: Page crashed` while navigating to `/play/v31`.
+- The failure was correctly latched on VPS1; canonical timer configuration was restored immediately after the rehearsal.
+- The WebKit daily wrapper already allowed exactly one retry for transient browser/runtime startup closures and 503s. `Page crashed` is now included in that same one-retry class; first-party/product failures remain fatal and a repeated crash still exits non-zero.
+- Regression now requires the `Page crashed` matcher, the `attempt==1` gate, the transition to `attempt=2`, and persistent-failure non-zero exit.
+- A fresh official WebKit service run PASSed and cleared the failure latch.
+- A second timer-dispatch rehearsal after the hardening actually started the service via the timer and PASSed the full `home+register+login+me+V31+R39` scenario; the runtime-only override was removed and the canonical daily `05:35` schedule with `RandomizedDelaySec=60` was restored.

@@ -443,3 +443,9 @@ Operational rule: production remains untouched. Any future promotion must start 
 - Offsite restore timer fired automatically at 18:19:24 CEST and restored current generation `manual-20260926T155914Z` in isolated tmpfs/network-none mode successfully; canonical Sunday 06:20 schedule was restored immediately afterward.
 - No persistent override/drop-in remains under `/run/systemd/system` for either proof timer.
 - Post-trigger aggregate validator PASS. This closes the remaining distinction between manually proven services and proven `timer -> service` dispatch behavior.
+
+### WebKit timer-dispatch page-crash hardening (2026-09-26)
+- Actual `timer -> service` rehearsal exposed a transient Playwright `Page.goto: Page crashed` on `/play/v31`; durable WebKit failure latch behaved correctly.
+- `habbo-public-webkit-daily.sh` now retries that engine crash exactly once alongside the existing browser-close/503 transient class. Product/first-party failures and a second crash remain fatal.
+- Official recovery run PASSed and cleared the latch; a second real timer dispatch PASSed the complete iPhone scenario `home+register+login+me+V31+R39`.
+- Runtime proof override was removed; effective timer is back to the canonical `05:35`, persistent, 60-second jitter schedule.

@@ -50,7 +50,7 @@ while :; do
   if [[ "$rc" -eq 0 ]]; then
     break
   fi
-  if [[ "$attempt" -eq 1 ]] && grep -Eq 'TargetClosedError|Target page, context or browser has been closed|V31 page failed: status=503|R39 page failed: status=503' "$ERR"; then
+  if [[ "$attempt" -eq 1 ]] && grep -Eq 'TargetClosedError|Target page, context or browser has been closed|Page crashed|V31 page failed: status=503|R39 page failed: status=503' "$ERR"; then
     echo 'WARN: transient WebKit browser/runtime startup failure; resetting smoke-owned runtimes and retrying once' >&2
     cleanup_runtime V31 "$V31_CONTROL" 18131 "$V31_WAS_HEALTHY"
     cleanup_runtime R39 "$R39_CONTROL" 18139 "$R39_WAS_HEALTHY"

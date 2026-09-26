@@ -31,6 +31,11 @@ assert 'V31_WAS_HEALTHY=0' in daily and 'R39_WAS_HEALTHY=0' in daily, 'pre-smoke
 assert 'cleanup_runtime(){' in daily and '[[ "$was_healthy" == 0 ]] || return 0' in daily, 'smoke-owned runtime cleanup guard missing'
 assert 'state established' in daily and '18131' in daily and '18139' in daily, 'active WebSocket preservation guard missing'
 assert 'trap cleanup EXIT' in daily, 'runtime cleanup is not guaranteed on smoke exit'
+assert 'Page crashed' in daily, 'transient Playwright page-crash retry missing'
+assert '[[ "$attempt" -eq 1 ]]' in daily, 'WebKit transient retry is not limited to first failure'
+assert 'attempt=2' in daily, 'single retry transition missing'
+assert 'exit "$rc"' in daily, 'persistent WebKit failure no longer exits non-zero'
+
 
 remote = (Path(__file__).resolve().parents[1] / 'vps1-overlay' / 'public-webkit-remote-smoke.sh').read_text(encoding='utf-8')
 assert "\"$scenario\" == 'home+register+login+me+V31+R39'" in remote, 'VPS1 remote WebKit checker still accepts a partial scenario'

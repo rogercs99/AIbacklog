@@ -426,3 +426,8 @@ Operational rule: production remains untouched. Any future promotion must start 
 - Recovery kit now contains 35 files / 15 scripts / 18 units and rehearses installation of the immutable baseline, watcher and timer.
 - Canonical generation `/srv/habbo/backups/manual-20260926T155914Z` passed local restore, VPS2 store smoke, VPS2 isolated restore, runtime health, VPS1 disaster drill and aggregate final validation.
 - Offsite SHA256 `338efe3e008b07c9c8882c99bde218870bbd9bf6e24d66e3a84404dbcbd090b3`; recovery fingerprint `6d6d423178c4499f49a629c4147be37ae290a37b7b2e502a255994a85fbd4d8d`.
+
+### Immutable drift negative-path regression (2026-09-26)
+- Added `tools/test_live_drift_negative_v085.sh`, which proves the autonomous drift auditor rejects a deliberately altered file inside an isolated `/dev/shm` extraction of the immutable baseline.
+- Clean extraction PASS: 87 matches / 0 drifts / 0 missing. Temporary mutation of `habbo-public-webkit.timer`: 86 matches / 1 drift / 0 missing, exit status non-zero as required.
+- Test is read-only with respect to production and never invokes the durable failure handler. The real drift watchdog was rerun afterward and PASSed with latch clear.

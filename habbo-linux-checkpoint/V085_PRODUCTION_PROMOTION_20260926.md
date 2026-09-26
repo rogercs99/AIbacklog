@@ -312,3 +312,10 @@ A pre-v0.8.5 Cloudflare config backup was retained on VPS1. Rollback is to resto
 - Runtime health and VPS1 disaster drill both advanced to `manual-20260926T155914Z`.
 - Recovery fingerprint: `6d6d423178c4499f49a629c4147be37ae290a37b7b2e502a255994a85fbd4d8d`.
 - Final aggregate deployment validator PASS, including Chromium desktop, WebKit iPhone, immutable live-drift proof, offsite restore and recovery bootstrap.
+
+## Autonomous drift negative-path proof
+- Added read-only regression `tools/test_live_drift_negative_v085.sh` for the immutable live-drift monitor.
+- The test extracts the installed baseline into `/dev/shm`, runs the embedded auditor clean (`drifts=0`), mutates only the temporary copy of `habbo-public-webkit.timer`, then requires the auditor to fail with exactly one reported drift and non-zero exit status.
+- Proof result: clean `matches=87 drifts=0 missing=0 notes=0`; isolated mutation `matches=86 drifts=1 missing=0 notes=0`, `NEGATIVE_RC=1`.
+- No live file, durable marker or failure latch is modified by the regression. A subsequent real `habbo-live-drift-watch.service` run PASSed and `LIVE_DRIFT_FAILED` remained clear.
+- This closes both success-path and failure-detection coverage for the immutable drift gate without intentionally degrading production.

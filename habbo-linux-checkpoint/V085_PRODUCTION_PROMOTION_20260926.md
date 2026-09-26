@@ -90,3 +90,13 @@ A pre-v0.8.5 Cloudflare config backup was retained on VPS1. Rollback is to resto
 - Backup SHA256: `d821a8e02b03517d89d844a81d7bcbf5bebc79581338df793ed8152bae53d787`.
 - Recovery fingerprint: `b2c2efa39e6f702ce6f77ad3dc8d19a61b3febf616fafd9b9929f1d46e9ccfbf`.
 - Runtime health and disaster drill both reference `manual-20260926T095727Z`; aggregate deployment validator PASS.
+
+## Daily backup retention edge closure
+- `disk-health-smoke.sh` rejects more than 20 local `manual-*` backup generations.
+- The daily wrapper previously ran runtime health **before** retention, so starting a daily cycle with 20 backups could create the 21st, fail health, and exit via `set -e` before pruning.
+- `habbo-backup-daily.sh` now runs guarded retention (`APPLY=1 KEEP_RECENT=14`) immediately after publishing/verifying the new backup and before runtime health.
+- The current backup is asserted to survive retention; runtime health then must advance to that exact backup.
+- Real boundary test PASS: start=18 -> manual backup=19 -> manual backup=20 -> official daily service created the next generation -> retention reduced local generations to 16 -> `habbo-backup-daily.service` result=success / exit=0 -> runtime marker advanced to `/srv/habbo/backups/manual-20260926T100752Z`.
+- Canonical generation after the boundary proof: `/srv/habbo/backups/manual-20260926T100752Z`, offsite SHA256 `8ab94f7b366366e0102f69e743cae5e6960d37b9906c45450bcd41b1bbac3380`.
+- Matching VPS2 offsite store and isolated restore PASS; runtime health and VPS1 disaster drill both reference `manual-20260926T100752Z`.
+- Final aggregate deployment validator PASS with `backup_count=16` and recovery fingerprint `b2c2efa39e6f702ce6f77ad3dc8d19a61b3febf616fafd9b9929f1d46e9ccfbf`.

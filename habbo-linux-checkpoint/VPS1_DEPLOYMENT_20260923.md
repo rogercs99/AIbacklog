@@ -267,3 +267,10 @@ Operational rule: production remains untouched. Any future promotion must start 
 - Backup contract excludes `ops/*.pre-*`, `ops/*.bak*` and `ops/*~`; restore verifier explicitly fails if any of those patterns appear inside `ops-overlay.tar.gz`.
 - Canonical clean backup `/srv/habbo/backups/manual-20260926T095727Z` passed local restore, overlay hygiene check, VPS2 store smoke, VPS2 isolated restore, runtime health, VPS1 disaster drill and final aggregate validation.
 - Backup SHA256 `d821a8e02b03517d89d844a81d7bcbf5bebc79581338df793ed8152bae53d787`; recovery fingerprint `b2c2efa39e6f702ce6f77ad3dc8d19a61b3febf616fafd9b9929f1d46e9ccfbf`.
+
+### Daily backup retention boundary closure (2026-09-26)
+- Fixed ordering in `/srv/habbo/ops/habbo-backup-daily.sh`: retention now runs after backup publication and before runtime health, preventing the temporary 21st generation from tripping the max-20 disk-health contract before pruning can run.
+- Real edge test PASS: 18 -> 19 -> 20 local backups; official daily service then completed successfully and retention reduced the set to 16 before health validation.
+- Runtime marker, offsite archive/restore and disaster drill all converge on `/srv/habbo/backups/manual-20260926T100752Z`.
+- Offsite archive SHA256: `8ab94f7b366366e0102f69e743cae5e6960d37b9906c45450bcd41b1bbac3380`; recovery fingerprint `b2c2efa39e6f702ce6f77ad3dc8d19a61b3febf616fafd9b9929f1d46e9ccfbf`.
+- Final deployment validator PASS with 16 local backup generations.

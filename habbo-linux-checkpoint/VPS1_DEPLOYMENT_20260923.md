@@ -399,3 +399,9 @@ Operational rule: production remains untouched. Any future promotion must start 
 - A deliberately induced collision with the `:25` offsite pull proved the stale-generation guard: pull failed while backup state was `activating`, then a retry after publication copied the new latest and cleared the failure latch. Normal production timing remains backup at 05:10 and hourly pull at :25.
 - Matching VPS2 offsite restore, VPS2 heartbeat, VPS1 disaster drill and aggregate deployment validator all PASS for `142531Z`; offsite archive SHA256 is `7503ca581b9d72a2bad017f36c5afb666da9fbf55805ebed3832ce734003542c`.
 - Final operational state after the exercise: `OVERALL READY`, 16 local backups, latest/offsite/runtime/disaster aligned, all relevant failure latches clear.
+
+### Browser smoke credential hygiene (2026-09-26)
+- Official browser-smoke credentials remain outside Git and outside recoverable backup payloads in /srv/habbo/WEBKIT_SMOKE_LOGIN.env (0600 root:root). Stale tmpfs credential residue from diagnostics was removed.
+- secret-permissions-smoke.sh now enforces the credential permission, zero temporary login-env residue, and zero browser-smoke credential copies in latest backup/disaster kit.
+- Fresh Chromium and WebKit full gameplay smokes PASS; no test runtimes/listeners remain afterward.
+- Backup /srv/habbo/backups/manual-20260926T153110Z passed local restore, VPS2 offsite store/restore, runtime health, disaster drill and final validation; offsite SHA256 d1110dacbaa0018bb2343b5cca7041062af82f01cbefeb9f145b1f302c5aa960.

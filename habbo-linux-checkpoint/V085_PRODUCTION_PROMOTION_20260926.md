@@ -271,3 +271,11 @@ A pre-v0.8.5 Cloudflare config backup was retained on VPS1. Rollback is to resto
 - VPS2 isolated restore of that exact archive PASS: SHA256 `7503ca581b9d72a2bad017f36c5afb666da9fbf55805ebed3832ce734003542c`, tmpfs datadir, network=none, 88 tables, 40 navigator styles, RogerVideo=1, room1000=1.
 - VPS2 heartbeat and VPS1 disaster drill were refreshed against the same generation. `habbo-status.sh` returned `OVERALL READY` with 16 local backups and all latches clear.
 - Final aggregate deployment validator PASS against `manual-20260926T142531Z`; both Chromium desktop and WebKit iPhone proofs still require `home+register+login+me+V31+R39`.
+
+## Browser-smoke credential hygiene closure
+- Removed an obsolete /dev/shm/habbo-webkit-login.env copy left by earlier diagnostics; it was 0600, unreferenced and not open, but should not have remained in tmpfs.
+- Confirmed the official browser-smoke credential exists only as /srv/habbo/WEBKIT_SMOKE_LOGIN.env with mode 0600 root:root; both Chromium and WebKit wrappers read it dynamically and Git contains no literal password.
+- secret-permissions-smoke.sh now requires that credential mode/owner, rejects browser-smoke login env files inside the latest backup or disaster kit, and rejects matching temporary residues in /tmp or /dev/shm.
+- Fresh official Chromium desktop and WebKit/iPhone 14 Plus smokes both PASS with scenario home+register+login+me+V31+R39, attempts=1 and clear latches; both leave no V31/R39/browser processes behind.
+- Canonical backup after the hardening: /srv/habbo/backups/manual-20260926T153110Z; local isolated restore PASS, VPS2 store PASS and VPS2 isolated restore PASS. Offsite SHA256: d1110dacbaa0018bb2343b5cca7041062af82f01cbefeb9f145b1f302c5aa960.
+- Runtime health and disaster drill both reference manual-20260926T153110Z; final aggregate deployment validator PASS.

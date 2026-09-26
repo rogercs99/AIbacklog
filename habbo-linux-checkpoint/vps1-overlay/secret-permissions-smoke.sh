@@ -16,6 +16,7 @@ require_mode "$ROOT/docker-compose.yml" 600 root:root
 require_mode "$ROOT/PROJECT_CONTEXT.md" 600 root:root
 require_mode "$CF" 600 root:root
 require_mode "$ROOT/backups" 700 root:root
+require_mode "$ROOT/WEBKIT_SMOKE_LOGIN.env" 600 root:root
 
 cred=$(awk '$1=="credentials-file:" {print $2}' "$CF" | head -1)
 [[ -n "$cred" ]] || fail 'Cloudflare credentials-file missing from config'
@@ -29,6 +30,15 @@ require_mode "$latest/cloudflared-tunnel-credentials.json" 600 root:root
 if find "$latest" -type f -perm /077 -print -quit | grep -q .; then
   fail 'latest backup contains group/other-accessible files'
 fi
+if find "$latest" -maxdepth 2 -type f -iname '*smoke*login*.env' -print -quit | grep -q .; then
+  fail 'latest backup unexpectedly contains browser smoke login credentials'
+fi
+if find "$ROOT/releases/disaster" -type f -iname '*smoke*login*.env' -print -quit | grep -q .; then
+  fail 'disaster recovery kit unexpectedly contains browser smoke login credentials'
+fi
+if find /tmp /dev/shm -maxdepth 1 -type f \( -iname 'habbo-*login*.env' -o -iname '*smoke*login*.env' \) -print -quit 2>/dev/null | grep -q .; then
+  fail 'temporary browser smoke login credential residue exists'
+fi
 if find "$ROOT" -xdev -type f -perm -0002 -print -quit | grep -q .; then
   fail 'world-writable regular file exists under /srv/habbo'
 fi
@@ -37,4 +47,4 @@ if grep -qiE '(PASSWORD|TOKEN|SECRET|API[_-]?KEY)[[:space:]]*=' /etc/systemd/sys
 fi
 
 echo 'PASS: Habbo secret permissions smoke'
-echo 'live_secrets=0600 backups=0700/0600 cloudflare_credential=0600 world_writable=0 systemd_embedded_secrets=0'
+echo 'live_secrets=0600 smoke_credential=0600 smoke_temp_residue=0 smoke_backup_copy=0 backups=0700/0600 cloudflare_credential=0600 world_writable=0 systemd_embedded_secrets=0'

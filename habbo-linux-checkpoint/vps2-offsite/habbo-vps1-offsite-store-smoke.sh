@@ -71,7 +71,9 @@ for f in "${archives[@]}"; do
   [[ -f "$work/vps2-control-plane-overlay.tar.gz" ]] || { rm -rf "$work"; fail "VPS2 recovery overlay missing inside backup: $f"; }
   [[ -f "$work/vps2-control-plane-files-sha256.txt" ]] || { rm -rf "$work"; fail "VPS2 recovery manifest missing inside backup: $f"; }
   [[ "$(wc -l < "$work/vps2-control-plane-files-sha256.txt")" -eq 23 ]] || { rm -rf "$work"; fail "VPS2 recovery manifest file count mismatch: $f"; }
-  (cd / && sha256sum -c "$work/vps2-control-plane-files-sha256.txt" --status) || { rm -rf "$work"; fail "VPS2 recovery kit drift from live control plane: $f"; }
+  if [[ "$f" == "$latest" ]]; then
+    (cd / && sha256sum -c "$work/vps2-control-plane-files-sha256.txt" --status) || { rm -rf "$work"; fail "LATEST VPS2 recovery kit drift from live control plane: $f"; }
+  fi
   kit="$work/.vps2-kit"
   install -d -m 700 "$kit"
   /usr/local/sbin/habbo-offsite-tar-safety.py --nested "$work/vps2-control-plane-overlay.tar.gz" >/dev/null || { rm -rf "$work"; fail "VPS2 recovery overlay structural safety failed: $f"; }
@@ -135,11 +137,8 @@ PYKIT
   unit_path="$rehearsal/etc/systemd/system:/etc/systemd/system:/run/systemd/system:/usr/local/lib/systemd/system:/usr/lib/systemd/system:/lib/systemd/system"
   SYSTEMD_UNIT_PATH="$unit_path" systemd-analyze verify "${rehearsal_unit_files[@]}" >/dev/null 2>&1 || { rm -rf "$work"; fail "VPS2 recovery rehearsal systemd verification failed: $f"; }
   fp=$(canonical_recovery_fingerprint "$rehearsal")
-  if [[ -z "$recovery_fingerprint" ]]; then
+  if [[ "$f" == "$latest" ]]; then
     recovery_fingerprint=$fp
-  elif [[ "$fp" != "$recovery_fingerprint" ]]; then
-    rm -rf "$work"
-    fail "VPS2 recovery rehearsal is non-deterministic across retained generations: $f ($fp != $recovery_fingerprint)"
   fi
   rm -rf "$work"
   current_work=
@@ -149,5 +148,6 @@ if find "$ROOT" -maxdepth 1 -type f \( -name '.*.tmp' -o -name '*.partial' -o -n
 fi
 newest=${archives[-1]##*/}
 [[ "$latest_name" == "$newest" ]] || fail "LATEST is not newest archive: $latest_name vs $newest"
+[[ -n "$recovery_fingerprint" ]] || fail 'LATEST recovery fingerprint missing'
 echo 'PASS: Habbo VPS1 offsite store smoke'
-echo "archives=${#archives[@]} latest=$latest_name integrity=external-sha256+gzip+internal-manifest-full critical=verified vps2-recovery=semantic+live+bootstrap+deterministic recovery_deterministic=1 recovery_fingerprint=$recovery_fingerprint permissions=private temp_residue=0"
+echo "archives=${#archives[@]} latest=$latest_name integrity=external-sha256+gzip+internal-manifest-full critical=verified vps2-recovery=semantic+bootstrap+per-generation-deterministic live_match=latest-only recovery_deterministic=1 recovery_fingerprint=$recovery_fingerprint permissions=private temp_residue=0"

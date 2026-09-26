@@ -254,3 +254,10 @@ A pre-v0.8.5 Cloudflare config backup was retained on VPS1. Rollback is to resto
 - Repository drift discovered and reconciled from already-validated production state: reverse-SSH bootstrap notes in `HOST_PREREQUISITES.md`, Havana-Web `me.tpl` mount in `docker-compose.yml`, current generated recovery manifests, and newline-only normalization for static manifests/template.
 - Final drift audit: `matches=83 drifts=0 missing=0 notes=1`; the sole note is the deliberately untracked historical `v31-web-touch-lab.sh`.
 - No production runtime files were changed during this reconciliation, so the canonical backup generation remains `manual-20260926T093550Z`.
+
+## Live↔Git drift-gate policy closure
+- Fresh `tools/habbo-live-drift-audit.sh` result: `matches=83 drifts=0 missing=0 notes=1`; the note is only the deliberately untracked historical `v31-web-touch-lab.sh`.
+- Fresh aggregate deployment validator PASS against canonical generation `/srv/habbo/backups/manual-20260926T133735Z`.
+- The live↔Git auditor remains a deployment/manual gate rather than a fatal autonomous timer because the VPS2 disaster/bootstrap contract does not currently restore the operational Git checkout itself.
+- This is intentional: autonomous production/recovery monitors must remain self-contained in the recovery kit. A timer that requires an unrecovered checkout would turn a clean disaster rebuild into a false degraded state.
+- Promotion to a scheduled drift monitor is deferred until the Git checkout (or an equivalent immutable audit baseline) is itself part of the recovery contract.

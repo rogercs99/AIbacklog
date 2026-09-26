@@ -70,3 +70,12 @@ Resumen para continuar: v0.8.5 está en producción y validada; solo continuar a
 - Se eliminaron únicamente temporales habbo-public-* / habbo-v085-* de /tmp y /dev/shm después de comprobar que ningún unit/script/proceso activo los referenciaba.
 - deployment-final-validate.sh posterior a la limpieza: PASS completo.
 - El fichero histórico no trackeado habbo-linux-checkpoint/vps1-overlay/v31-web-touch-lab.sh continúa deliberadamente intacto.
+
+AUDITORÍA LIVE↔GIT Y POLÍTICA DE EJECUCIÓN (2026-09-26 16:13+ CEST)
+- `tools/habbo-live-drift-audit.sh` ejecutado de nuevo contra producción/control plane reales: `matches=83 drifts=0 missing=0 notes=1`.
+- La única nota sigue siendo el histórico no trackeado `v31-web-touch-lab.sh`, deliberadamente intacto.
+- `deployment-final-validate.sh` ejecutado de nuevo contra la generación canónica `/srv/habbo/backups/manual-20260926T133735Z`: PASS completo.
+- VPS1 y VPS2 no presentan unidades Habbo fallidas; backup local/offsite coinciden y ambos browser proofs siguen PASS con `home+register+login+me+V31+R39`.
+- El auditor live↔Git queda deliberadamente como gate manual/deploy y NO como timer fatal autónomo mientras el recovery bootstrap no restaure el checkout Git `/root/AIbacklog-habbo-touch-20260924`.
+- Motivo: los timers autónomos deben depender solo de artefactos incluidos en el recovery kit; añadir una dependencia no recuperable del checkout Git degradaría un rebuild limpio.
+- Si en el futuro el checkout Git pasa a formar parte explícita del recovery/bootstrap, entonces sí puede promoverse el auditor a control periódico con latch.

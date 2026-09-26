@@ -387,3 +387,8 @@ Operational rule: production remains untouched. Any future promotion must start 
 - Reconciled Git with the already-running canonical production state (`HOST_PREREQUISITES.md`, `docker-compose.yml`, generated asset/control-plane manifests and register template normalization).
 - Final result: 83 exact/semantic matches, 0 drifts, 0 missing; only the deliberately untracked historical `v31-web-touch-lab.sh` is reported as a note.
 - Production was not modified by this reconciliation; backup `manual-20260926T093550Z` remains the current recovery generation.
+
+### Live↔Git drift-gate policy (2026-09-26)
+- Read-only drift audit repeated after the latest soak: 83 matches, 0 drifts, 0 missing, 1 deliberate historical note.
+- Aggregate deployment validator remains PASS on `/srv/habbo/backups/manual-20260926T133735Z`.
+- Do not schedule the Git/live auditor as a fatal autonomous timer until the control-plane recovery/bootstrap also restores the Git checkout or another immutable audit baseline. Current autonomous monitors intentionally depend only on recoverable artifacts.

@@ -15,6 +15,7 @@ for attempt in $(seq 1 "$ATTEMPTS"); do
     "$ROOT/ops/network-perimeter-smoke.sh" \
     "$ROOT/ops/disk-health-smoke.sh" \
     "$ROOT/ops/cloudflare-ingress-smoke.sh" \
+    "$ROOT/ops/secret-permissions-smoke.sh" \
     "$ROOT/ops/public-web-smoke.sh"
   do
     if ! "$check" >>"$TMP" 2>&1; then

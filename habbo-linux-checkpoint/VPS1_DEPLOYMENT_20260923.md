@@ -405,3 +405,8 @@ Operational rule: production remains untouched. Any future promotion must start 
 - secret-permissions-smoke.sh now enforces the credential permission, zero temporary login-env residue, and zero browser-smoke credential copies in latest backup/disaster kit.
 - Fresh Chromium and WebKit full gameplay smokes PASS; no test runtimes/listeners remain afterward.
 - Backup /srv/habbo/backups/manual-20260926T153110Z passed local restore, VPS2 offsite store/restore, runtime health, disaster drill and final validation; offsite SHA256 d1110dacbaa0018bb2343b5cca7041062af82f01cbefeb9f145b1f302c5aa960.
+
+### Continuous smoke-credential enforcement (2026-09-26)
+- The 15-minute runtime healthcheck now runs secret-permissions-smoke.sh, continuously enforcing the 0600 browser-smoke credential, no temporary login-env residue and no smoke credential copy in backup/disaster payloads.
+- First real periodic-style run PASS on attempt 1/3.
+- Backup /srv/habbo/backups/manual-20260926T153753Z passed local restore, VPS2 store/restore, runtime health, disaster drill and final validation; offsite SHA256 8d934f6107c2a613d0269f6ee987b63613385dc26f1e7db31c5e1c554f93eec3.

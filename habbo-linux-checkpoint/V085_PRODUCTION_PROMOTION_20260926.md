@@ -279,3 +279,9 @@ A pre-v0.8.5 Cloudflare config backup was retained on VPS1. Rollback is to resto
 - Fresh official Chromium desktop and WebKit/iPhone 14 Plus smokes both PASS with scenario home+register+login+me+V31+R39, attempts=1 and clear latches; both leave no V31/R39/browser processes behind.
 - Canonical backup after the hardening: /srv/habbo/backups/manual-20260926T153110Z; local isolated restore PASS, VPS2 store PASS and VPS2 isolated restore PASS. Offsite SHA256: d1110dacbaa0018bb2343b5cca7041062af82f01cbefeb9f145b1f302c5aa960.
 - Runtime health and disaster drill both reference manual-20260926T153110Z; final aggregate deployment validator PASS.
+
+## Continuous browser-smoke credential enforcement
+- runtime-healthcheck.sh now executes secret-permissions-smoke.sh on every periodic health cycle, so browser-smoke credential permissions, backup exclusion and temporary-residue checks are continuously enforced instead of only during manual final validation.
+- A real systemd runtime-healthcheck run passed on attempt 1/3 and logged smoke_credential=0600, smoke_temp_residue=0 and smoke_backup_copy=0.
+- Canonical backup after periodic enforcement: /srv/habbo/backups/manual-20260926T153753Z; local isolated restore PASS, VPS2 store PASS, VPS2 isolated restore PASS, runtime health PASS and disaster drill PASS.
+- Offsite archive SHA256: 8d934f6107c2a613d0269f6ee987b63613385dc26f1e7db31c5e1c554f93eec3. Final aggregate deployment validator PASS.

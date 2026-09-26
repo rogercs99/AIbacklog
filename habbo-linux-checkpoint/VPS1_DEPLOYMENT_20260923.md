@@ -188,3 +188,10 @@ Operational rule: production remains untouched. Any future promotion must start 
 - Versioned WebKit smoke and daily wrapper were synchronized with the authenticated live logic and the safe settle fix; regression `test_webkit_authenticated_settle_v085.py` passes.
 - Git checkpoint: `3ca250b888c6bba6e066ca8fc3a3ca8be908d384`, tag `habbo-web-local-v0.8.5-preflight-20260926`.
 - No production file, unit, tunnel, database or service was modified. Promotion remains gated.
+
+### Canonical VPS2 recovery-kit refresh dry-run (2026-09-26)
+- Executed a temporary copy of `/srv/habbo/ops/refresh-vps2-control-plane-kit.sh` on VPS1 with a hard stop injected immediately after staged recovery validation and before the lock/live promotion block.
+- Canonical staged recovery smoke PASS: 23 files, 11 scripts, 12 units, exact hashes/inventory, syntax, ExecStart references and bootstrap rehearsal all valid.
+- This independently confirms the recovery-store drift is reconcilable by the existing supported refresh path after the WebKit runner correction.
+- The dry-run exited before `flock` and before any write to `/srv/habbo/releases/disaster`; production/recovery state remained unchanged.
+- Further progress now requires the explicit live-change gate: install the versioned WebKit smoke on VPS2, refresh/promote the VPS2 recovery kit on VPS1, create/verify a fresh backup, pull/verify it offsite, then rerun the read-only v0.8.5 promotion preflight.

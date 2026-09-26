@@ -53,3 +53,15 @@ Production promotion remains blocked until the two validation-infrastructure blo
 - It rebuilds only a `/dev/shm` copy of the latest offsite archive with the two live WebKit runner files and updated manifests, then runs the same offsite store invariants with a one-archive isolated root.
 - Result: PASS for external SHA/gzip, internal manifest, critical files, nested tar safety, live control-plane hash match, recovery bootstrap rehearsal and deterministic recovery fingerprint.
 - No live backup, LATEST pointer, production file or systemd unit is modified by the rehearsal.
+
+## Canonical generator dry-run on VPS1
+A temporary copy of the live `/srv/habbo/ops/refresh-vps2-control-plane-kit.sh` was executed on VPS1 with an injected hard stop immediately after staging validation and before the backup lock/live promotion section.
+
+Result:
+- generated the control-plane kit from `bridge-new` using the canonical 23-path inventory;
+- `vps2-control-plane-recovery-smoke.sh` on the staged kit: PASS;
+- 23 files / 11 scripts / 12 units;
+- hashes verified, inventory exact, syntax verified, ExecStart links resolved, bootstrap rehearsed;
+- explicit dry-run stop executed before `flock`, temporary live filenames or atomic `mv` promotion.
+
+This proves the existing canonical refresh path can reconcile the live VPS2 control plane once the corrected WebKit smoke is installed. No live recovery artifact was changed during this proof.

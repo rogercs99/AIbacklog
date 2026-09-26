@@ -1,0 +1,51 @@
+HABBO 2009 — CONTINUIDAD CANÓNICA POST-v0.8.5 PRODUCCIÓN
+========================================================
+
+ESTADO: TAREA CERRADA / PRODUCCIÓN ESTABLE
+
+Este fichero SUPERA y sustituye como continuidad operativa a los handoffs de gate Chrome/Safari y preflight anteriores.
+No reiniciar la promoción, no volver a reconstruir el lab y no repetir trabajo ya verificado salvo que exista una regresión nueva.
+
+OBJETIVO YA CONSEGUIDO
+- v0.8.5 desplegada en producción.
+- Chrome/PC y WebKit/iPhone 14 Plus: gameplay público V31 -> R39 mediante noVNC PASS.
+- R39 ejecuta Adobe Flash Player nativo en servidor; el navegador no recibe plugin legacy.
+- WebKit periódico exige escenario exacto home+register+login+me+V31+R39.
+- Sin fuga de SSO ni object/embed en V31/R39.
+- Backup local, copia offsite VPS2, restore offsite aislado, runtime health, disaster drill y validador agregado PASS.
+- habbo-status.sh: OVERALL READY.
+
+ESTADO OPERATIVO RECIENTE
+- VPS1 producción: bridge-old / hostname secureme / raíz /srv/habbo.
+- Última generación observada durante soak: /srv/habbo/backups/manual-20260926T104813Z.
+- Offsite correspondiente: /var/backups/habbo-vps1/manual-20260926T104813Z.tar.gz.
+- SHA256 offsite: 3fd2f4ad7850b8f7cb5ebc200e76444101c63a761ccfa7e88426eb2e6d25e2c4.
+- Restore offsite de esa misma generación: PASS, network=none, tmpfs, 88 tablas, 40 navigator_styles, RogerVideo=1, room1000=1.
+- WebKit oficial fresco: PASS, attempts=1, scenario=home+register+login+me+V31+R39.
+- Recovery fingerprint observado: b2c2efa39e6f702ce6f77ad3dc8d19a61b3febf616fafd9b9929f1d46e9ccfbf.
+- Local backup count observado: 16; retención funcionando.
+- Public Habbo HTTP: 200.
+
+REPO
+- rogercs99/AIbacklog
+- rama: project/habbo-2009-dual-linux-vps1-deploy-20260923
+- checkout operativo: /root/AIbacklog-habbo-touch-20260924
+- el fichero histórico no trackeado habbo-linux-checkpoint/vps1-overlay/v31-web-touch-lab.sh se deja deliberadamente intacto.
+
+REGLA DE CONTINUIDAD
+1. Verificar primero `git status`, `git log`, `habbo-status.sh` y el último backup; no asumir que este snapshot sigue siendo el más reciente.
+2. Si `OVERALL READY` y no hay latch/fallo nuevo, NO redeplegar v0.8.5 ni rehacer gates cerrados.
+3. Continuar solo con mantenimiento/observabilidad o una regresión nueva demostrada.
+4. Si aparece una regresión real, corregirla con rollback/backup/recovery conservando la arquitectura actual.
+5. Persistir cada hito real en Git + tag + knowledge.
+6. No tocar `v31-web-touch-lab.sh` salvo motivo explícito.
+
+SIGUIENTE PASO EXACTO
+- No hay trabajo funcional pendiente.
+- En una nueva rotación, empezar por comprobar salud/deriva actual.
+- Si todo sigue READY, tratar esta tarea como TERMINADA y no recrear trabajo histórico.
+
+FORMATO RELAY
+Estado de la tarea: terminada
+Progreso aproximado: 100%
+Resumen para continuar: v0.8.5 está en producción y validada; solo continuar ante mantenimiento útil o regresión nueva, sin repetir gates históricos.

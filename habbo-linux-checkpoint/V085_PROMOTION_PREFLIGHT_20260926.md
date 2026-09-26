@@ -1,3 +1,5 @@
+> **HISTÓRICO / SUPERSEDED (2026-09-26):** este archivo documenta el estado *antes* de la promoción. La v0.8.5 ya está desplegada y validada en producción. No interpretar el antiguo gate «not deployed» como estado actual. Para el estado vigente usar `V085_PRODUCTION_PROMOTION_20260926.md` y `VPS1_DEPLOYMENT_20260923.md`.
+
 # Habbo v0.8.5 — production promotion preflight (2026-09-26)
 
 Scope: read-only production inspection + Git/lab hardening. No production deployment or service modification was performed.

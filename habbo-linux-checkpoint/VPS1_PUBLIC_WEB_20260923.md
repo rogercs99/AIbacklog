@@ -643,7 +643,7 @@ Independent source inventory was re-verified in ChatGPT Library folder `/Habbo 2
 
 To remove GitHub as a restore dependency, a complete offline Git bundle of the clean Havana checkout was created:
 - commit `b550f00f27788145d26723fd19e943aa63504a63`;
-- bundle SHA-256 `77672bee2a6b8f879aa8cb0acbac41b7bc203b4487e1464ebacbc1848564bcb5`;
+- historical bundle SHA-256 at that checkpoint: `77672bee2a6b8f879aa8cb0acbac41b7bc203b4487e1464ebacbc1848564bcb5`; this was later regenerated and is **not** the current recovery pin. The current canonical bundle SHA-256 is `9e3ee88b2670e7156c7c05bca13646b9d5378e1b8d83f3a7f2eb53fefa344a4f`.
 - bundle size 4,304,844 bytes;
 - bundle records complete history.
 

@@ -7,7 +7,7 @@ check(){ local label=$1; shift; if "$@"; then printf '%-28s %s\n' "$label" 'OK';
 
 echo 'Habbo deployment status'
 echo '-----------------------'
-for u in habbo-stack habbo-static habbo-websockify cloudflared-stremio-legacy habbo-postboot-validate; do
+for u in habbo-stack habbo-static habbo-websockify habbo-web-v085 cloudflared-stremio-legacy habbo-postboot-validate; do
   check "$u active" systemctl is-active --quiet "$u"
   check "$u enabled" systemctl is-enabled --quiet "$u"
 done

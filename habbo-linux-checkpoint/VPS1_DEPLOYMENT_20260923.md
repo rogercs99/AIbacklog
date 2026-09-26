@@ -274,3 +274,10 @@ Operational rule: production remains untouched. Any future promotion must start 
 - Runtime marker, offsite archive/restore and disaster drill all converge on `/srv/habbo/backups/manual-20260926T100752Z`.
 - Offsite archive SHA256: `8ab94f7b366366e0102f69e743cae5e6960d37b9906c45450bcd41b1bbac3380`; recovery fingerprint `b2c2efa39e6f702ce6f77ad3dc8d19a61b3febf616fafd9b9929f1d46e9ccfbf`.
 - Final deployment validator PASS with 16 local backup generations.
+
+### Operational mirror drift closure (2026-09-26)
+- Versioned VPS1/VPS2 critical operations and systemd definitions were compared byte-for-byte with the proven live files.
+- Repo-only lag was reconciled for the production validator, disaster restore drill and status script; all other observed drifts were EOF normalization only.
+- Final exact mirror audit: `VPS1_EXACT_DIFFS=0`, `VPS2_EXACT_DIFFS=0` for the audited critical set.
+- No live production behavior changed during this mirror reconciliation; the already-green runtime, backup, WebKit gameplay, offsite restore and disaster-recovery state remained untouched.
+- Historical Havana bundle SHA `77672bee...` is explicitly documented as superseded by current recovery pin `9e3ee88b2670e7156c7c05bca13646b9d5378e1b8d83f3a7f2eb53fefa344a4f`.

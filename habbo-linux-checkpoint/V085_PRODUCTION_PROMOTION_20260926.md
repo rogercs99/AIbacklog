@@ -100,3 +100,12 @@ A pre-v0.8.5 Cloudflare config backup was retained on VPS1. Rollback is to resto
 - Canonical generation after the boundary proof: `/srv/habbo/backups/manual-20260926T100752Z`, offsite SHA256 `8ab94f7b366366e0102f69e743cae5e6960d37b9906c45450bcd41b1bbac3380`.
 - Matching VPS2 offsite store and isolated restore PASS; runtime health and VPS1 disaster drill both reference `manual-20260926T100752Z`.
 - Final aggregate deployment validator PASS with `backup_count=16` and recovery fingerprint `b2c2efa39e6f702ce6f77ad3dc8d19a61b3febf616fafd9b9929f1d46e9ccfbf`.
+
+## Operational mirror drift closure
+- A post-closure drift audit compared the versioned VPS1/VPS2 operational files against the exact files executed by production and control-plane systemd units.
+- All apparent VPS2 differences except the already-synchronized gameplay files were trailing-newline-only; those were normalized so the repository now byte-matches the live control plane.
+- VPS1 had three real repository lags that were already active and fully validated in production: `deployment-final-validate.sh` includes `habbo-web-v085` plus the VPS2 recovery smoke; `disaster-restore-drill.sh` performs `git fsck --full --no-dangling`; and `habbo-status.sh` monitors `habbo-web-v085`. The repo now mirrors those proven live versions exactly.
+- Remaining VPS1 operational/unit newline-only differences were normalized to exact live bytes. No production runtime file was changed during this repository reconciliation.
+- Exact audit result after synchronization: `VPS1_EXACT_DIFFS=0`, `VPS2_EXACT_DIFFS=0` across the audited critical scripts/units.
+- The old Havana bundle SHA `77672bee...` in the historical public-web notes is now explicitly labelled historical/superseded; current recovery pin remains `9e3ee88b2670e7156c7c05bca13646b9d5378e1b8d83f3a7f2eb53fefa344a4f`.
+- Retention dry-run after the closure: 16 managed backups, 16 kept, 0 candidates, `KEEP_RECENT=14`; daily backup already runs retention before creating the next generation.

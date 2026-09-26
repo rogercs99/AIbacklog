@@ -4,7 +4,7 @@ ROOT=/srv/habbo
 EXPECTED_BUNDLE=f80bbefc5a486fd0f9cce058a39462ef3925c563253dc2f69ebe647f6a6630ec
 BUNDLE="$ROOT/releases/final-v2/habbo-2009-dual-linux-FINAL-v2-20260923.zip"
 
-for unit in habbo-stack habbo-static habbo-websockify habbo-postboot-validate cloudflared-stremio-legacy; do
+for unit in habbo-stack habbo-static habbo-websockify habbo-web-v085 habbo-postboot-validate cloudflared-stremio-legacy; do
   systemctl is-active --quiet "$unit" || { echo "FAIL: inactive unit $unit" >&2; exit 1; }
   systemctl is-enabled --quiet "$unit" || { echo "FAIL: disabled unit $unit" >&2; exit 1; }
 done
@@ -53,6 +53,7 @@ rage=$(( $(date -u +%s) - $(date -u -d "$rts" +%s) ))
 "$ROOT/ops/db-backup-consistency-smoke.sh"
 "$ROOT/ops/secret-permissions-smoke.sh"
 "$ROOT/ops/disaster-recovery-source-smoke.sh"
+"$ROOT/ops/vps2-control-plane-recovery-smoke.sh"
 "$ROOT/ops/offsite-backup-smoke.sh"
 "$ROOT/ops/offsite-restore-drill-smoke.sh"
 "$ROOT/ops/public-webkit-remote-smoke.sh"

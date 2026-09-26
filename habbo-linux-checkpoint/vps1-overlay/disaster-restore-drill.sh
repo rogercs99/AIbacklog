@@ -34,6 +34,7 @@ tar -xzf "$B/web-frontend-overlay.tar.gz" -C "$R/srv/habbo"
 # Offline source restore.
 GIT_CONFIG_COUNT=1 GIT_CONFIG_KEY_0=advice.detachedHead GIT_CONFIG_VALUE_0=false git clone -q "$B/havana-source-b550f00.bundle" "$R/srv/habbo/Havana"
 [[ "$(git -C "$R/srv/habbo/Havana" rev-parse HEAD)" == "$EXPECTED_COMMIT" ]] || fail 'restored Havana commit mismatch'
+git -C "$R/srv/habbo/Havana" fsck --full --no-dangling >/dev/null || fail restored Havana object graph incomplete
 [[ -z "$(git -C "$R/srv/habbo/Havana" status --porcelain)" ]] || fail 'restored Havana checkout dirty'
 
 # FINAL-v2 must be independently readable and exact.

@@ -176,3 +176,15 @@ Operational rule: production remains untouched. Any future promotion must start 
 - Critical regression scripts: PASS for Safari localhost rewrite/mobile layout, V31 Safari startup retry, stalled-RFB watchdog, stale VNC/websockify cleanup, V31 injector/socket contract, R39 native noVNC contract, and dual-runtime exclusion.
 - Runtime closure audit: only local static listener `127.0.0.1:18080` remained; V31/R39/noVNC runtime listeners were not left running.
 - Production remained untouched. Any promotion remains a separate explicit human deployment gate.
+
+### v0.8.5 promotion preflight hardening (2026-09-26)
+- Read-only target resolution confirmed production is `bridge-old` / hostname `secureme`; current MCVPS host `ES217221` is the VPS2/control-plane host and does not itself host `/srv/habbo` production.
+- Read-only promotion preflight added at `habbo-linux-checkpoint/tools/habbo-v085-promotion-preflight.sh`.
+- VPS1 product plane currently passes core checks: Habbo services active, public HTTP 200, latest backup exists and verifier PASS.
+- Promotion is intentionally blocked by two validation-infrastructure issues: stale failed WebKit proof and VPS2 offsite recovery-store drift.
+- Exact recovery drift is limited to the authenticated WebKit smoke pair: `/usr/local/sbin/habbo-public-webkit-daily.sh` and `/usr/local/sbin/habbo-public-webkit-smoke.py`.
+- Root cause of the WebKit failure was reproduced: after `/me` had loaded, a final `networkidle` wait caused Playwright WebKit to report `Navigation failed because page crashed!`.
+- A temporary non-installed smoke copy replacing only that final `networkidle` with a bounded visible-body wait passed the full iPhone 14 Plus `home+register+login+me` flow against the public site.
+- Versioned WebKit smoke and daily wrapper were synchronized with the authenticated live logic and the safe settle fix; regression `test_webkit_authenticated_settle_v085.py` passes.
+- Git checkpoint: `3ca250b888c6bba6e066ca8fc3a3ca8be908d384`, tag `habbo-web-local-v0.8.5-preflight-20260926`.
+- No production file, unit, tunnel, database or service was modified. Promotion remains gated.

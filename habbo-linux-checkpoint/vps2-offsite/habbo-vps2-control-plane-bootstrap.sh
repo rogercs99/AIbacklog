@@ -10,7 +10,7 @@ EXPECTED_KEY_FP='SHA256:wV37m0XRxH8D7KV+0gfdi8KAJq4KoFmEpRpXIM8b/TY'
 EXPECTED_VPS1_HOST_FP='SHA256:PzuiYZ42mk2R0T1DA6trACSppxrfXBmxJP21cnwtG7g'
 EXPECTED_PLAYWRIGHT='1.55.0'
 EXPECTED_WEBKIT='/root/.cache/ms-playwright/webkit-2203/pw_run.sh'
-EXPECTED_CHROMIUM='/root/.cache/ms-playwright/chromium_headless_shell-1181/chrome-linux/headless_shell'
+PLAYWRIGHT_CACHE=${PLAYWRIGHT_BROWSERS_PATH:-/root/.cache/ms-playwright}
 TIMERS=(
   habbo-live-drift-watch.timer
   habbo-public-chromium.timer
@@ -71,10 +71,25 @@ except Exception: print('missing')
 PY
 }
 
+chromium_executable(){
+  local f
+  local candidates=()
+  shopt -s nullglob
+  candidates+=("$PLAYWRIGHT_CACHE"/chromium_headless_shell-*/chrome-linux/headless_shell)
+  candidates+=("$PLAYWRIGHT_CACHE"/chromium-*/chrome-linux/chrome)
+  shopt -u nullglob
+  for f in "${candidates[@]}"; do
+    [[ -x "$f" ]] || continue
+    printf '%s\n' "$f"
+    return 0
+  done
+  return 1
+}
+
 browser_prereqs_ok(){
   [[ "$(playwright_version)" == "$EXPECTED_PLAYWRIGHT" ]] &&
     [[ -x "$EXPECTED_WEBKIT" ]] &&
-    [[ -x "$EXPECTED_CHROMIUM" ]]
+    chromium_executable >/dev/null
 }
 
 repair_browser_prereqs(){
@@ -98,7 +113,8 @@ check_prereqs(){
   pyver=$(playwright_version)
   [[ "$pyver" == "$EXPECTED_PLAYWRIGHT" ]] || fail "Playwright version mismatch: $pyver (expected $EXPECTED_PLAYWRIGHT)"
   [[ -x "$EXPECTED_WEBKIT" ]] || fail "Playwright WebKit 2203 missing: $EXPECTED_WEBKIT"
-  [[ -x "$EXPECTED_CHROMIUM" ]] || fail "Chromium headless shell 1181 missing: $EXPECTED_CHROMIUM"
+  chromium_path=$(chromium_executable || true)
+  [[ -n "$chromium_path" ]] || fail "Chromium executable missing under $PLAYWRIGHT_CACHE"
   ssh -G "$REMOTE" >/dev/null 2>&1 || fail 'bridge-old SSH alias unavailable'
   key=$(ssh -G "$REMOTE" 2>/dev/null | awk '$1=="identityfile"{print $2; exit}')
   [[ -n "$key" && -f "$key" ]] || fail 'bridge-old identity file missing'
@@ -199,7 +215,7 @@ case "$mode" in
   --check-prereqs)
     check_prereqs
     echo 'PASS: Habbo VPS2 bootstrap prerequisites'
-    echo 'docker=ok playwright=1.55.0 chromium=1181 webkit=2203 bridge-old=verified ssh-secrets=external'
+    echo 'docker=ok playwright=1.55.0 chromium=resolver webkit=2203 bridge-old=verified ssh-secrets=external'
     ;;
   --apply)
     [[ "$SRC" != / ]] || fail 'refusing --apply with live / as source; run bootstrap from an extracted recovery kit or set HABBO_VPS2_SOURCE_ROOT'

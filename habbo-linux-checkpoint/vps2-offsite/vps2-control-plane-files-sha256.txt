@@ -28,8 +28,8 @@ b81882a29c57a645ab2ca70adb066152ec7929cfafa3d9560bdaf50275453a54  usr/local/sbin
 b1ffcc0bd4107a4d271c4e3ad3333f3f1a19be1ac68000f601ee5c9b0ead562e  usr/local/sbin/habbo-vps1-offsite-pull.sh
 fa82b870eeb462572b35391b65c2ac50b2bf4edcbfa391dfceb2a6e9a5fc3a40  usr/local/sbin/habbo-vps1-offsite-restore-drill.sh
 dfef2c587d7e80e514a9bf3be24b8a587d1e7088edad91787e60229746aef778  usr/local/sbin/habbo-vps1-offsite-store-smoke.sh
-df27f82d72d78bd27f908df85c46497fa480f8baf69d46c118ca68bcb433a4c6  usr/local/sbin/habbo-vps2-control-plane-bootstrap.sh
+66d8fd768f4c5e38ac0cd097e43dfbaaa12da82d477feee33968fad9816de5cf  usr/local/sbin/habbo-vps2-control-plane-bootstrap.sh
 a040a048fb3d90f0d7b72fa16b2f66b8b75fe393bfff33885a6ca40ec0f13377  usr/local/sbin/habbo-vps2-control-plane-heartbeat.sh
 d44967c9f7b1bf22bc4958e36364cc07986e5db411fb165aa8804c85f8602f39  usr/local/sbin/habbo-vps2-space-preflight.sh
-eaa9387fdef3813296acc0a824bc2a63d67fb37c4047a13831cc3b40bf4617be  usr/local/share/habbo-live-drift-baseline.tar.gz
-9629f7451d328af1c1cd695ff1548fe9017ea3322670698a289d51dd2c3919d7  usr/local/share/habbo-live-drift-baseline.tar.gz.sha256
+698f2f698ed86c61726ee7ba093382bfdecf11b1806cf15c74d6ff4fdebf9b6e  usr/local/share/habbo-live-drift-baseline.tar.gz
+cfef3f75fa651e63e1ac0eeba8327b10fac0c2b1b85bf1d69a081f69486ecf87  usr/local/share/habbo-live-drift-baseline.tar.gz.sha256

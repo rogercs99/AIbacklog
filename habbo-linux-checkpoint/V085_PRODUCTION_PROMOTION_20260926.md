@@ -362,3 +362,12 @@ A pre-v0.8.5 Cloudflare config backup was retained on VPS1. Rollback is to resto
 - The delta corresponded to the already-current WebKit daily wrapper and immutable live-drift baseline hashes. Production was not modified.
 - The generated manifest was mirrored from `/srv/habbo/releases/disaster`, then the official recovery smoke PASSed with 35 files / 15 scripts / 18 units, exact inventory, verified hashes and bootstrap rehearsal.
 - Final live↔Git audit: `matches=88 drifts=0 missing=0 notes=1`; the sole note remains the deliberately untracked historical `v31-web-touch-lab.sh`.
+
+## VPS2 Chromium resolver promotion after extended soak
+- Several hours after v0.8.5 promotion, automatic WebKit, Chromium, offsite restore and live-drift timers remained healthy and production stayed `OVERALL READY`.
+- VPS2 bootstrap no longer hardcodes Chromium revision `1181`; it resolves the first executable Playwright Chromium/headless-shell from `$PLAYWRIGHT_BROWSERS_PATH`, while keeping WebKit revision `2203` and Playwright `1.55.0` pinned.
+- The resolver was first validated in an isolated 35-file recovery rehearsal, then promoted live only after manifest alignment and regression PASS.
+- Approved live drift was exactly one file (the bootstrap); the immutable baseline was rebuilt deterministically and the watcher returned 87 matches / 0 drifts.
+- Final recovery kit overlay/manifest hashes: `ed6362745d9894bd1fb005922850a93745181eb5538466d24a6ed519da24d8f2` / `e39b206743a53d94822f1655a8684799922cceba1d793ee528f3e40d6eb00436`.
+- Final canonical generation `/srv/habbo/backups/manual-20260926T181406Z` passed local restore, VPS2 store smoke, VPS2 isolated restore, runtime health, VPS1 disaster drill and aggregate final validation.
+- Offsite archive SHA256: `beb0bb1292c0aff2b79a457719703a4386d5e3ca70b704d1a0bd984d23fbb9e3`; recovery fingerprint: `055bdf7848783cd6bf4ab57e0de3ba1bc83e00522a2c1d0de8f426f5dc58606d`.

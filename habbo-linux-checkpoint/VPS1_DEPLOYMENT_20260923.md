@@ -480,3 +480,10 @@ Operational rule: production remains untouched. Any future promotion must start 
 - Regression `tools/test_historical_checkpoint_supersession_v085.py` ensures the historical checkpoint cannot regress to an unqualified “gameplay pending” state.
 - Operational state remains unchanged: v0.8.5 is in production, WebKit+Chromium prove `home+register+login+me+V31+R39`, autonomous drift/recovery checks are healthy and `habbo-status.sh` is `OVERALL READY`.
 - Relay authority `/srv/chat-session-relay/data/task-inputs/20260926/HABBO_2009_V085_PRODUCTION_FINAL_CONTINUITY.txt` was re-synchronized after this supersession and is byte-identical to the repository continuity; shared SHA256 `ff954560449d3c740d7de4c35ed74f0a1b8854a5a3cf76469af42fac905a3c17`.
+
+### VPS2 Chromium resolver promoted (2026-09-26 evening)
+- After isolated validation, the VPS2 recovery bootstrap was promoted from hardcoded Chromium `1181` discovery to a Playwright-cache resolver supporting both `chromium_headless_shell-*` and `chromium-*` executable layouts.
+- Live prerequisite check PASSes with `chromium=resolver`; normal WebKit/Chromium gameplay timers continue PASSing the full `home+register+login+me+V31+R39` scenario.
+- Intentional live-drift was reconciled through the canonical deterministic baseline builder; new baseline SHA256 `698f2f698ed86c61726ee7ba093382bfdecf11b1806cf15c74d6ff4fdebf9b6e` yields 87 matches / 0 drifts.
+- Recovery kit was regenerated with exact 35-file inventory and bootstrap rehearsal PASS; repository manifest matches live manifest byte-for-byte.
+- Canonical recovery generation is `/srv/habbo/backups/manual-20260926T181406Z`; local and offsite isolated restores PASS, runtime/disaster markers match it, and final deployment validation PASSes.

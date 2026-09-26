@@ -16,5 +16,9 @@ assert 'repair_browser_prereqs' not in check
 assert 'check_prereqs' in check
 assert "EXPECTED_PLAYWRIGHT='1.55.0'" in s
 assert "EXPECTED_WEBKIT='/root/.cache/ms-playwright/webkit-2203/pw_run.sh'" in s
-assert "EXPECTED_CHROMIUM='/root/.cache/ms-playwright/chromium_headless_shell-1181/chrome-linux/headless_shell'" in s
+assert 'chromium_executable(){' in s
+assert 'chromium_headless_shell-*/chrome-linux/headless_shell' in s
+assert 'chromium-*/chrome-linux/chrome' in s
+assert 'EXPECTED_CHROMIUM=' not in s
+assert 'chromium_executable >/dev/null' in s
 print('PASS: VPS2 bootstrap can self-repair Playwright browsers only during explicit --apply')

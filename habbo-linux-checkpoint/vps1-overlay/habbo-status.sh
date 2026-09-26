@@ -116,20 +116,46 @@ webkit_ok=true
 if [[ -f /srv/habbo/WEBKIT_STATUS ]]; then
   webkit_ts=$(awk -F= '$1=="validated_at_utc" {print $2}' /srv/habbo/WEBKIT_STATUS)
   webkit_result=$(awk -F= '$1=="result" {print $2}' /srv/habbo/WEBKIT_STATUS)
+  webkit_scenario=$(awk -F= '$1=="scenario" {print $2}' /srv/habbo/WEBKIT_STATUS)
   webkit_attempts=$(awk -F= '$1=="attempts" {print $2}' /srv/habbo/WEBKIT_STATUS)
   webkit_age=$(( $(date -u +%s) - $(date -u -d "$webkit_ts" +%s) ))
 else
-  webkit_age=999999999; webkit_result=missing; webkit_attempts=0; webkit_ok=false
+  webkit_age=999999999; webkit_result=missing; webkit_scenario=missing; webkit_attempts=0; webkit_ok=false
 fi
 [[ "$webkit_age" -le 129600 ]] || webkit_ok=false
 [[ "$webkit_result" == success ]] || webkit_ok=false
+[[ "$webkit_scenario" == 'home+register+login+me+V31+R39' ]] || webkit_ok=false
 [[ "$webkit_attempts" =~ ^[12]$ ]] || webkit_ok=false
 [[ ! -e /srv/habbo/WEBKIT_FAILED ]] || webkit_ok=false
 $webkit_ok || ok=false
 printf '%-28s %ss\n' 'WebKit proof age' "$webkit_age"
 printf '%-28s %s\n' 'WebKit failure latch' "$([[ -e /srv/habbo/WEBKIT_FAILED ]] && echo FAILED || echo clear)"
 printf '%-28s %s\n' 'WebKit iPhone proof' "$($webkit_ok && echo OK || echo FAIL)"
+printf '%-28s %s\n' 'WebKit scenario' "$webkit_scenario"
 printf '%-28s %s\n' 'WebKit attempts' "$webkit_attempts"
+chromium_ok=true
+if [[ -f /srv/habbo/CHROMIUM_STATUS ]]; then
+  chromium_ts=$(awk -F= '$1=="validated_at_utc" {print $2}' /srv/habbo/CHROMIUM_STATUS)
+  chromium_result=$(awk -F= '$1=="result" {print $2}' /srv/habbo/CHROMIUM_STATUS)
+  chromium_engine=$(awk -F= '$1=="engine" {print $2}' /srv/habbo/CHROMIUM_STATUS)
+  chromium_device=$(awk -F= '$1=="device" {print $2}' /srv/habbo/CHROMIUM_STATUS)
+  chromium_scenario=$(awk -F= '$1=="scenario" {print $2}' /srv/habbo/CHROMIUM_STATUS)
+  chromium_attempts=$(awk -F= '$1=="attempts" {print $2}' /srv/habbo/CHROMIUM_STATUS)
+  chromium_age=$(( $(date -u +%s) - $(date -u -d "$chromium_ts" +%s) ))
+else
+  chromium_age=999999999; chromium_result=missing; chromium_engine=missing; chromium_device=missing; chromium_scenario=missing; chromium_attempts=0; chromium_ok=false
+fi
+[[ "$chromium_age" -le 129600 ]] || chromium_ok=false
+[[ "$chromium_result" == success && "$chromium_engine" == chromium && "$chromium_device" == 'Desktop 1440x900' ]] || chromium_ok=false
+[[ "$chromium_scenario" == 'home+register+login+me+V31+R39' ]] || chromium_ok=false
+[[ "$chromium_attempts" =~ ^[12]$ ]] || chromium_ok=false
+[[ ! -e /srv/habbo/CHROMIUM_FAILED ]] || chromium_ok=false
+$chromium_ok || ok=false
+printf '%-28s %ss\n' 'Chromium proof age' "$chromium_age"
+printf '%-28s %s\n' 'Chromium failure latch' "$([[ -e /srv/habbo/CHROMIUM_FAILED ]] && echo FAILED || echo clear)"
+printf '%-28s %s\n' 'Chromium desktop proof' "$($chromium_ok && echo OK || echo FAIL)"
+printf '%-28s %s\n' 'Chromium scenario' "$chromium_scenario"
+printf '%-28s %s\n' 'Chromium attempts' "$chromium_attempts"
 vps2cp_ok=true
 if [[ -f /srv/habbo/VPS2_CONTROL_PLANE_STATUS ]]; then
   vps2cp_ts=$(awk -F= '$1=="validated_at_utc" {print $2}' /srv/habbo/VPS2_CONTROL_PLANE_STATUS)
@@ -150,7 +176,7 @@ else
   vps2cp_age=999999999; vps2cp_result=missing; vps2cp_total=0; vps2cp_healthy=0; vps2cp_failed=999; vps2cp_root=0; vps2cp_shm=0; vps2cp_store=0; vps2cp_deep=0; vps2cp_bootstrap=0; vps2cp_deterministic=0; vps2cp_fingerprint=missing; vps2cp_archives=0; vps2cp_ok=false
 fi
 [[ "$vps2cp_age" -le 7500 ]] || vps2cp_ok=false
-[[ "$vps2cp_result" == success && "$vps2cp_total" == 4 && "$vps2cp_healthy" == 4 && "$vps2cp_failed" == 0 ]] || vps2cp_ok=false
+[[ "$vps2cp_result" == success && "$vps2cp_total" == 5 && "$vps2cp_healthy" == 5 && "$vps2cp_failed" == 0 ]] || vps2cp_ok=false
 [[ "$vps2cp_root" =~ ^[0-9]+$ && "$vps2cp_root" -ge 819200 ]] || vps2cp_ok=false
 [[ "$vps2cp_shm" =~ ^[0-9]+$ && "$vps2cp_shm" -ge 524288 ]] || vps2cp_ok=false
 [[ "$vps2cp_store" == 1 && "$vps2cp_deep" == 1 && "$vps2cp_bootstrap" == 1 && "$vps2cp_deterministic" == 1 && "$vps2cp_fingerprint" =~ ^[0-9a-f]{64}$ && "$vps2cp_archives" == 3 ]] || vps2cp_ok=false

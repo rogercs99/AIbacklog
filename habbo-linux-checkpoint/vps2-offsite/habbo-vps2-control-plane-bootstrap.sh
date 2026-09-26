@@ -10,7 +10,9 @@ EXPECTED_KEY_FP='SHA256:wV37m0XRxH8D7KV+0gfdi8KAJq4KoFmEpRpXIM8b/TY'
 EXPECTED_VPS1_HOST_FP='SHA256:PzuiYZ42mk2R0T1DA6trACSppxrfXBmxJP21cnwtG7g'
 EXPECTED_PLAYWRIGHT='1.55.0'
 EXPECTED_WEBKIT='/root/.cache/ms-playwright/webkit-2203/pw_run.sh'
+EXPECTED_CHROMIUM='/root/.cache/ms-playwright/chromium_headless_shell-1181/chrome-linux/headless_shell'
 TIMERS=(
+  habbo-public-chromium.timer
   habbo-vps1-offsite-pull.timer
   habbo-vps1-offsite-restore-drill.timer
   habbo-public-webkit.timer
@@ -23,8 +25,8 @@ validate_source(){
   [[ -d "$SRC/usr/local/sbin" && -d "$SRC/etc/systemd/system" ]] || fail "invalid source root: $SRC"
   mapfile -t scripts < <(find "$SRC/usr/local/sbin" -maxdepth 1 -type f -name 'habbo-*' -printf '%p\n' | sort)
   mapfile -t units < <(find "$SRC/etc/systemd/system" -maxdepth 1 -type f -name 'habbo-*' -printf '%p\n' | sort)
-  [[ "${#scripts[@]}" -eq 11 ]] || fail "source script count mismatch: ${#scripts[@]} (expected 11)"
-  [[ "${#units[@]}" -eq 12 ]] || fail "source unit count mismatch: ${#units[@]} (expected 12)"
+  [[ "${#scripts[@]}" -eq 14 ]] || fail "source script count mismatch: ${#scripts[@]} (expected 14)"
+  [[ "${#units[@]}" -eq 15 ]] || fail "source unit count mismatch: ${#units[@]} (expected 15)"
   [[ -f "$SRC/usr/local/sbin/habbo-vps2-control-plane-bootstrap.sh" ]] || fail 'bootstrap missing from source kit'
   for f in "${scripts[@]}"; do
     case "$f" in
@@ -68,6 +70,7 @@ PY
 )
   [[ "$pyver" == "$EXPECTED_PLAYWRIGHT" ]] || fail "Playwright version mismatch: $pyver (expected $EXPECTED_PLAYWRIGHT)"
   [[ -x "$EXPECTED_WEBKIT" ]] || fail "Playwright WebKit 2203 missing: $EXPECTED_WEBKIT"
+  [[ -x "$EXPECTED_CHROMIUM" ]] || fail "Chromium headless shell 1181 missing: $EXPECTED_CHROMIUM"
   ssh -G "$REMOTE" >/dev/null 2>&1 || fail 'bridge-old SSH alias unavailable'
   key=$(ssh -G "$REMOTE" 2>/dev/null | awk '$1=="identityfile"{print $2; exit}')
   [[ -n "$key" && -f "$key" ]] || fail 'bridge-old identity file missing'
@@ -97,8 +100,8 @@ validate_installed_root(){
   local target=$1
   mapfile -t scripts < <(find "$target/usr/local/sbin" -maxdepth 1 -type f -name 'habbo-*' -printf '%p\n' | sort)
   mapfile -t units < <(find "$target/etc/systemd/system" -maxdepth 1 -type f -name 'habbo-*' -printf '%p\n' | sort)
-  [[ "${#scripts[@]}" -eq 11 ]] || fail "installed script count mismatch: ${#scripts[@]}"
-  [[ "${#units[@]}" -eq 12 ]] || fail "installed unit count mismatch: ${#units[@]}"
+  [[ "${#scripts[@]}" -eq 14 ]] || fail "installed script count mismatch: ${#scripts[@]}"
+  [[ "${#units[@]}" -eq 15 ]] || fail "installed unit count mismatch: ${#units[@]}"
   for f in "${scripts[@]}"; do [[ "$(stat -c '%a %U:%G' "$f")" == '700 root:root' ]] || fail "script mode invalid: $f"; done
   for f in "${units[@]}"; do [[ "$(stat -c '%a %U:%G' "$f")" == '644 root:root' ]] || fail "unit mode invalid: $f"; done
   [[ "$(stat -c '%a %U:%G' "$target/var/backups/habbo-vps1")" == '700 root:root' ]] || fail 'offsite store mode invalid in target root'
@@ -158,7 +161,7 @@ case "$mode" in
     enable_offline "$target"
     validate_installed_root "$target"
     echo 'PASS: Habbo VPS2 control-plane bootstrap rehearsal'
-    echo "source=$SRC target=$target files=23 scripts=11 units=12 timers=4 modes=verified offline_enable=verified secrets=external"
+    echo "source=$SRC target=$target files=29 scripts=14 units=15 timers=5 modes=verified offline_enable=verified secrets=external"
     ;;
   --check-prereqs)
     check_prereqs
@@ -174,13 +177,14 @@ case "$mode" in
     systemctl daemon-reload
     systemctl enable --now "${TIMERS[@]}"
     systemctl start habbo-vps1-offsite-pull.service
+    systemctl start habbo-public-chromium.service
     systemctl start habbo-public-webkit.service
     systemctl start habbo-vps1-offsite-restore-drill.service
     systemctl reset-failed habbo-vps2-control-plane-heartbeat.service habbo-vps2-control-plane-heartbeat-failed.service || true
     systemctl start habbo-vps2-control-plane-heartbeat.service
     /usr/local/sbin/habbo-vps1-offsite-store-smoke.sh
     echo 'PASS: Habbo VPS2 control plane bootstrapped'
-    echo 'files=23 scripts=11 units=12 timers=4 offsite_seed=3 verification=pull+webkit+restore+heartbeat secrets=external'
+    echo 'files=29 scripts=14 units=15 timers=5 offsite_seed=3 verification=pull+chromium+webkit+restore+heartbeat secrets=external'
     ;;
   *) usage ;;
 esac

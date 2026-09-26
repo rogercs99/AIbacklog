@@ -1,0 +1,11 @@
+[Unit]
+Description=Run Habbo Chromium desktop regression daily
+
+[Timer]
+OnCalendar=*-*-* 06:05:00
+Persistent=true
+RandomizedDelaySec=60
+Unit=habbo-public-chromium.service
+
+[Install]
+WantedBy=timers.target

@@ -343,3 +343,11 @@ Operational rule: production remains untouched. Any future promotion must start 
 - The official daily wrapper was then exercised to refresh the 29-file / 14-script / 15-unit recovery kit, create and retain `/srv/habbo/backups/manual-20260926T122914Z`, and advance runtime health.
 - The forced-fresh restore path restored that exact generation in tmpfs/network-none with 88 tables, 40 navigator styles, RogerVideo=1 and room1000=1; archive SHA256 `8d6d06217aeadd4b46981173c1db9b90b266be833321322c7e66cbbf6489e881`.
 - Disaster drill and aggregate final validator both PASS against `122914Z`; VPS2 heartbeat reports 5/5 timers healthy and recovery fingerprint `1a1e4b01016f2d5ef331ee35e127276ebf774312a128759ad7e8dd97dc539c5a`.
+
+### Periodic Chromium/PC monitoring closure (2026-09-26)
+- Chromium desktop monitoring is now a first-class daily control-plane check alongside WebKit/iPhone. It validates authenticated home+register+login+me+V31+R39 at 1440x900 and requires both public noVNC transports to connect.
+- Chromium/WebKit share a browser-smoke lock so they cannot race over smoke-owned V31/R39 runtimes. Both retain strict first-party failure handling and plugin/SSO leak guards.
+- VPS2 control plane now tracks 5/5 timers and its disaster kit contains 29 files, 14 scripts and 15 units; bootstrap rehearsal includes the Chromium timer and headless-shell prerequisite.
+- Canonical generation /srv/habbo/backups/manual-20260926T124015Z passed local restore, VPS2 copy/store smoke, VPS2 isolated restore, runtime health, disaster drill and aggregate final validation.
+- Offsite SHA256: 8837884e4c5702116ad936a7175e5c371de78a9459fc15dba2136267b2556274; recovery fingerprint: 1a1e4b01016f2d5ef331ee35e127276ebf774312a128759ad7e8dd97dc539c5a.
+- Backup retention was exercised by the real daily service and pruned stale generations while preserving latest, referenced and milestone backups.

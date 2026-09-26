@@ -7,7 +7,7 @@ MANIFEST=$SRC/vps2-control-plane-files-sha256.txt
 fail(){ echo "FAIL: $*" >&2; exit 1; }
 [[ -f "$OVERLAY" ]] || fail 'VPS2 control-plane recovery overlay missing'
 [[ -f "$MANIFEST" ]] || fail 'VPS2 control-plane recovery manifest missing'
-[[ "$(wc -l < "$MANIFEST")" -eq 23 ]] || fail 'VPS2 control-plane manifest must contain 23 files'
+[[ "$(wc -l < "$MANIFEST")" -eq 29 ]] || fail 'VPS2 control-plane manifest must contain 29 files'
 [[ "$(stat -c '%a %U:%G' "$OVERLAY")" == '600 root:root' ]] || fail 'VPS2 recovery overlay permissions invalid'
 [[ "$(stat -c '%a %U:%G' "$MANIFEST")" == '600 root:root' ]] || fail 'VPS2 recovery manifest permissions invalid'
 work=$(mktemp -d /dev/shm/habbo-vps2-recovery.XXXXXX)
@@ -41,8 +41,8 @@ manifest_digest=$(awk '{print $2}' "$MANIFEST" | sed 's#^\./##' | sort | sha256s
 [[ "$tar_digest" == "$manifest_digest" ]] || fail 'VPS2 recovery overlay inventory differs from manifest'
 mapfile -t scripts < <(find "$work/usr/local/sbin" -maxdepth 1 -type f -name 'habbo-*' -printf '%p\n' | sort)
 mapfile -t units < <(find "$work/etc/systemd/system" -maxdepth 1 -type f -name 'habbo-*' -printf '%p\n' | sort)
-[[ "${#scripts[@]}" -eq 11 ]] || fail "VPS2 recovery script count mismatch: ${#scripts[@]}"
-[[ "${#units[@]}" -eq 12 ]] || fail "VPS2 recovery unit count mismatch: ${#units[@]}"
+[[ "${#scripts[@]}" -eq 14 ]] || fail "VPS2 recovery script count mismatch: ${#scripts[@]}"
+[[ "${#units[@]}" -eq 15 ]] || fail "VPS2 recovery unit count mismatch: ${#units[@]}"
 for f in "${scripts[@]}"; do
   case "$f" in
     *.sh) bash -n "$f" || fail "Bash syntax invalid: ${f#$work/}" ;;
@@ -78,6 +78,8 @@ for required in \
   usr/local/sbin/habbo-offsite-tar-safety.py \
   usr/local/sbin/habbo-vps2-control-plane-heartbeat.sh \
   usr/local/sbin/habbo-vps2-control-plane-bootstrap.sh \
+  usr/local/sbin/habbo-public-chromium-smoke.py \
+  etc/systemd/system/habbo-public-chromium.timer \
   usr/local/sbin/habbo-public-webkit-smoke.py \
   etc/systemd/system/habbo-vps1-offsite-pull.timer \
   etc/systemd/system/habbo-vps1-offsite-restore-drill.timer \
@@ -89,8 +91,8 @@ bootstrap="$work/usr/local/sbin/habbo-vps2-control-plane-bootstrap.sh"
 rehearsal="$work/.bootstrap-rehearsal"
 HABBO_VPS2_SOURCE_ROOT="$work" "$bootstrap" --rehearsal "$rehearsal" >/dev/null || fail 'VPS2 recovery bootstrap rehearsal failed'
 (cd "$rehearsal" && sha256sum -c "$MANIFEST" --status) || fail 'VPS2 recovery rehearsal hash verification failed'
-[[ "$(find "$rehearsal/usr/local/sbin" -maxdepth 1 -type f -name 'habbo-*' | wc -l)" -eq 11 ]] || fail 'VPS2 recovery rehearsal script count mismatch'
-[[ "$(find "$rehearsal/etc/systemd/system" -maxdepth 1 -type f -name 'habbo-*' | wc -l)" -eq 12 ]] || fail 'VPS2 recovery rehearsal unit count mismatch'
-[[ "$(find "$rehearsal/etc/systemd/system/timers.target.wants" -maxdepth 1 -type l -name 'habbo-*' | wc -l)" -eq 4 ]] || fail 'VPS2 recovery rehearsal timer-link count mismatch'
+[[ "$(find "$rehearsal/usr/local/sbin" -maxdepth 1 -type f -name 'habbo-*' | wc -l)" -eq 14 ]] || fail 'VPS2 recovery rehearsal script count mismatch'
+[[ "$(find "$rehearsal/etc/systemd/system" -maxdepth 1 -type f -name 'habbo-*' | wc -l)" -eq 15 ]] || fail 'VPS2 recovery rehearsal unit count mismatch'
+[[ "$(find "$rehearsal/etc/systemd/system/timers.target.wants" -maxdepth 1 -type l -name 'habbo-*' | wc -l)" -eq 5 ]] || fail 'VPS2 recovery rehearsal timer-link count mismatch'
 echo 'PASS: Habbo VPS2 control-plane recovery smoke'
-echo "source=$SRC files=23 scripts=11 units=12 hashes=verified inventory=exact syntax=verified exec_links=resolved bootstrap=rehearsed"
+echo "source=$SRC files=29 scripts=14 units=15 hashes=verified inventory=exact syntax=verified exec_links=resolved bootstrap=rehearsed"

@@ -1,0 +1,11 @@
+[Unit]
+Description=Habbo public Chromium desktop regression smoke
+After=network-online.target
+Wants=network-online.target
+OnFailure=habbo-public-chromium-failed.service
+
+[Service]
+Type=oneshot
+Environment=PLAYWRIGHT_BROWSERS_PATH=/root/.cache/ms-playwright
+ExecStart=/usr/local/sbin/habbo-public-chromium-daily.sh
+TimeoutStartSec=120

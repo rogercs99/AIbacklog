@@ -183,3 +183,19 @@ A pre-v0.8.5 Cloudflare config backup was retained on VPS1. Rollback is to resto
 - Starting only the restore service after that rehearsal pulled and restored exactly `manual-20260926T122914Z` on VPS2; archive SHA256 `8d6d06217aeadd4b46981173c1db9b90b266be833321322c7e66cbbf6489e881`; tmpfs/network-none restore invariants PASS.
 - VPS1 disaster drill also advanced to `manual-20260926T122914Z`.
 - Final aggregate validator PASS with both Chromium desktop and WebKit iPhone full `home+register+login+me+V31+R39` proofs, 5/5 VPS2 timers, recovery fingerprint `1a1e4b01016f2d5ef331ee35e127276ebf774312a128759ad7e8dd97dc539c5a`, backup count 16 and no failed Habbo units.
+
+## Periodic Chromium/PC proof + recovery closure
+- Production now has a daily Chromium desktop regression monitor in addition to WebKit/iPhone.
+- Chromium runs at desktop viewport 1440x900 and proves home+register+login+me+V31+R39, including real V31 and R39 public noVNC connections.
+- The Chromium monitor uses the same guarded first-party network semantics as the hardened WebKit flow and checks that V31/R39 browser HTML does not expose SSO/plugin markup.
+- Browser monitors share /run/lock/habbo-public-browser-smoke.lock, preventing WebKit and Chromium from competing for V31/R39 runtime ownership.
+- Chromium systemd proof PASS fresh with attempts=1; remote latch is clear.
+- VPS2 Chromium timer is enabled/active and is now the fifth monitored control-plane timer.
+- Recovery kit expanded from 23 files / 11 scripts / 12 units / 4 timer links to 29 files / 14 scripts / 15 units / 5 timer links. Hash, syntax, inventory and bootstrap rehearsal PASS.
+- Canonical post-Chromium backup: /srv/habbo/backups/manual-20260926T124015Z.
+- Backup SHA256 on VPS2: 8837884e4c5702116ad936a7175e5c371de78a9459fc15dba2136267b2556274.
+- Fresh isolated offsite restore of 124015Z PASS: network=none, tmpfs datadir, 88 tables, 40 navigator styles, RogerVideo=1, room1000=1.
+- Recovery fingerprint: 1a1e4b01016f2d5ef331ee35e127276ebf774312a128759ad7e8dd97dc539c5a.
+- Runtime health and disaster drill both reference manual-20260926T124015Z.
+- Daily backup retention is operational, not merely configured: the 2026-09-26 12:29 UTC run applied KEEP_RECENT=14, preserved milestones/referenced generations and pruned two stale backups; the daily service itself completed successfully.
+- Final aggregate deployment validator PASS with both Chromium desktop and WebKit iPhone full gameplay proofs.

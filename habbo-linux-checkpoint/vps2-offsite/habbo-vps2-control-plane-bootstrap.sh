@@ -63,17 +63,39 @@ PY
   done
 }
 
+playwright_version(){
+  python3 - <<'PY'
+import importlib.metadata as m
+try: print(m.version('playwright'))
+except Exception: print('missing')
+PY
+}
+
+browser_prereqs_ok(){
+  [[ "$(playwright_version)" == "$EXPECTED_PLAYWRIGHT" ]] &&
+    [[ -x "$EXPECTED_WEBKIT" ]] &&
+    [[ -x "$EXPECTED_CHROMIUM" ]]
+}
+
+repair_browser_prereqs(){
+  echo "INFO: repairing Playwright browser prerequisites for recovery bootstrap" >&2
+  command -v apt-get >/dev/null || fail 'apt-get unavailable for Playwright browser prerequisite repair'
+  if ! python3 -m pip --version >/dev/null 2>&1; then
+    export DEBIAN_FRONTEND=noninteractive
+    apt-get update
+    apt-get install -y python3-pip
+  fi
+  python3 -m pip install --disable-pip-version-check --no-input "playwright==$EXPECTED_PLAYWRIGHT"
+  PLAYWRIGHT_BROWSERS_PATH=/root/.cache/ms-playwright python3 -m playwright install --with-deps chromium webkit
+  browser_prereqs_ok || fail 'Playwright/browser prerequisite repair completed but expected runtime is still unavailable'
+}
+
 check_prereqs(){
   [[ $(id -u) -eq 0 ]] || fail 'bootstrap must run as root'
   local commands=(bash ssh ssh-keygen docker python3 systemctl journalctl flock tar gzip sha256sum awk sed grep find df stat date mktemp install)
   for c in "${commands[@]}"; do command -v "$c" >/dev/null || fail "required command missing: $c"; done
   docker info >/dev/null 2>&1 || fail 'Docker daemon unavailable'
-  pyver=$(python3 - <<'PY'
-import importlib.metadata as m
-try: print(m.version('playwright'))
-except Exception: print('missing')
-PY
-)
+  pyver=$(playwright_version)
   [[ "$pyver" == "$EXPECTED_PLAYWRIGHT" ]] || fail "Playwright version mismatch: $pyver (expected $EXPECTED_PLAYWRIGHT)"
   [[ -x "$EXPECTED_WEBKIT" ]] || fail "Playwright WebKit 2203 missing: $EXPECTED_WEBKIT"
   [[ -x "$EXPECTED_CHROMIUM" ]] || fail "Chromium headless shell 1181 missing: $EXPECTED_CHROMIUM"
@@ -177,11 +199,12 @@ case "$mode" in
   --check-prereqs)
     check_prereqs
     echo 'PASS: Habbo VPS2 bootstrap prerequisites'
-    echo 'docker=ok playwright=1.55.0 webkit=2203 bridge-old=verified ssh-secrets=external'
+    echo 'docker=ok playwright=1.55.0 chromium=1181 webkit=2203 bridge-old=verified ssh-secrets=external'
     ;;
   --apply)
     [[ "$SRC" != / ]] || fail 'refusing --apply with live / as source; run bootstrap from an extracted recovery kit or set HABBO_VPS2_SOURCE_ROOT'
     validate_source
+    if ! browser_prereqs_ok; then repair_browser_prereqs; fi
     check_prereqs
     install_tree /
     seed_store
@@ -196,7 +219,7 @@ case "$mode" in
     systemctl start habbo-vps2-control-plane-heartbeat.service
     /usr/local/sbin/habbo-vps1-offsite-store-smoke.sh
     echo 'PASS: Habbo VPS2 control plane bootstrapped'
-    echo 'files=35 scripts=15 units=18 timers=6 offsite_seed=3 verification=pull+drift+chromium+webkit+restore+heartbeat secrets=external'
+    echo 'files=35 scripts=15 units=18 timers=6 offsite_seed=3 verification=pull+drift+chromium+webkit+restore+heartbeat browser_repair=available secrets=external'
     ;;
   *) usage ;;
 esac

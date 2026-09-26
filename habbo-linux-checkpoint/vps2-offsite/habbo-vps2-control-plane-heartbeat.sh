@@ -22,7 +22,8 @@ store_output=''
 if store_output=$(/usr/local/sbin/habbo-vps1-offsite-store-smoke.sh 2>&1); then
   offsite_store_healthy=1
   offsite_deep_verified=1
-  if grep -F 'vps2-recovery=semantic+live+bootstrap' <<<"$store_output" >/dev/null; then
+  if grep -F 'vps2-recovery=semantic+bootstrap+per-generation-deterministic' <<<"$store_output" >/dev/null \
+     && grep -F 'live_match=latest-only' <<<"$store_output" >/dev/null; then
     offsite_bootstrap_verified=1
   else
     issues+=("offsite_bootstrap_proof_missing")

@@ -49,3 +49,12 @@ FORMATO RELAY
 Estado de la tarea: terminada
 Progreso aproximado: 100%
 Resumen para continuar: v0.8.5 está en producción y validada; solo continuar ante mantenimiento útil o regresión nueva, sin repetir gates históricos.
+
+ÚLTIMA OBSERVACIÓN AUTÓNOMA (2026-09-26 13:26 CEST)
+- OVERALL READY tras varias horas adicionales sin intervención.
+- Backup actual observado: /srv/habbo/backups/manual-20260926T104813Z.
+- WebKit periódico: PASS, attempts=1, escenario completo home+register+login+me+V31+R39.
+- Offsite restore de 104813Z: PASS.
+- deployment-final-validate.sh fresco: PASS.
+- Drift audit read-only: VPS1 31/31 exacto; VPS2 23/23 exacto.
+- No se modificó producción; la fase sigue TERMINADA y estable.

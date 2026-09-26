@@ -155,3 +155,11 @@ A pre-v0.8.5 Cloudflare config backup was retained on VPS1. Rollback is to resto
 - Those proven live bytes, plus the nine EOF-only files, were mirrored into `vps1-overlay`; production was not modified.
 - Syntax/systemd validation PASS; the 12-file captured live comparison is now byte-identical and the preceding VPS2 audit remains zero-drift.
 - Natural timer observation also confirmed `habbo-runtime-healthcheck.timer` fired itself at 13:00:06 CEST, exited 0 at 13:00:15 and retained `manual-20260926T104813Z` as the validated latest backup.
+
+## Multi-hour autonomous soak confirmation
+- At 13:26 CEST, several hours after production closure, `habbo-status.sh` remained `OVERALL READY` with no Habbo failed units on VPS1 or VPS2.
+- The autonomous daily path had advanced the canonical generation to `/srv/habbo/backups/manual-20260926T104813Z`; local retention held at 16 backups and offsite latest matched.
+- Offsite restore for `104813Z` remained proven in tmpfs/network-none with 88 tables, 40 navigator styles, RogerVideo=1 and room1000=1.
+- A later automatic WebKit proof remained PASS with attempts=1 and full scenario `home+register+login+me+V31+R39`.
+- Fresh aggregate `deployment-final-validate.sh` PASS against `104813Z`.
+- Read-only mirror audit after the soak: VPS1 wide operational set `31/31` byte-identical to Git; VPS2 recovery/control-plane set `23/23` byte-identical to Git. No production change was required.

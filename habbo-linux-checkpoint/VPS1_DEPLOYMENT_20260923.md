@@ -322,3 +322,10 @@ Operational rule: production remains untouched. Any future promotion must start 
 - Repository copy: `habbo-linux-checkpoint/HABBO_2009_V085_PRODUCTION_FINAL_CONTINUITY_20260926.txt`.
 - Do not execute the old Chrome/Safari `SIGUIENTE PASO EXACTO`, rebuild the local lab, rerun the pre-promotion gate, or redeploy v0.8.5 unless a new regression is demonstrated.
 - Current continuation rule: verify live health/deriva first; if `OVERALL READY` and latches are clear, this phase remains TERMINATED and only useful maintenance/observability work should continue.
+
+### Multi-hour autonomous soak confirmation (2026-09-26 13:26 CEST)
+- Production remained `OVERALL READY` after several hours of autonomous timers; no Habbo failed units were present on VPS1 or VPS2.
+- Current canonical backup observed: `/srv/habbo/backups/manual-20260926T104813Z`, with matching offsite archive and proven isolated restore.
+- Periodic WebKit gameplay proof remained PASS for `home+register+login+me+V31+R39`, attempts=1.
+- Fresh aggregate validator PASS.
+- Live-vs-Git drift audit: VPS1 `31/31` exact, VPS2 `23/23` exact. No live mutation was needed.

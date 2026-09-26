@@ -1,0 +1,56 @@
+name: Habbo b550 runtime artifact
+
+on:
+  push:
+    branches:
+      - project/habbo-2009-dual-linux-vps1-deploy-20260923
+    paths:
+      - .github/workflows/habbo-b550-runtime-artifact.yml
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout exact Havana b550
+        uses: actions/checkout@v4
+        with:
+          repository: Quackster/Havana
+          ref: b550f00f27788145d26723fd19e943aa63504a63
+          path: havana
+
+      - name: Setup Java 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+          cache: gradle
+          cache-dependency-path: havana/**/*.gradle*
+
+      - name: Build exact runtime jars
+        working-directory: havana
+        run: ./gradlew --no-daemon :Havana-Server:shadowJar :Havana-Web:shadowJar
+
+      - name: Assemble verified artifact
+        run: |
+          set -euo pipefail
+          mkdir -p artifact/server artifact/web artifact/migrations artifact/meta
+          cp havana/Havana-Server/build/libs/Havana-Server-unspecified.jar artifact/server/Havana-Server.jar
+          cp havana/Havana-Web/build/libs/Havana-Web-unspecified.jar artifact/web/Havana-Web.jar
+          cp havana/tools/migrations/update.1.1.sql artifact/migrations/
+          cp havana/tools/migrations/update.1.2.sql artifact/migrations/
+          cp havana/tools/migrations/update.1.3.sql artifact/migrations/
+          cp havana/tools/figuredata.xml artifact/
+          printf '%s\n' b550f00f27788145d26723fd19e943aa63504a63 > artifact/meta/HAVANA_COMMIT.txt
+          (cd artifact && sha256sum server/Havana-Server.jar web/Havana-Web.jar migrations/*.sql figuredata.xml > SHA256SUMS)
+
+      - name: Upload b550 runtime
+        uses: actions/upload-artifact@v4
+        with:
+          name: habbo-havana-b550-runtime
+          path: artifact
+          if-no-files-found: error
+          retention-days: 5

@@ -463,3 +463,12 @@ Operational rule: production remains untouched. Any future promotion must start 
 - Current control plane at refresh: six VPS2 timers healthy, WebKit+iPhone and Chromium+desktop full `home+register+login+me+V31+R39` proofs PASS, live-drift PASS, latest/offsite/restore aligned and production `OVERALL READY`.
 - Continuity refresh commit `a57692b3c17593502e46022026a99bde4db1a474`, tag `habbo-web-v0.8.5-final-continuity-refresh-20260926`.
 - Operational rule remains unchanged: no functional work is pending; future rotations must check live health first and must not repeat historical promotion/gate work while production stays READY.
+
+### Multi-hour continuity manifest reconciliation (2026-09-26)
+- Multi-hour soak remained `OVERALL READY`: Habbo public HTTP 200, no Habbo service restarts, browser proofs/latches healthy, offsite restore current and autonomous live-drift proof PASS.
+- Fresh manual live↔Git audit found one repository-only drift in generated `vps2-control-plane-files-sha256.txt`; all mapped VPS1/VPS2 operational files themselves already matched Git.
+- The stale entries were the already-current WebKit daily wrapper hash and immutable live-drift baseline hashes. Production was not changed.
+- Mirrored the generated manifest from `/srv/habbo/releases/disaster` into the repo.
+- Official VPS2 recovery smoke PASS after reconciliation: 35 files / 15 scripts / 18 units, hashes verified, exact inventory, syntax verified, bootstrap rehearsed.
+- Final audit: `matches=88 drifts=0 missing=0 notes=1`; the only note remains the deliberately untracked historical `v31-web-touch-lab.sh`.
+- Commit carrying the generated-manifest reconciliation: `55ced30cbc90f04afaf290cabded7cfe9c4a3f30`.

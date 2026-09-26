@@ -94,3 +94,13 @@ FORMATO RELAY
 Estado de la tarea: terminada
 Progreso aproximado: 100%
 Resumen para continuar: v0.8.5 está estable y autónomamente monitorizada; WebKit+Chromium+live-drift+backup/offsite/restore/health/drill están persistidos y recuperables; si sigue OVERALL READY no repetir trabajo histórico.
+
+RESYNC NOCTURNO DE SALUD (2026-09-26 20:50 CEST)
+- `habbo-status.sh`: `OVERALL READY`.
+- Habbo público: HTTP 200; cinco repeticiones de `/` entre ~45 y 66 ms tras un pico aislado inicial, sin nuevos 5xx ni reinicios de servicios Habbo.
+- Live drift forzado: PASS a `2026-09-26T18:50:24Z`, baseline `698f2f698ed86c61726ee7ba093382bfdecf11b1806cf15c74d6ff4fdebf9b6e`, `matches=87 drifts=0 missing=0 notes=0`, latch clear.
+- Backup/offsite vigente: `manual-20260926T181406Z`, SHA256 `beb0bb1292c0aff2b79a457719703a4386d5e3ca70b704d1a0bd984d23fbb9e3`.
+- WebKit e Chromium periódicos siguen PASS con escenario completo `home+register+login+me+V31+R39`.
+- VPS2 control plane: 6/6 timers sanos, 0 failed units del control plane, fingerprint `055bdf7848783cd6bf4ab57e0de3ba1bc83e00522a2c1d0de8f426f5dc58606d`.
+- `deployment-final-validate.sh`: PASS completo después del live-drift forzado.
+- No se detectó ninguna regresión funcional nueva; no se modificó producción en este resync.

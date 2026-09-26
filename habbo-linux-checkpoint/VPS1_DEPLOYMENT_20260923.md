@@ -495,3 +495,10 @@ Operational rule: production remains untouched. Any future promotion must start 
 - VPS2 recovery fingerprint: `055bdf7848783cd6bf4ab57e0de3ba1bc83e00522a2c1d0de8f426f5dc58606d`; six timers healthy, zero failed units.
 - WebKit and Chromium periodic proofs both cover `home+register+login+me+V31+R39`; current production remains `OVERALL READY`.
 - This is documentation/continuity maintenance only; no production runtime was changed.
+
+### Nightly continuity resync — 2026-09-26 20:50 CEST
+- Read-only maintenance soak confirms `OVERALL READY`; public Habbo remains HTTP 200 with steady-state root latency ~45–66 ms after one isolated slow request.
+- Forced autonomous live-drift watch PASS: baseline `698f2f698ed86c61726ee7ba093382bfdecf11b1806cf15c74d6ff4fdebf9b6e`, `matches=87 drifts=0 missing=0 notes=0`, latch clear.
+- Canonical backup/offsite generation remains `manual-20260926T181406Z` with SHA256 `beb0bb1292c0aff2b79a457719703a4386d5e3ca70b704d1a0bd984d23fbb9e3`.
+- WebKit + Chromium gameplay proofs remain healthy and the full aggregate deployment validator PASSed again.
+- No product, recovery or runtime files were changed during this resync.

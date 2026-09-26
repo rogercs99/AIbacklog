@@ -344,3 +344,13 @@ A pre-v0.8.5 Cloudflare config backup was retained on VPS1. Rollback is to resto
 - Regression now requires the `Page crashed` matcher, the `attempt==1` gate, the transition to `attempt=2`, and persistent-failure non-zero exit.
 - A fresh official WebKit service run PASSed and cleared the failure latch.
 - A second timer-dispatch rehearsal after the hardening actually started the service via the timer and PASSed the full `home+register+login+me+V31+R39` scenario; the runtime-only override was removed and the canonical daily `05:35` schedule with `RandomizedDelaySec=60` was restored.
+
+## Reboot-safety and autonomous persistence audit
+- Post-promotion persistence was audited after the periodic gameplay/recovery closure, including concurrent Chromium and immutable live-drift controls.
+- VPS2 has six Habbo timers enabled and active in the control-plane contract: live-drift, Chromium, offsite pull, offsite restore drill, WebKit and heartbeat. All relevant scheduled timers use `Persistent=true` and all network-dependent services order after/want `network-online.target`.
+- VPS1 daily backup, 15-minute runtime health and weekly disaster drill timers are enabled; each uses `Persistent=true`. Permanent runtime services (`habbo-stack`, `habbo-static`, `habbo-websockify`, `habbo-web-v085`, Cloudflare and reverse SSH) are enabled and active.
+- `systemd-analyze verify` returned RC 0 for the Habbo VPS1/VPS2 timer/service sets. Only unrelated host warnings from snapd/legacy rc-local were emitted.
+- Backup retention is autonomous in `habbo-backup-daily.sh`: `APPLY=1 KEEP_RECENT=14 backup-retention-prune.sh`. Current protected local generations remain below the healthcheck ceiling, so backup growth will not recreate the previous >20-generation failure.
+- The stale `/etc/systemd/system/habbo-web-v085.service.d/10-v31-proxy-origin.conf` override was removed. `HABBO_V31_PROXY_ORIGIN=http://127.0.0.1:18100` now comes solely from the recoverable base unit; no proxy restart was required, the service stayed active and public Habbo stayed HTTP 200.
+- Chromium and live-drift are included in the six-timer VPS2 heartbeat, disaster recovery inventory/bootstrap and aggregate final validator. Chromium proves the full `home+register+login+me+V31+R39` desktop path; live-drift proves the promoted immutable release baseline with zero missing/drifted tracked files.
+- Final post-cleanup aggregate deployment validator PASS and `habbo-status.sh` reports `OVERALL READY`.

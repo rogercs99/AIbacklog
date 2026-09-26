@@ -449,3 +449,10 @@ Operational rule: production remains untouched. Any future promotion must start 
 - `habbo-public-webkit-daily.sh` now retries that engine crash exactly once alongside the existing browser-close/503 transient class. Product/first-party failures and a second crash remain fatal.
 - Official recovery run PASSed and cleared the latch; a second real timer dispatch PASSed the complete iPhone scenario `home+register+login+me+V31+R39`.
 - Runtime proof override was removed; effective timer is back to the canonical `05:35`, persistent, 60-second jitter schedule.
+
+### Reboot-safety persistence audit (2026-09-26)
+- All Habbo scheduled controls on both VPSes were checked for enablement, persistence and failure routing. VPS2 heartbeat covers six timers: live-drift, Chromium, offsite pull, offsite restore, WebKit and heartbeat itself; VPS1 backup/runtime/disaster timers are also enabled and `Persistent=true`.
+- Network-dependent VPS2 services and the v0.8.5/Cloudflare runtime are ordered behind `network-online.target`. `systemd-analyze verify` is RC 0 for the Habbo unit sets.
+- Daily backup already invokes retention automatically with `KEEP_RECENT=14`; no additional retention timer is required.
+- Removed the obsolete v0.8.5 proxy-origin drop-in after confirming the identical setting is present in the base recoverable `habbo-web-v085.service`. Effective environment still contains `HABBO_V31_PROXY_ORIGIN=http://127.0.0.1:18100`; service remained active and public HTTP remained 200.
+- Chromium and autonomous live-drift controls are present in recovery-kit inventory/bootstrap, heartbeat and final validation. Post-cleanup final validator PASS; status remains `OVERALL READY`.

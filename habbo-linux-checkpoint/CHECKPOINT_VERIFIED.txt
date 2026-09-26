@@ -1,3 +1,9 @@
+HISTÓRICO / SUPERSEDED (2026-09-26)
+Este checkpoint conserva evidencia byte-a-byte del hito del 2026-09-21.
+NO representa el estado operativo actual. La validación funcional final ya está cerrada en producción.
+Estado canónico vigente: `HABBO_2009_V085_PRODUCTION_FINAL_CONTINUITY_20260926.txt`,
+`V085_PRODUCTION_PROMOTION_20260926.md` y `VPS1_DEPLOYMENT_20260923.md`.
+
 HABBO 2009 DUAL LINUX CHECKPOINT VERIFICATION
 Date: 2026-09-21
 Status: PASS
@@ -22,4 +28,4 @@ Reassembled Havana historical WWW archive SHA256:
 PASS
 
 Runtime milestone: PROOT_FORCE_FOREIGN_BINARY=1 + PRoot 5.4 + QEMU 7.2 + Wine32 5.11 produced PROOT_PE32_OK and a real Notepad window in Xvfb.
-Final Habbo gameplay remains pending and must run inside the Linux sandbox.
+[HISTORICAL STATUS AS OF 2026-09-21] Final Habbo gameplay remained pending at this checkpoint; this is superseded by the production v0.8.5 continuity referenced above.

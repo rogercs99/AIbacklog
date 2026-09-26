@@ -73,6 +73,11 @@ SIGUIENTE PASO EXACTO
 - Si sigue `OVERALL READY`, no inventes trabajo histórico: trata la fase como TERMINADA.
 - Solo avanza en mantenimiento que reduzca un riesgo concreto o corrige una regresión nueva observada.
 
+HISTORICAL CHECKPOINT RECONCILIATION (2026-09-26)
+- `CHECKPOINT_VERIFIED.txt` remains preserved as byte-for-byte milestone evidence from 2026-09-21, but is now explicitly marked HISTÓRICO / SUPERSEDED.
+- Its former unqualified sentence saying final gameplay remained pending is now labeled historical and points to this canonical post-production continuity.
+- Regression `tools/test_historical_checkpoint_supersession_v085.py` prevents that historical checkpoint from masquerading as current operational state again.
+
 FORMATO RELAY
 Estado de la tarea: terminada
 Progreso aproximado: 100%

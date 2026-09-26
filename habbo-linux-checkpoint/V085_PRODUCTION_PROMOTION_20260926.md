@@ -66,3 +66,16 @@ A pre-v0.8.5 Cloudflare config backup was retained on VPS1. Rollback is to resto
 - Recovery fingerprint: `d35f3a8faf8d46133ae96874e5996147a8d9c6515a4236771740cf7f1e9adf13`.
 - Runtime health and disaster drill both reference `manual-20260926T093550Z`.
 - Final aggregate deployment validator PASS with the complete WebKit gameplay scenario and fresh offsite restore proof.
+
+## Smoke-owned runtime cleanup closure
+- Post-deploy review confirmed the daily WebKit gameplay smoke could leave the R39 native Flash/noVNC runtime alive after the browser closed, keeping a smoke-only session resident longer than necessary.
+- The daily wrapper now snapshots whether V31 and R39 were healthy before the smoke. On exit, it only attempts to stop runtimes that were not healthy before the smoke and therefore were started by the smoke itself.
+- Before stopping a smoke-owned runtime, the wrapper checks for an established WebSocket connection on the corresponding public loopback port (`18131` for V31, `18139` for R39). If a connection exists, cleanup is skipped to avoid disrupting a real user.
+- Cleanup is attached to `trap ... EXIT`, so it runs on both successful and failed smoke executions.
+- Verified behavior: full WebKit `home+register+login+me+V31+R39` PASS, followed by V31 `healthy=no`, R39 `healthy=no`, and no listeners on `18131/18139/59131/59139`.
+- Daily backup retention was also re-audited: `habbo-backup-daily.sh` already performs guarded runtime validation followed by `APPLY=1 KEEP_RECENT=14 backup-retention-prune.sh`; no duplicate systemd retention hook was added.
+- Final canonical backup after this control-plane change: `/srv/habbo/backups/manual-20260926T095026Z`, SHA256 `edcabb2b3f34b430d85a666fd12d8ecd5aeba82194dfc15c2d2f3131ff4c2c1e`.
+- Local retention reapplied from 20 to 16 protected generations.
+- Matching VPS2 offsite copy and isolated offsite restore PASS; runtime health and disaster drill both reference `manual-20260926T095026Z`.
+- Recovery fingerprint after the cleanup-aware control-plane refresh: `b2c2efa39e6f702ce6f77ad3dc8d19a61b3febf616fafd9b9929f1d46e9ccfbf`.
+- Final aggregate deployment validator PASS and `habbo-status.sh` = `OVERALL READY` with both V31/R39 runtimes idle after monitoring.

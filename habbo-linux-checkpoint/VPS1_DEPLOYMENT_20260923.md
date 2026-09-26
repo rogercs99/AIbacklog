@@ -251,3 +251,12 @@ Operational rule: production remains untouched. Any future promotion must start 
 - VPS2 offsite restore drill pin was reconciled with the canonical Havana bundle SHA `9e3ee88b2670e7156c7c05bca13646b9d5378e1b8d83f3a7f2eb53fefa344a4f`.
 - Canonical generation `/srv/habbo/backups/manual-20260926T093550Z` passed local restore, VPS2 store smoke, VPS2 isolated restore, runtime health, VPS1 disaster drill and aggregate final validation.
 - Backup SHA256: `4eb59c3b6ee937b2cee95ae844f5c90d3d9c4c703d4b4bd10da7cd9e23a40095`; recovery fingerprint: `d35f3a8faf8d46133ae96874e5996147a8d9c6515a4236771740cf7f1e9adf13`.
+
+### Smoke-owned runtime cleanup (2026-09-26)
+- Daily WebKit gameplay monitoring now records pre-smoke V31/R39 health and cleans up only runtimes it started itself.
+- Cleanup preserves any runtime that was already healthy before monitoring and also refuses to stop a smoke-owned runtime while an established WebSocket connection exists on `18131`/`18139`.
+- Cleanup runs through an EXIT trap, so failed browser checks do not leave orphaned V31/R39 runtime processes.
+- Verified official systemd smoke PASS (`home+register+login+me+V31+R39`, attempts=1) followed by both runtime controls reporting `healthy=no` and no VNC/WebSocket listeners.
+- Daily backup retention was confirmed already automatic inside `habbo-backup-daily.sh`; no redundant retention unit was introduced.
+- Canonical generation `/srv/habbo/backups/manual-20260926T095026Z` passed local restore, retention (16 protected generations), VPS2 store smoke, isolated offsite restore, runtime health, disaster drill and final aggregate validator.
+- Backup SHA256: `edcabb2b3f34b430d85a666fd12d8ecd5aeba82194dfc15c2d2f3131ff4c2c1e`; recovery fingerprint: `b2c2efa39e6f702ce6f77ad3dc8d19a61b3febf616fafd9b9929f1d46e9ccfbf`.

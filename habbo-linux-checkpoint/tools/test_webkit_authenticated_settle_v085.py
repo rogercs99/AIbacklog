@@ -27,6 +27,11 @@ assert "home+register+login+me+V31+R39" in s, 'full gameplay summary missing'
 daily = (Path(__file__).resolve().parents[1] / 'vps2-offsite' / 'habbo-public-webkit-daily.sh').read_text(encoding='utf-8')
 assert "SUMMARY=$(printf '%s\\n'" in daily and "| tail -n 1)" in daily, 'single-line WebKit summary normalization missing'
 assert 'scenario=home+register+login+me+V31+R39' in daily, 'full remote WebKit scenario marker missing'
+assert 'V31_WAS_HEALTHY=0' in daily and 'R39_WAS_HEALTHY=0' in daily, 'pre-smoke runtime ownership snapshot missing'
+assert 'cleanup_runtime(){' in daily and '[[ "$was_healthy" == 0 ]] || return 0' in daily, 'smoke-owned runtime cleanup guard missing'
+assert 'state established' in daily and '18131' in daily and '18139' in daily, 'active WebSocket preservation guard missing'
+assert 'trap cleanup EXIT' in daily, 'runtime cleanup is not guaranteed on smoke exit'
+
 remote = (Path(__file__).resolve().parents[1] / 'vps1-overlay' / 'public-webkit-remote-smoke.sh').read_text(encoding='utf-8')
 assert "\"$scenario\" == 'home+register+login+me+V31+R39'" in remote, 'VPS1 remote WebKit checker still accepts a partial scenario'
 

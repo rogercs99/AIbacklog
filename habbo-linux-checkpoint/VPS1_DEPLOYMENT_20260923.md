@@ -456,3 +456,10 @@ Operational rule: production remains untouched. Any future promotion must start 
 - Daily backup already invokes retention automatically with `KEEP_RECENT=14`; no additional retention timer is required.
 - Removed the obsolete v0.8.5 proxy-origin drop-in after confirming the identical setting is present in the base recoverable `habbo-web-v085.service`. Effective environment still contains `HABBO_V31_PROXY_ORIGIN=http://127.0.0.1:18100`; service remained active and public HTTP remained 200.
 - Chromium and autonomous live-drift controls are present in recovery-kit inventory/bootstrap, heartbeat and final validation. Post-cleanup final validator PASS; status remains `OVERALL READY`.
+
+### Canonical continuity refresh after autonomous/reboot closure (2026-09-26)
+- Relay authority remains `/srv/chat-session-relay/data/task-inputs/20260926/HABBO_2009_V085_PRODUCTION_FINAL_CONTINUITY.txt`; it was refreshed to match the current autonomous production model and is byte-identical to the repository copy `habbo-linux-checkpoint/HABBO_2009_V085_PRODUCTION_FINAL_CONTINUITY_20260926.txt`.
+- The continuity no longer carries the obsolete rule that live drift must remain manual: the autonomous `habbo-live-drift-watch.timer` now uses an immutable recoverable baseline and is part of the VPS2 recovery/bootstrap contract.
+- Current control plane at refresh: six VPS2 timers healthy, WebKit+iPhone and Chromium+desktop full `home+register+login+me+V31+R39` proofs PASS, live-drift PASS, latest/offsite/restore aligned and production `OVERALL READY`.
+- Continuity refresh commit `a57692b3c17593502e46022026a99bde4db1a474`, tag `habbo-web-v0.8.5-final-continuity-refresh-20260926`.
+- Operational rule remains unchanged: no functional work is pending; future rotations must check live health first and must not repeat historical promotion/gate work while production stays READY.

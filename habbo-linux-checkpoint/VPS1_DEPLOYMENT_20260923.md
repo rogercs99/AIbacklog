@@ -236,3 +236,10 @@ Operational rule: production remains untouched. Any future promotion must start 
 - Matching VPS2 offsite archive and store smoke PASS; local backup retention reduced to 16 protected generations.
 - Runtime health marker and disaster drill both reference `manual-20260926T090032Z`; disaster restore drill PASS in tmpfs.
 - Final aggregate deployment validator PASS. Production v0.8.5 is therefore deployed, recoverable and covered by the normal health/backup/disaster pipeline.
+
+### Post-deploy soak — WebKit asset cancellation hardening (2026-09-26)
+- Soak after v0.8.5 promotion found no service restarts and no Habbo/Cloudflare errors after the expected controlled restart window; public core routes/assets remained HTTP 200.
+- Official WebKit smoke was hardened for a WebKit-only `Load request cancelled` on `/local-web/habbo-es.js`: it is ignored only when the same path has a recorded HTTP 200 response. Other request failures remain fatal.
+- Two temporary real runs plus the official systemd run PASS; `WEBKIT_FAILED` cleared.
+- VPS2 recovery kit regenerated, backup `/srv/habbo/backups/manual-20260926T091819Z` verified/restored, matching offsite generation PASS, runtime health PASS, disaster drill PASS and final deployment validator PASS.
+- Recovery fingerprint after this control-plane update: `23bf18e3ff0366c6f517a971e1c1503c56e43c45fae7987ed88b209eea75c981`.

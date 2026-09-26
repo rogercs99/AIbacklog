@@ -39,3 +39,15 @@ A pre-v0.8.5 Cloudflare config backup was retained on VPS1. Rollback is to resto
 - Runtime healthcheck PASS against `manual-20260926T090032Z`.
 - Non-destructive disaster drill PASS against `manual-20260926T090032Z`, including DB restore in tmpfs and Havana commit `b550f00f27788145d26723fd19e943aa63504a63`.
 - Final `/srv/habbo/ops/deployment-final-validate.sh`: PASS across product, perimeter, Cloudflare, disk, backup publication/restore, secrets, disaster sources, VPS2 recovery, offsite backup, WebKit proof and public web.
+
+## Post-deploy soak and WebKit cancellation hardening
+- A read-only post-deploy soak confirmed `habbo-web-v085`, Cloudflare, Havana and static services had `NRestarts=0`; public `/`, `/play`, `habbo-es.js` and `habbo-modern.css` returned HTTP 200 at roughly 60–70 ms.
+- The only recent Cloudflare origin error was the already-known transient `18100 connection refused` during the controlled proxy restart at 10:56:36 CEST; no later Habbo/Cloudflare 5xx or proxy errors were observed.
+- A fresh official WebKit run exposed a false positive: WebKit emitted `Load request cancelled` for `/local-web/habbo-es.js` during authenticated navigation even though that first-party asset completed with HTTP 200.
+- The smoke now suppresses that cancellation only when the matching `/local-web/habbo-es.js` response was actually observed as HTTP 200, using the same guarded contract already used for `/security_check`. All other request failures remain fatal.
+- The patched smoke passed two temporary real runs and then the official systemd run; `WEBKIT_FAILED` is clear and the current proof is PASS.
+- Regression `test_webkit_authenticated_settle_v085.py` now requires the guarded successful-cancellation set and the HTTP-200 prerequisite.
+- VPS2 recovery kit was regenerated from the corrected live control plane and passed exact inventory/hash/syntax/bootstrap rehearsal; recovery fingerprint is `23bf18e3ff0366c6f517a971e1c1503c56e43c45fae7987ed88b209eea75c981`.
+- Post-hardening canonical backup: `/srv/habbo/backups/manual-20260926T091819Z`; isolated restore PASS and matching VPS2 offsite store PASS.
+- Runtime healthcheck and disaster drill both reference `manual-20260926T091819Z` and PASS.
+- Final aggregate deployment validator PASS after the hardening.

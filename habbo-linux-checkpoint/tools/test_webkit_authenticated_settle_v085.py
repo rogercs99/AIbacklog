@@ -11,7 +11,10 @@ assert "page.locator('body').wait_for(state='visible', timeout=10000)" in head, 
 assert "path == '/security_check' and status == 200" in s
 assert "path == '/me' and status == 200" in s
 
-assert "reason == 'Load request cancelled' and urlparse(url).path == '/security_check'" in s, 'guarded WebKit security_check cancellation filter missing'
-assert "path == '/security_check' and status == 200" in s, 'HTTP 200 prerequisite for cancellation filter missing'
+assert "successful_cancel_paths = {" in s, 'guarded WebKit cancellation set missing'
+assert "path in ('/security_check', '/local-web/habbo-es.js')" in s, 'known successful cancellation paths missing'
+assert "reason == 'Load request cancelled' and urlparse(url).path in successful_cancel_paths" in s, 'guarded WebKit cancellation filter missing'
+assert "status == 200" in s, 'HTTP 200 prerequisite for cancellation filter missing'
+assert "'/local-web/habbo-es.js'" in s, 'habbo-es.js response tracking missing'
 
-print('PASS: authenticated WebKit /me settle avoids fragile networkidle and preserves response assertions')
+print('PASS: authenticated WebKit /me settle avoids fragile networkidle and only suppresses proven-200 navigation cancellations')

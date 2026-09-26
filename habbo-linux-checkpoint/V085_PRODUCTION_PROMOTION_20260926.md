@@ -79,3 +79,14 @@ A pre-v0.8.5 Cloudflare config backup was retained on VPS1. Rollback is to resto
 - Matching VPS2 offsite copy and isolated offsite restore PASS; runtime health and disaster drill both reference `manual-20260926T095026Z`.
 - Recovery fingerprint after the cleanup-aware control-plane refresh: `b2c2efa39e6f702ce6f77ad3dc8d19a61b3febf616fafd9b9929f1d46e9ccfbf`.
 - Final aggregate deployment validator PASS and `habbo-status.sh` = `OVERALL READY` with both V31/R39 runtimes idle after monitoring.
+
+## Recovery ops-overlay hygiene closure
+- A residual historical file `/srv/habbo/ops/verify-latest-backup.sh.pre-pipefix` was discovered during a post-deploy drift audit. It was inactive, but `ops-overlay.tar.gz` archived the whole `ops/` tree and therefore preserved the stale verifier in recovery artifacts.
+- The historical copy was moved out of the active ops tree into `/srv/habbo/backups/ops-history/`.
+- `backup.sh` now excludes `ops/*.pre-*`, `ops/*.bak*` and editor backup files ending in `~` from `ops-overlay.tar.gz`.
+- `verify-latest-backup.sh` now rejects any ops overlay containing those stale backup/editor patterns, so future drift is detected rather than silently archived.
+- Clean canonical generation: `/srv/habbo/backups/manual-20260926T095727Z`; its `ops-overlay.tar.gz` passed explicit hygiene inspection and contains the canonical verifier without stale copies.
+- Matching VPS2 offsite archive restored successfully in tmpfs/network-none isolation: 88 tables, 40 navigator styles, RogerVideo=1, room1000=1.
+- Backup SHA256: `d821a8e02b03517d89d844a81d7bcbf5bebc79581338df793ed8152bae53d787`.
+- Recovery fingerprint: `b2c2efa39e6f702ce6f77ad3dc8d19a61b3febf616fafd9b9929f1d46e9ccfbf`.
+- Runtime health and disaster drill both reference `manual-20260926T095727Z`; aggregate deployment validator PASS.

@@ -36,7 +36,7 @@ install -m 600 "$ROOT/releases/disaster/habbo-runtime-prefix-parts-sha256.txt" "
 install -m 600 "$ROOT/releases/disaster/vps2-control-plane-overlay.tar.gz" "$OUT/vps2-control-plane-overlay.tar.gz"
 install -m 600 "$ROOT/releases/disaster/vps2-control-plane-files-sha256.txt" "$OUT/vps2-control-plane-files-sha256.txt"
 install -m 600 "$ROOT/releases/final-v2/habbo-2009-dual-linux-FINAL-v2-20260923.zip" "$OUT/habbo-2009-dual-linux-FINAL-v2-20260923.zip"
-tar -C "$ROOT" -czf "$OUT/ops-overlay.tar.gz" ops
+tar --exclude='ops/*.pre-*' --exclude='ops/*.bak*' --exclude='ops/*~' -C "$ROOT" -czf "$OUT/ops-overlay.tar.gz" ops
 install -m 600 /etc/systemd/system/habbo-stack.service "$OUT/habbo-stack.service"
 install -m 600 /etc/systemd/system/habbo-static.service "$OUT/habbo-static.service"
 install -m 600 /etc/systemd/system/habbo-websockify.service "$OUT/habbo-websockify.service"

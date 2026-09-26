@@ -260,3 +260,10 @@ Operational rule: production remains untouched. Any future promotion must start 
 - Daily backup retention was confirmed already automatic inside `habbo-backup-daily.sh`; no redundant retention unit was introduced.
 - Canonical generation `/srv/habbo/backups/manual-20260926T095026Z` passed local restore, retention (16 protected generations), VPS2 store smoke, isolated offsite restore, runtime health, disaster drill and final aggregate validator.
 - Backup SHA256: `edcabb2b3f34b430d85a666fd12d8ecd5aeba82194dfc15c2d2f3131ff4c2c1e`; recovery fingerprint: `b2c2efa39e6f702ce6f77ad3dc8d19a61b3febf616fafd9b9929f1d46e9ccfbf`.
+
+### Recovery ops-overlay hygiene closure (2026-09-26)
+- Drift audit found one inactive historical verifier copy inside `/srv/habbo/ops`; because backups archive the complete ops tree, it was also present in recovery overlays.
+- Historical verifier moved to `/srv/habbo/backups/ops-history/` and removed from the active ops tree.
+- Backup contract excludes `ops/*.pre-*`, `ops/*.bak*` and `ops/*~`; restore verifier explicitly fails if any of those patterns appear inside `ops-overlay.tar.gz`.
+- Canonical clean backup `/srv/habbo/backups/manual-20260926T095727Z` passed local restore, overlay hygiene check, VPS2 store smoke, VPS2 isolated restore, runtime health, VPS1 disaster drill and final aggregate validation.
+- Backup SHA256 `d821a8e02b03517d89d844a81d7bcbf5bebc79581338df793ed8152bae53d787`; recovery fingerprint `b2c2efa39e6f702ce6f77ad3dc8d19a61b3febf616fafd9b9929f1d46e9ccfbf`.

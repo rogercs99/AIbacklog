@@ -59,6 +59,10 @@ unzip -tqq "$B/habbo-2009-dual-linux-FINAL-v2-20260923.zip" || { echo 'FAIL: bac
 [[ "$(wc -l < "$B/vps2-control-plane-files-sha256.txt")" -eq 23 ]] || { echo 'FAIL: VPS2 control-plane recovery manifest line count mismatch' >&2; exit 1; }
 "$ROOT/ops/vps2-control-plane-recovery-smoke.sh" "$B" >/dev/null || { echo 'FAIL: backed-up VPS2 control-plane recovery kit verification failed' >&2; exit 1; }
 tar -tzf "$B/ops-overlay.tar.gz" | grep -Fx 'ops/vps2-control-plane-recovery-smoke.sh' >/dev/null || { echo 'FAIL: ops overlay missing VPS2 recovery smoke' >&2; exit 1; }
+if tar -tzf "$B/ops-overlay.tar.gz" | grep -Eq '(^|/)[^/]*(\.pre-[^/]*|\.bak[^/]*|~)$'; then
+  echo 'FAIL: ops overlay contains stale backup/editor artifacts' >&2
+  exit 1
+fi
 mkdir -p "$WORK/havana-bundle-verify"
 git init -q "$WORK/havana-bundle-verify"
 git -C "$WORK/havana-bundle-verify" bundle verify "$B/havana-source-b550f00.bundle" >/dev/null 2>&1 || { echo 'FAIL: backed-up Havana bundle verification failed' >&2; exit 1; }

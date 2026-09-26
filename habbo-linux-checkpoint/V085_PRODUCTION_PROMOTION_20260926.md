@@ -326,3 +326,13 @@ A pre-v0.8.5 Cloudflare config backup was retained on VPS1. Rollback is to resto
 - Release branch: the 14-file critical manifest verifies clean against VPS1, then a temporary copy with only the first SHA256 nibble altered is rejected by remote `sha256sum -c` with exit status 1.
 - Neither branch writes live files, status markers or durable failure latches; all mutation occurs under `/dev/shm` and is removed on exit.
 - Current consolidated proof: `operational_clean=drifts:0 operational_mutated=drifts:1 release_clean=pass release_mutated=fail persistent_state=untouched`.
+
+## Automatic timer-dispatch proof after long soak
+- Several hours after promotion, production remained `OVERALL READY` with current backup/offsite/drift/Chromium/WebKit proofs and no Habbo latches.
+- The daily Chromium timer had not yet reached its first natural calendar slot because it was created after that day's 06:05 window, so its actual `timer -> service` path was proven using a runtime-only `/run` override (`OnActiveSec`) and then restored.
+- `habbo-public-chromium.timer` actually fired at `2026-09-26 18:18:26 CEST`; `habbo-public-chromium.service` completed with `Result=success`, `ExecMainStatus=0` and refreshed the desktop proof to the full scenario `home+register+login+me+V31+R39`.
+- The runtime override was removed; the effective timer returned to the canonical daily schedule `OnCalendar=*-*-* 06:05:00`, `Persistent=true`, `RandomizedDelaySec=60`, with the next natural run on 2026-09-27 around 06:05 CEST.
+- The weekly offsite restore timer was proven the same way with a runtime-only `OnActiveSec` and temporary jitter override. `habbo-vps1-offsite-restore-drill.timer` actually fired at `2026-09-26 18:19:24 CEST`; the restore service completed successfully against the latest archive `manual-20260926T155914Z`.
+- The offsite restore proof refreshed to `validated_at_utc=2026-09-26T16:19:36Z`, `manifest=complete`, `workspace=tmpfs`, `network=none`, 88 tables, 40 navigator styles, RogerVideo=1 and room1000=1.
+- That runtime override was also removed; the timer returned to its canonical weekly schedule `Sun *-*-* 06:20:00`, `Persistent=true`, `RandomizedDelaySec=300`, with the next natural run on 2026-09-27 around 06:20 CEST.
+- A full post-proof `deployment-final-validate.sh` remained PASS, including Chromium/WebKit gameplay proofs, autonomous live-drift proof, offsite store + restore, deterministic VPS2 recovery and public web.

@@ -436,3 +436,10 @@ Operational rule: production remains untouched. Any future promotion must start 
 - `test_live_drift_negative_v085.sh` now also validates the separate 14-file production release manifest guard.
 - Clean release manifest verifies against VPS1; an isolated manifest copy with one deliberately incorrect SHA is rejected with non-zero exit.
 - Together with the operational timer mutation test, both autonomous drift-watch failure paths now have reproducible read-only negative coverage.
+
+### Automatic timer-dispatch proof after soak (2026-09-26)
+- Proven with runtime-only, subsequently removed timer overrides that the real systemd timer dispatch path works for both scheduled browser regression and scheduled offsite recovery.
+- Chromium timer fired automatically at 18:18:26 CEST and completed the full desktop `home+register+login+me+V31+R39` smoke successfully; canonical daily 06:05 schedule was restored immediately afterward.
+- Offsite restore timer fired automatically at 18:19:24 CEST and restored current generation `manual-20260926T155914Z` in isolated tmpfs/network-none mode successfully; canonical Sunday 06:20 schedule was restored immediately afterward.
+- No persistent override/drop-in remains under `/run/systemd/system` for either proof timer.
+- Post-trigger aggregate validator PASS. This closes the remaining distinction between manually proven services and proven `timer -> service` dispatch behavior.

@@ -163,3 +163,14 @@ A pre-v0.8.5 Cloudflare config backup was retained on VPS1. Rollback is to resto
 - A later automatic WebKit proof remained PASS with attempts=1 and full scenario `home+register+login+me+V31+R39`.
 - Fresh aggregate `deployment-final-validate.sh` PASS against `104813Z`.
 - Read-only mirror audit after the soak: VPS1 wide operational set `31/31` byte-identical to Git; VPS2 recovery/control-plane set `23/23` byte-identical to Git. No production change was required.
+
+## Daily self-healing recovery-kit refresh
+- A real `habbo-backup-daily.service` rehearsal exposed one remaining automation gap: a backup could be locally valid but carry a stale VPS2 recovery kit if the live control plane changed after the previous manual kit refresh.
+- The drift detector correctly caught the condition on `manual-20260926T115730Z`; exactly one live control-plane file differed: `/usr/local/sbin/habbo-public-webkit-daily.sh`.
+- `habbo-backup-daily.sh` now refreshes and fully rehearses the VPS2 recovery kit before creating each daily backup.
+- Failure semantics deliberately preserve data: if the VPS2 kit refresh fails, the local backup, retention and runtime-health path still runs, but the daily service exits non-zero afterward so recovery drift cannot be reported as healthy.
+- The actual systemd daily service was executed after the change and PASSed, including recovery-kit refresh, backup restore verification, retention to 16 generations and runtime-health advancement.
+- Canonical automatic generation: `/srv/habbo/backups/manual-20260926T120051Z`; offsite SHA256 `2de76580cf895d7aa74a7c2492e0c9333ba0f4878fada44c99b84f967487524c`.
+- Matching VPS2 store smoke and isolated offsite restore PASS; recovery fingerprint `432b6678ed7ca13e3481e133b8557dc88fd0211ff62a17fdbaced707c79decbc`.
+- VPS1 disaster drill and runtime health both reference `manual-20260926T120051Z`.
+- Final aggregate deployment validator PASS after the fully automated rehearsal.

@@ -329,3 +329,10 @@ Operational rule: production remains untouched. Any future promotion must start 
 - Periodic WebKit gameplay proof remained PASS for `home+register+login+me+V31+R39`, attempts=1.
 - Fresh aggregate validator PASS.
 - Live-vs-Git drift audit: VPS1 `31/31` exact, VPS2 `23/23` exact. No live mutation was needed.
+
+### Daily recovery-kit autorefresh closure (2026-09-26)
+- Daily backup automation now refreshes and rehearses the VPS2 control-plane recovery kit before backup creation, preventing a valid data backup from embedding an obsolete recovery kit after control-plane changes.
+- If refresh fails, the wrapper still preserves the local backup/retention/runtime-health path but returns failure at the end so the incomplete recovery state is visible.
+- Real `habbo-backup-daily.service` rehearsal PASS: kit refresh -> backup -> prune to 16 -> runtime health.
+- Automatic generation `/srv/habbo/backups/manual-20260926T120051Z` then passed VPS2 offsite store, isolated offsite restore, heartbeat, VPS1 disaster drill and the full deployment validator.
+- Offsite SHA256: `2de76580cf895d7aa74a7c2492e0c9333ba0f4878fada44c99b84f967487524c`; recovery fingerprint: `432b6678ed7ca13e3481e133b8557dc88fd0211ff62a17fdbaced707c79decbc`.

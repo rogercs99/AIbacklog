@@ -3,6 +3,7 @@ Description=Habbo post-boot readiness validation
 After=network-online.target docker.service habbo-stack.service habbo-static.service habbo-websockify.service cloudflared-stremio-legacy.service
 Wants=network-online.target cloudflared-stremio-legacy.service
 Requires=habbo-stack.service habbo-static.service habbo-websockify.service
+OnFailure=habbo-postboot-validate-failed.service
 
 [Service]
 Type=oneshot

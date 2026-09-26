@@ -1,0 +1,6 @@
+[Unit]
+Description=Record failed Habbo post-boot readiness validation
+
+[Service]
+Type=oneshot
+ExecStart=/srv/habbo/ops/postboot-failed.sh

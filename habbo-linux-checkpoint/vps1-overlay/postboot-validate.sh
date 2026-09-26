@@ -31,6 +31,7 @@ for attempt in $(seq 1 "$ATTEMPTS"); do
       printf 'bundle_sha256=%s\n' "$(sha256sum "$ROOT/releases/final-v2/habbo-2009-dual-linux-FINAL-v2-20260923.zip" | awk '{print $1}')"
     } >"$STAMP"
     chmod 0644 "$STAMP"
+    rm -f "$ROOT/POSTBOOT_FAILED"
     echo "PASS: Habbo post-boot readiness validation (attempt $attempt/$ATTEMPTS)"
     exit 0
   fi

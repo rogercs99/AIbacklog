@@ -97,3 +97,10 @@ Each promoted backup includes habbo-web-v085.service and habbo-web-v0.8.5-produc
 The v0.8.5 production env is configuration-only and must not contain credentials; DB and Cloudflare secrets remain in their established protected files.
 After recovery, enable/start habbo-web-v085.service, restore the recorded Cloudflare config, and require the public WebKit authenticated smoke plus V31/R39 noVNC transport proof before declaring the deployment recovered.
 The production cloudflared systemd unit pins its metrics endpoint to 127.0.0.1:20241 so runtime healthchecks remain deterministic after tunnel restarts.
+
+
+### Durable postboot failure latch
+- habbo-postboot-validate.service uses OnFailure=habbo-postboot-validate-failed.service.
+- The handler persists /srv/habbo/POSTBOOT_FAILED with unit result/status and recent journal output.
+- A successful postboot validation clears the latch only after publishing /run/habbo-postboot-validated.
+- Backups must contain both the postboot service and its failure-handler service plus ops/postboot-failed.sh.

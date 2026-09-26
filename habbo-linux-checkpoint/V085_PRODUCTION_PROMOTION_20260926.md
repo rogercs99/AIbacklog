@@ -221,3 +221,18 @@ A pre-v0.8.5 Cloudflare config backup was retained on VPS1. Rollback is to resto
 - The backup/restore contract archives both new failed units and both handlers; local verifier and VPS2 offsite restore require them to be present.
 - New validated generation after the latch lifecycle test: `/srv/habbo/backups/manual-20260926T132452Z`, offsite SHA256 `5e3a093fda51bef7ec88b8d14737194461bb4e405ae249aa34fb7111f4cb2d98`.
 - VPS2 store smoke and isolated offsite restore PASS for `132452Z`; final aggregate deployment validator PASS with exit code 0.
+
+## Durable postboot failure-latch closure
+- Audit found the remaining asymmetry in scheduled/boot validation: habbo-postboot-validate.service had no durable OnFailure latch, unlike runtime, backup, disaster, WebKit, Chromium and VPS2 recovery jobs.
+- Added habbo-postboot-validate-failed.service and ops/postboot-failed.sh. On failure they persist /srv/habbo/POSTBOOT_FAILED with timestamp, unit result, exec status, latest backup and recent journal.
+- habbo-status.sh now degrades while POSTBOOT_FAILED exists.
+- A successful postboot validation clears POSTBOOT_FAILED only after publishing /run/habbo-postboot-validated.
+- Safe behavioral proof without breaking production: manually invoked the failure handler -> POSTBOOT_FAILED created -> habbo-status.sh = OVERALL DEGRADED; restarted only habbo-postboot-validate.service -> validation PASS -> latch cleared -> OVERALL READY.
+- Backup contract now captures habbo-postboot-validate-failed.service and ops/postboot-failed.sh; verify-latest-backup.sh requires both and requires the OnFailure wiring.
+- disaster-restore-drill.sh now treats habbo-postboot-validate-failed.service as a mandatory restored unit.
+- Real habbo-backup-daily.service PASS generated /srv/habbo/backups/manual-20260926T133735Z with the new postboot failure contract included.
+- Matching VPS2 archive SHA256: d979e65f9010f4d537a4f986448bf75a160e0dfc0df5bb5ff5fa6604757728cb.
+- Matching VPS2 isolated restore PASS: tmpfs, network=none, 88 tables, 40 navigator styles, RogerVideo=1, room1000=1.
+- Runtime health and VPS1 disaster drill both advanced to manual-20260926T133735Z.
+- VPS2 recovery fingerprint: 350d044edf0688a16f5b11255b3cefa82b0a20a7dd0f3f5cdb272eec37c5c9fe.
+- Aggregate deployment-final-validate.sh PASS with the new postboot failure unit present in the backup/restore contract.

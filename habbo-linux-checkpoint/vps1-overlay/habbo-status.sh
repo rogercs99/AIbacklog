@@ -80,6 +80,12 @@ runtime_backup=$(awk -F= '$1=="latest_backup" {print $2}' /run/habbo-runtime-hea
 [[ "$runtime_age" =~ ^[0-9]+$ && "$runtime_age" -le 1800 ]] || ok=false
 [[ "$runtime_backup" == "$latest" ]] || ok=false
 printf '%-28s %ss\n' 'postboot stamp age' "$post_age"
+postboot_latch=clear
+if [[ -e "$ROOT/POSTBOOT_FAILED" ]]; then
+  postboot_latch=FAILED
+  ok=false
+fi
+printf '%-28s %s\n' 'postboot failure latch' "$postboot_latch"
 printf '%-28s %ss\n' 'runtime stamp age' "$runtime_age"
 if [[ -f /run/habbo-disaster-drill ]]; then
   drill_ts=$(awk -F= '$1=="validated_at_utc" {print $2}' /run/habbo-disaster-drill)

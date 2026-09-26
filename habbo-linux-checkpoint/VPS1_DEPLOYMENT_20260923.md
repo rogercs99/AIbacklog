@@ -365,3 +365,12 @@ Operational rule: production remains untouched. Any future promotion must start 
 - End-to-end synthetic lifecycle verified for both latches: marker creation caused DEGRADED, then a real successful backup/drill cleared it and returned `OVERALL READY`.
 - Recovery contract now includes the failure handlers/units. Canonical tested generation `/srv/habbo/backups/manual-20260926T132452Z` passed local restore, VPS2 store smoke, VPS2 isolated restore, heartbeat and the aggregate deployment validator.
 - Offsite archive SHA256: `5e3a093fda51bef7ec88b8d14737194461bb4e405ae249aa34fb7111f4cb2d98`; recovery fingerprint: `350d044edf0688a16f5b11255b3cefa82b0a20a7dd0f3f5cdb272eec37c5c9fe`.
+
+### Durable postboot failure latch (2026-09-26)
+- habbo-postboot-validate.service now has OnFailure=habbo-postboot-validate-failed.service.
+- The failure handler writes /srv/habbo/POSTBOOT_FAILED durably; habbo-status.sh reports postboot failure latch=FAILED and OVERALL DEGRADED until a successful postboot validation clears it.
+- Safe proof completed: handler-only latch injection degraded status; restarting the real postboot oneshot passed on healthy production, removed the latch and restored OVERALL READY without restarting Havana, Cloudflare or game runtimes.
+- Backup/recovery contract includes the failure handler script and service, verifies OnFailure wiring, and disaster restore requires the handler service.
+- Canonical generation after this change: /srv/habbo/backups/manual-20260926T133735Z.
+- Offsite SHA256 d979e65f9010f4d537a4f986448bf75a160e0dfc0df5bb5ff5fa6604757728cb; isolated VPS2 restore PASS.
+- Runtime health + VPS1 disaster drill reference 133735Z; final aggregate validator PASS; recovery fingerprint 350d044edf0688a16f5b11255b3cefa82b0a20a7dd0f3f5cdb272eec37c5c9fe.

@@ -84,7 +84,7 @@ for f in "$B"/*.service "$B"/*.timer; do
 done
 units=("$R/etc/systemd/system"/*.service "$R/etc/systemd/system"/*.timer)
 required_units=(
-  habbo-stack.service habbo-static.service habbo-websockify.service habbo-postboot-validate.service
+  habbo-stack.service habbo-static.service habbo-websockify.service habbo-postboot-validate.service habbo-postboot-validate-failed.service
   habbo-runtime-healthcheck.service habbo-runtime-healthcheck-failed.service habbo-runtime-healthcheck.timer
   habbo-backup-daily.service habbo-backup-daily-failed.service habbo-backup-daily.timer
   habbo-disaster-drill.service habbo-disaster-drill-failed.service habbo-disaster-drill.timer

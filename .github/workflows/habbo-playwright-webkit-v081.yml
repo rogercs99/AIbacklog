@@ -1,0 +1,33 @@
+name: Habbo Playwright WebKit 1.57 export v081
+on:
+  push:
+    branches: [project/habbo-2009-dual-linux-vps1-deploy-20260923]
+    paths:
+      - '.github/workflows/habbo-playwright-webkit-v081.yml'
+permissions:
+  contents: read
+jobs:
+  export:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.13'
+      - name: Install exact Playwright and WebKit
+        shell: bash
+        run: |
+          set -euxo pipefail
+          python -m pip install 'playwright==1.57.0'
+          python -m playwright install webkit
+          test -d "$HOME/.cache/ms-playwright/webkit-2227"
+          tar -C "$HOME/.cache/ms-playwright" -czf playwright-webkit-2227-linux.tar.gz webkit-2227
+          sha256sum playwright-webkit-2227-linux.tar.gz > SHA256SUMS.txt
+      - uses: actions/upload-artifact@v4
+        with:
+          name: habbo-v081-playwright-webkit-2227
+          path: |
+            playwright-webkit-2227-linux.tar.gz
+            SHA256SUMS.txt
+          retention-days: 7
+          compression-level: 0

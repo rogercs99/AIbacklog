@@ -431,3 +431,8 @@ Operational rule: production remains untouched. Any future promotion must start 
 - Added `tools/test_live_drift_negative_v085.sh`, which proves the autonomous drift auditor rejects a deliberately altered file inside an isolated `/dev/shm` extraction of the immutable baseline.
 - Clean extraction PASS: 87 matches / 0 drifts / 0 missing. Temporary mutation of `habbo-public-webkit.timer`: 86 matches / 1 drift / 0 missing, exit status non-zero as required.
 - Test is read-only with respect to production and never invokes the durable failure handler. The real drift watchdog was rerun afterward and PASSed with latch clear.
+
+### Critical release drift negative proof (2026-09-26)
+- `test_live_drift_negative_v085.sh` now also validates the separate 14-file production release manifest guard.
+- Clean release manifest verifies against VPS1; an isolated manifest copy with one deliberately incorrect SHA is rejected with non-zero exit.
+- Together with the operational timer mutation test, both autonomous drift-watch failure paths now have reproducible read-only negative coverage.

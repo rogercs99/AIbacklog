@@ -44,5 +44,31 @@ grep -Eq '^SUMMARY matches=[0-9]+ drifts=1 missing=0 notes=0$' <<<"$mutated_out"
   exit 1
 }
 
+release_manifest="$work/habbo-linux-checkpoint/drift-baseline/release-v085-critical-sha256.txt"
+[[ -f "$release_manifest" ]] || { echo 'FAIL: release drift manifest missing from extracted baseline' >&2; exit 1; }
+ssh -o BatchMode=yes bridge-old 'sha256sum -c - --status' <"$release_manifest" || {
+  echo 'FAIL: clean release manifest did not verify' >&2
+  exit 1
+}
+mutated_manifest="$work/release-v085-mutated.txt"
+cp "$release_manifest" "$mutated_manifest"
+python3 - "$mutated_manifest" <<'PY2'
+from pathlib import Path
+import sys
+p=Path(sys.argv[1])
+lines=p.read_text().splitlines()
+h,path=lines[0].split(None,1)
+lines[0]=('0' if h[0] != '0' else '1') + h[1:] + '  ' + path.strip()
+p.write_text('\n'.join(lines)+'\n')
+PY2
+set +e
+ssh -o BatchMode=yes bridge-old 'sha256sum -c - --status' <"$mutated_manifest"
+release_rc=$?
+set -e
+[[ "$release_rc" -ne 0 ]] || {
+  echo 'FAIL: mutated release manifest unexpectedly passed' >&2
+  exit 1
+}
+
 echo 'PASS: Habbo live drift negative-path regression'
-echo 'clean=drifts:0 mutated=drifts:1 target=habbo-public-webkit.timer persistent_state=untouched'
+echo 'operational_clean=drifts:0 operational_mutated=drifts:1 release_clean=pass release_mutated=fail persistent_state=untouched'

@@ -319,3 +319,10 @@ A pre-v0.8.5 Cloudflare config backup was retained on VPS1. Rollback is to resto
 - Proof result: clean `matches=87 drifts=0 missing=0 notes=0`; isolated mutation `matches=86 drifts=1 missing=0 notes=0`, `NEGATIVE_RC=1`.
 - No live file, durable marker or failure latch is modified by the regression. A subsequent real `habbo-live-drift-watch.service` run PASSed and `LIVE_DRIFT_FAILED` remained clear.
 - This closes both success-path and failure-detection coverage for the immutable drift gate without intentionally degrading production.
+
+## Release-manifest negative drift proof
+- Extended `tools/test_live_drift_negative_v085.sh` so the negative-path regression now covers both watchdog branches.
+- Operational branch: extracted immutable baseline passes clean, then a temporary mutation of `habbo-public-webkit.timer` is rejected with one drift and non-zero exit.
+- Release branch: the 14-file critical manifest verifies clean against VPS1, then a temporary copy with only the first SHA256 nibble altered is rejected by remote `sha256sum -c` with exit status 1.
+- Neither branch writes live files, status markers or durable failure latches; all mutation occurs under `/dev/shm` and is removed on exit.
+- Current consolidated proof: `operational_clean=drifts:0 operational_mutated=drifts:1 release_clean=pass release_mutated=fail persistent_state=untouched`.

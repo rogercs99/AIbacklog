@@ -1,0 +1,58 @@
+name: Habbo Havana b550 clean build
+on:
+  push:
+    branches:
+      - project/habbo-2009-dual-linux-vps1-deploy-20260923
+    paths:
+      - '.github/workflows/habbo-havana-b550-build.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout exact Havana source
+        shell: bash
+        run: |
+          set -euxo pipefail
+          git clone https://github.com/Quackster/Havana.git havana
+          git -C havana checkout b550f00f27788145d26723fd19e943aa63504a63
+          test "$(git -C havana rev-parse HEAD)" = b550f00f27788145d26723fd19e943aa63504a63
+          test -z "$(git -C havana status --porcelain)"
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - name: Build clean fat JARs
+        shell: bash
+        working-directory: havana
+        run: |
+          set -euxo pipefail
+          ./gradlew --no-daemon :Havana-Server:shadowJar :Havana-Web:shadowJar
+
+      - name: Assemble reproducible runtime payload
+        shell: bash
+        run: |
+          set -euxo pipefail
+          mkdir -p out/tools/migrations
+          SERVER_JAR="$(find havana/Havana-Server/build/libs -maxdepth 1 -type f -name '*.jar' ! -name '*sources*' ! -name '*javadoc*' -printf '%s %p\n' | sort -nr | head -1 | cut -d' ' -f2-)"
+          WEB_JAR="$(find havana/Havana-Web/build/libs -maxdepth 1 -type f -name '*.jar' ! -name '*sources*' ! -name '*javadoc*' -printf '%s %p\n' | sort -nr | head -1 | cut -d' ' -f2-)"
+          test -n "$SERVER_JAR" -a -n "$WEB_JAR"
+          cp "$SERVER_JAR" out/Havana-Server.jar
+          cp "$WEB_JAR" out/Havana-Web.jar
+          cp havana/tools/havana.sql out/tools/
+          cp havana/tools/migrations/update.1.2.sql out/tools/migrations/
+          cp havana/figuredata.xml out/
+          printf '%s\n' b550f00f27788145d26723fd19e943aa63504a63 > out/HAVANA_COMMIT.txt
+          (cd out && sha256sum Havana-Server.jar Havana-Web.jar tools/havana.sql tools/migrations/update.1.2.sql figuredata.xml HAVANA_COMMIT.txt > SHA256SUMS.txt)
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: habbo-havana-b550-clean-build
+          path: out/
+          retention-days: 7
+          compression-level: 0

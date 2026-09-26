@@ -1,0 +1,11 @@
+- hostname: habbo.gamemodai.pro
+  path: ^/(c_images|client|gordon|dcr|flash)(/.*)?$
+  service: http://127.0.0.1:18080
+- hostname: habbo.gamemodai.pro
+  path: ^/v31-websockify(/.*)?$
+  service: http://127.0.0.1:18131
+- hostname: habbo.gamemodai.pro
+  path: ^/r39-websockify(/.*)?$
+  service: http://127.0.0.1:18139
+- hostname: habbo.gamemodai.pro
+  service: http://127.0.0.1:18100

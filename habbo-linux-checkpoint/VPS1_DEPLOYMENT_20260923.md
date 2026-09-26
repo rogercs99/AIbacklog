@@ -288,3 +288,10 @@ Operational rule: production remains untouched. Any future promotion must start 
 - VPS2 control-plane heartbeat: 4/4 timers healthy, no failed units, latch clear, recovery fingerprint `b2c2efa39e6f702ce6f77ad3dc8d19a61b3febf616fafd9b9929f1d46e9ccfbf`.
 - Local retention self-pruned to 16 protected backups.
 - Final aggregate deployment validator PASS against `100752Z`; Habbo remained HTTP 200 and `OVERALL READY`.
+
+### Official-cycle idempotency proof (2026-09-26)
+- Re-ran the production backup path through `habbo-backup-daily.service`; it created `/srv/habbo/backups/manual-20260926T103715Z`, pruned back to 16 managed generations and advanced runtime health to that exact backup.
+- Ran the official VPS2 pull + store smoke + isolated offsite restore on the same generation; archive SHA256 `05b2263830d32433937a4d6094774f8a1156e971c97d87bf9e490965841140d4`.
+- VPS2 heartbeat and VPS1 disaster drill both PASS; disaster drill references `manual-20260926T103715Z`.
+- Final aggregate validator PASS with the complete WebKit gameplay scenario and `OVERALL READY` preserved.
+- This is a repeatability/idempotency proof of the existing production automation, not a new deployment change.

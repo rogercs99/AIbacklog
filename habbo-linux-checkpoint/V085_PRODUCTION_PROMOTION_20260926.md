@@ -119,3 +119,14 @@ A pre-v0.8.5 Cloudflare config backup was retained on VPS1. Rollback is to resto
 - Local backup retention also self-converged back to 16 protected generations.
 - Aggregate `deployment-final-validate.sh` PASS against the automatic `100752Z` generation, including full WebKit scenario `home+register+login+me+V31+R39`, fresh offsite restore proof, recovery/bootstrap checks and public HTTP 200.
 - `habbo-status.sh` remained `OVERALL READY` throughout the autonomous cycle.
+
+## Official-cycle idempotency proof
+- A second full cycle was triggered through the real systemd services rather than ad-hoc commands to prove the operational chain is repeatable.
+- `habbo-backup-daily.service` created `/srv/habbo/backups/manual-20260926T103715Z`, returned success, retained the current generation, converged local storage back to 16 managed backups and advanced `/run/habbo-runtime-health` to the exact same backup.
+- The official VPS2 pull published `/var/backups/habbo-vps1/manual-20260926T103715Z.tar.gz`; offsite store smoke kept 3 deeply verified deterministic generations and latest matched production.
+- The official offsite restore drill restored that exact generation in tmpfs/network-none isolation: 88 tables, 40 navigator styles, RogerVideo=1, room1000=1, no live DB mutation.
+- Offsite archive SHA256: `05b2263830d32433937a4d6094774f8a1156e971c97d87bf9e490965841140d4`.
+- VPS2 control-plane heartbeat PASS with 4/4 timers, no failed units and recovery fingerprint `b2c2efa39e6f702ce6f77ad3dc8d19a61b3febf616fafd9b9929f1d46e9ccfbf`.
+- VPS1 disaster drill subsequently advanced to `/srv/habbo/backups/manual-20260926T103715Z` and PASS.
+- Aggregate `deployment-final-validate.sh` PASS against `103715Z`, including full WebKit scenario `home+register+login+me+V31+R39`, fresh offsite restore proof, public HTTP 200 and backup_count=16.
+- `habbo-status.sh` remained `OVERALL READY`; repeating the official chain did not accumulate runtimes, backups, latches or recovery drift.

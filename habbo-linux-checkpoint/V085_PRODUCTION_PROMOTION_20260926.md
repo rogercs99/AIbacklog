@@ -130,3 +130,12 @@ A pre-v0.8.5 Cloudflare config backup was retained on VPS1. Rollback is to resto
 - VPS1 disaster drill subsequently advanced to `/srv/habbo/backups/manual-20260926T103715Z` and PASS.
 - Aggregate `deployment-final-validate.sh` PASS against `103715Z`, including full WebKit scenario `home+register+login+me+V31+R39`, fresh offsite restore proof, public HTTP 200 and backup_count=16.
 - `habbo-status.sh` remained `OVERALL READY`; repeating the official chain did not accumulate runtimes, backups, latches or recovery drift.
+
+## Scheduled daily-path rehearsal
+- The real `habbo-backup-daily.service` was executed end-to-end, not merely `backup.sh` manually.
+- It created `/srv/habbo/backups/manual-20260926T104813Z`, then applied retention with `KEEP_RECENT=14`, reducing the local set from 17 to 16 protected generations while preserving `LATEST`, referenced restore/drill generations and milestone backups.
+- The wrapper then ran runtime health and advanced `/run/habbo-runtime-health` to the same `manual-20260926T104813Z` generation.
+- VPS2 offsite pull/store smoke PASS for that generation; offsite restore drill PASS in tmpfs/network-none with 88 tables, 40 navigator styles, RogerVideo=1 and room1000=1.
+- VPS2 heartbeat PASS; VPS1 disaster drill PASS on `manual-20260926T104813Z`.
+- Final aggregate deployment validator PASS with local backup count=16 and public Habbo HTTP 200.
+- This proves the actual timer target (`habbo-backup-daily.service`) performs backup -> retention -> runtime validation safely, rather than relying on manually sequenced maintenance.

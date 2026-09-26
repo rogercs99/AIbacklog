@@ -295,3 +295,10 @@ Operational rule: production remains untouched. Any future promotion must start 
 - VPS2 heartbeat and VPS1 disaster drill both PASS; disaster drill references `manual-20260926T103715Z`.
 - Final aggregate validator PASS with the complete WebKit gameplay scenario and `OVERALL READY` preserved.
 - This is a repeatability/idempotency proof of the existing production automation, not a new deployment change.
+
+### Scheduled daily backup path rehearsal (2026-09-26)
+- Forced the exact timer target `habbo-backup-daily.service` through a full production run.
+- Generated canonical generation `/srv/habbo/backups/manual-20260926T104813Z`; retention pruned one stale generation and left 16 protected backups, preserving `LATEST`, referenced drill/restore generations and milestones.
+- Runtime health advanced to the new backup in the same service run.
+- Matching VPS2 pull, offsite store smoke, isolated offsite restore, VPS2 heartbeat and VPS1 disaster drill all PASS for `104813Z`.
+- Aggregate deployment validator PASS afterwards; scheduled backup path is therefore verified end-to-end, not only its individual scripts.

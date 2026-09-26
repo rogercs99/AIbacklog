@@ -19,10 +19,26 @@ check 'disaster drill timer active' systemctl is-active --quiet habbo-disaster-d
 check 'disaster drill timer enabled' systemctl is-enabled --quiet habbo-disaster-drill.timer
 drill_result=$(systemctl show -p Result --value habbo-disaster-drill.service 2>/dev/null || echo unknown)
 [[ "$drill_result" == success ]] || ok=false
-printf '%-28s %s\n' 'disaster drill result' "$drill_result"
+printf '%-28s %s
+' 'disaster drill result' "$drill_result"
+drill_latch=clear
+if [[ -e "$ROOT/DISASTER_DRILL_FAILED" ]]; then
+  drill_latch=FAILED
+  ok=false
+fi
+printf '%-28s %s
+' 'disaster drill failure latch' "$drill_latch"
 backup_result=$(systemctl show -p Result --value habbo-backup-daily.service 2>/dev/null || echo unknown)
 [[ "$backup_result" == success ]] || ok=false
-printf '%-28s %s\n' 'daily backup last result' "$backup_result"
+printf '%-28s %s
+' 'daily backup last result' "$backup_result"
+backup_latch=clear
+if [[ -e "$ROOT/BACKUP_FAILED" ]]; then
+  backup_latch=FAILED
+  ok=false
+fi
+printf '%-28s %s
+' 'daily backup failure latch' "$backup_latch"
 result=$(systemctl show -p Result --value habbo-runtime-healthcheck.service 2>/dev/null || echo unknown)
 [[ "$result" == success ]] || ok=false
 printf '%-28s %s\n' 'runtime last result' "$result"

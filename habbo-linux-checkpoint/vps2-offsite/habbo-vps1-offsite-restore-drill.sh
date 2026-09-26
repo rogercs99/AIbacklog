@@ -92,7 +92,7 @@ if not obj.get('AccountTag') or not obj.get('TunnelSecret'): raise SystemExit('C
 PY
 
 # Unit inventory. Syntax is already tested on VPS1; here we prove all required unit files are present in the offsite archive.
-required=(habbo-stack.service habbo-static.service habbo-websockify.service habbo-postboot-validate.service habbo-runtime-healthcheck.service habbo-runtime-healthcheck-failed.service habbo-runtime-healthcheck.timer habbo-backup-daily.service habbo-backup-daily.timer habbo-disaster-drill.service habbo-disaster-drill.timer cloudflared-stremio-legacy.service)
+required=(habbo-stack.service habbo-static.service habbo-websockify.service habbo-postboot-validate.service habbo-runtime-healthcheck.service habbo-runtime-healthcheck-failed.service habbo-runtime-healthcheck.timer habbo-backup-daily.service habbo-backup-daily-failed.service habbo-backup-daily.timer habbo-disaster-drill.service habbo-disaster-drill-failed.service habbo-disaster-drill.timer cloudflared-stremio-legacy.service)
 for u in "${required[@]}"; do [[ -f "$work/$u" ]] || { echo "FAIL: missing archived unit $u" >&2; exit 1; }; done
 
 # Pull exact MariaDB image only if needed, then restore entirely into tmpfs with no published ports.

@@ -19,4 +19,5 @@ if [[ "$RECOVERY_REFRESH_OK" -ne 1 ]]; then
   echo "FAIL: daily local backup succeeded but VPS2 recovery kit refresh failed: $OUT" >&2
   exit 1
 fi
+rm -f "$ROOT/BACKUP_FAILED"
 echo "PASS: daily Habbo backup retained, runtime-validated and VPS2 recovery kit refreshed: $OUT"

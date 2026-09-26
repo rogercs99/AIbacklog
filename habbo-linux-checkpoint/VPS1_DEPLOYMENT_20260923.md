@@ -357,3 +357,11 @@ Operational rule: production remains untouched. Any future promotion must start 
 - Resolver contract test PASS and official Chromium gameplay smoke PASS (`home+register+login+me+V31+R39`, attempts=1, latch clear).
 - Recovery kit regenerated; canonical generation `/srv/habbo/backups/manual-20260926T130444Z` passed local restore, VPS2 store smoke, VPS2 isolated restore, runtime health, VPS1 disaster drill and aggregate validator.
 - Offsite SHA256 `a4b4d17b8941492c40a3a71d89ca73a70c996bc37d2582d633f5efdc7344f5ae`; recovery fingerprint `fea9619ea4e0b810d852cef0368282e7c1dd349d32c07756488c1bb9e7f5a223`.
+
+### Durable scheduled-operation failure latches (2026-09-26)
+- Daily backup and disaster-drill failures are now persisted independently of transient systemd state in `/srv/habbo/BACKUP_FAILED` and `/srv/habbo/DISASTER_DRILL_FAILED`.
+- Dedicated `OnFailure` units capture diagnostic evidence; only a later fully successful corresponding job clears its latch.
+- `habbo-status.sh` marks the deployment DEGRADED while either latch exists.
+- End-to-end synthetic lifecycle verified for both latches: marker creation caused DEGRADED, then a real successful backup/drill cleared it and returned `OVERALL READY`.
+- Recovery contract now includes the failure handlers/units. Canonical tested generation `/srv/habbo/backups/manual-20260926T132452Z` passed local restore, VPS2 store smoke, VPS2 isolated restore, heartbeat and the aggregate deployment validator.
+- Offsite archive SHA256: `5e3a093fda51bef7ec88b8d14737194461bb4e405ae249aa34fb7111f4cb2d98`; recovery fingerprint: `350d044edf0688a16f5b11255b3cefa82b0a20a7dd0f3f5cdb272eec37c5c9fe`.

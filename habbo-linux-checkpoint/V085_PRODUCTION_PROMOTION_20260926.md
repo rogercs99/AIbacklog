@@ -211,3 +211,13 @@ A pre-v0.8.5 Cloudflare config backup was retained on VPS1. Rollback is to resto
 - Recovery fingerprint: `fea9619ea4e0b810d852cef0368282e7c1dd349d32c07756488c1bb9e7f5a223`.
 - Runtime health and disaster drill both reference `manual-20260926T130444Z`.
 - Final aggregate validator PASS with Chromium + WebKit full gameplay proofs and fresh offsite restore.
+
+## Durable backup/disaster failure latches
+- Added persistent failure latches for scheduled backup and disaster drill: `/srv/habbo/BACKUP_FAILED` and `/srv/habbo/DISASTER_DRILL_FAILED`.
+- `habbo-backup-daily.service` now uses `OnFailure=habbo-backup-daily-failed.service`; the handler records timestamp, systemd result/status, current latest backup and recent journal. A successful guarded backup removes `BACKUP_FAILED` only at the end of the complete success path.
+- `habbo-disaster-drill.service` now uses `OnFailure=habbo-disaster-drill-failed.service`; the handler records equivalent evidence. A successful isolated disaster drill removes `DISASTER_DRILL_FAILED` only after the restore proof is complete.
+- `habbo-status.sh` treats either latch as fatal to readiness even if the most recent systemd `Result` is currently success, preserving historical failure visibility until a later proven-successful run clears it.
+- Synthetic latch lifecycle test PASS for both paths: manually created latch -> `OVERALL DEGRADED`; real successful backup/drill -> latch cleared -> `OVERALL READY`.
+- The backup/restore contract archives both new failed units and both handlers; local verifier and VPS2 offsite restore require them to be present.
+- New validated generation after the latch lifecycle test: `/srv/habbo/backups/manual-20260926T132452Z`, offsite SHA256 `5e3a093fda51bef7ec88b8d14737194461bb4e405ae249aa34fb7111f4cb2d98`.
+- VPS2 store smoke and isolated offsite restore PASS for `132452Z`; final aggregate deployment validator PASS with exit code 0.

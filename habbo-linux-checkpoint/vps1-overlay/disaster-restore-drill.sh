@@ -86,7 +86,9 @@ units=("$R/etc/systemd/system"/*.service "$R/etc/systemd/system"/*.timer)
 required_units=(
   habbo-stack.service habbo-static.service habbo-websockify.service habbo-postboot-validate.service
   habbo-runtime-healthcheck.service habbo-runtime-healthcheck-failed.service habbo-runtime-healthcheck.timer
-  habbo-backup-daily.service habbo-backup-daily.timer cloudflared-stremio-legacy.service bridge-reverse-ssh.service
+  habbo-backup-daily.service habbo-backup-daily-failed.service habbo-backup-daily.timer
+  habbo-disaster-drill.service habbo-disaster-drill-failed.service habbo-disaster-drill.timer
+  cloudflared-stremio-legacy.service bridge-reverse-ssh.service
 )
 for u in "${required_units[@]}"; do
   [[ -f "$R/etc/systemd/system/$u" ]] || fail "required systemd unit missing: $u"
@@ -104,5 +106,6 @@ STAMP=/run/habbo-disaster-drill
   printf 'havana_commit=%s\n' "$EXPECTED_COMMIT"
 } >"$STAMP"
 chmod 0644 "$STAMP"
+rm -f "$ROOT/DISASTER_DRILL_FAILED"
 echo 'PASS: Habbo disaster restore drill'
 echo "backup=$B havana_commit=$EXPECTED_COMMIT compose=resolved cloudflare=coherent systemd=verified final_v2=verified db_restore=verified workspace=tmpfs"

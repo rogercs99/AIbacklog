@@ -1,0 +1,6 @@
+[Unit]
+Description=Record failed Habbo daily backup
+
+[Service]
+Type=oneshot
+ExecStart=/srv/habbo/ops/backup-failed.sh

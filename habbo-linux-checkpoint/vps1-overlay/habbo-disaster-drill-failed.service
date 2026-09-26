@@ -1,0 +1,6 @@
+[Unit]
+Description=Record failed Habbo disaster restore drill
+
+[Service]
+Type=oneshot
+ExecStart=/srv/habbo/ops/disaster-drill-failed.sh

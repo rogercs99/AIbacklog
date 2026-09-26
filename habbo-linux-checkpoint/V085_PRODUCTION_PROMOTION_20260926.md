@@ -354,3 +354,11 @@ A pre-v0.8.5 Cloudflare config backup was retained on VPS1. Rollback is to resto
 - The stale `/etc/systemd/system/habbo-web-v085.service.d/10-v31-proxy-origin.conf` override was removed. `HABBO_V31_PROXY_ORIGIN=http://127.0.0.1:18100` now comes solely from the recoverable base unit; no proxy restart was required, the service stayed active and public Habbo stayed HTTP 200.
 - Chromium and live-drift are included in the six-timer VPS2 heartbeat, disaster recovery inventory/bootstrap and aggregate final validator. Chromium proves the full `home+register+login+me+V31+R39` desktop path; live-drift proves the promoted immutable release baseline with zero missing/drifted tracked files.
 - Final post-cleanup aggregate deployment validator PASS and `habbo-status.sh` reports `OVERALL READY`.
+
+## Multi-hour continuity manifest reconciliation
+- Several hours after closure, production remained `OVERALL READY`: Habbo HTTP 200, no Habbo service restarts, all failure latches clear, dual-browser proofs fresh, offsite restore proven and autonomous live-drift proof PASS.
+- A fresh manual live↔Git audit found exactly one repository-only drift: the generated `vps2-control-plane-files-sha256.txt` lagged the current live recovery kit.
+- All mapped VPS1/VPS2 scripts, units and runtime files themselves were already byte-identical to Git; only the generated hash manifest was stale.
+- The delta corresponded to the already-current WebKit daily wrapper and immutable live-drift baseline hashes. Production was not modified.
+- The generated manifest was mirrored from `/srv/habbo/releases/disaster`, then the official recovery smoke PASSed with 35 files / 15 scripts / 18 units, exact inventory, verified hashes and bootstrap rehearsal.
+- Final live↔Git audit: `matches=88 drifts=0 missing=0 notes=1`; the sole note remains the deliberately untracked historical `v31-web-touch-lab.sh`.

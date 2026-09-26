@@ -21,7 +21,7 @@ b205836410c898de4b2ff072fbb8edbc09e73238ac3b00f5682c155b516456f9  usr/local/sbin
 506fefd2ddf3a9975caa7533246a0997aa8c2008c36c1fc2b1ef99ee4c49cdb2  usr/local/sbin/habbo-public-chromium-daily.sh
 9f2edbfb700f211c6ae14a7fc58a890c9d3c33068a1e8ef9ad7055d48ef515c4  usr/local/sbin/habbo-public-chromium-failed.sh
 4e3f6f3c69cf2dbdf5ec701223113a1c04137bd6ddbf1e44c0cd4d2f19dceec4  usr/local/sbin/habbo-public-chromium-smoke.py
-5b99c374b7605d44f25bab6ba7458f8fac5898be1361c395075d5653c0b97eca  usr/local/sbin/habbo-public-webkit-daily.sh
+0c1ef02ecb7060c86402ed07077fd533b5acf1f828abc84362ebd92dab1db3a5  usr/local/sbin/habbo-public-webkit-daily.sh
 b81882a29c57a645ab2ca70adb066152ec7929cfafa3d9560bdaf50275453a54  usr/local/sbin/habbo-public-webkit-failed.sh
 58e48ae17c4158638a22989440d59918b23e911579a77aa476018f313b142b9a  usr/local/sbin/habbo-public-webkit-smoke.py
 79bd73557d9101d4f9d8d92b80957c3a453c5a048c0c790d1c1e7483ba3cd0ba  usr/local/sbin/habbo-vps1-offsite-failed.sh
@@ -31,5 +31,5 @@ dfef2c587d7e80e514a9bf3be24b8a587d1e7088edad91787e60229746aef778  usr/local/sbin
 df27f82d72d78bd27f908df85c46497fa480f8baf69d46c118ca68bcb433a4c6  usr/local/sbin/habbo-vps2-control-plane-bootstrap.sh
 a040a048fb3d90f0d7b72fa16b2f66b8b75fe393bfff33885a6ca40ec0f13377  usr/local/sbin/habbo-vps2-control-plane-heartbeat.sh
 d44967c9f7b1bf22bc4958e36364cc07986e5db411fb165aa8804c85f8602f39  usr/local/sbin/habbo-vps2-space-preflight.sh
-d8dcdd8b127a36f0f4647c43decc36e18c6ab656763bb08685ffa5a2547d0b30  usr/local/share/habbo-live-drift-baseline.tar.gz
-0f0481d053df9c4ddb89130c5fe4858ece9dd07051ad41919c6f3ec216da8e83  usr/local/share/habbo-live-drift-baseline.tar.gz.sha256
+eaa9387fdef3813296acc0a824bc2a63d67fb37c4047a13831cc3b40bf4617be  usr/local/share/habbo-live-drift-baseline.tar.gz
+9629f7451d328af1c1cd695ff1548fe9017ea3322670698a289d51dd2c3919d7  usr/local/share/habbo-live-drift-baseline.tar.gz.sha256

@@ -139,3 +139,10 @@ A pre-v0.8.5 Cloudflare config backup was retained on VPS1. Rollback is to resto
 - VPS2 heartbeat PASS; VPS1 disaster drill PASS on `manual-20260926T104813Z`.
 - Final aggregate deployment validator PASS with local backup count=16 and public Habbo HTTP 200.
 - This proves the actual timer target (`habbo-backup-daily.service`) performs backup -> retention -> runtime validation safely, rather than relying on manually sequenced maintenance.
+
+## Scheduled operations + postboot rehearsal
+- Executed the exact `habbo-backup-daily.service` target used by the daily timer. It created `/srv/habbo/backups/manual-20260926T104813Z`, applied retention, preserved protected generations, and advanced runtime health to the same backup.
+- Retention reduced the local set to 16 protected generations and proved the daily wrapper ordering is backup -> verified publication -> retention -> runtime validation.
+- VPS2 pulled and restored `104813Z` successfully; VPS1 disaster drill and aggregate final validator also passed against `104813Z`.
+- Re-ran the real `habbo-postboot-validate.service`; it passed on attempt 1 and refreshed `/run/habbo-postboot-validated` to `manual-20260926T104813Z`, while public Habbo remained HTTP 200 (~73 ms).
+- `systemd-analyze verify` across the Habbo production/recovery units on VPS1 and VPS2 reported no Habbo unit errors or dependency/order cycles. Only unrelated host warnings from snapd/rc-local were emitted.

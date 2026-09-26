@@ -302,3 +302,9 @@ Operational rule: production remains untouched. Any future promotion must start 
 - Runtime health advanced to the new backup in the same service run.
 - Matching VPS2 pull, offsite store smoke, isolated offsite restore, VPS2 heartbeat and VPS1 disaster drill all PASS for `104813Z`.
 - Aggregate deployment validator PASS afterwards; scheduled backup path is therefore verified end-to-end, not only its individual scripts.
+
+### Scheduled operations and postboot rehearsal (2026-09-26)
+- Real daily timer target `habbo-backup-daily.service` PASS end-to-end, producing `manual-20260926T104813Z`, pruning to 16 protected local generations and advancing runtime health to the new backup.
+- Matching VPS2 pull + isolated offsite restore PASS; VPS1 disaster drill + aggregate deployment validator PASS on the same generation.
+- `habbo-postboot-validate.service` was restarted deliberately as a boot-path rehearsal and PASSed immediately, refreshing the postboot stamp to `104813Z`; Habbo public HTTP remained 200.
+- `systemd-analyze verify` on all relevant Habbo units/timers across VPS1/VPS2 found no Habbo-specific syntax, ordering or dependency errors.

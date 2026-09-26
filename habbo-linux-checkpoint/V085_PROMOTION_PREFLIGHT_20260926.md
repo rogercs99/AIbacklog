@@ -46,3 +46,10 @@ SHA-256: `4fb36dd2daa0f2e7a191a10649859ad7910020793ad29b0378c24f45409b0a4c`
 
 ## Gate
 Production promotion remains blocked until the two validation-infrastructure blockers are reconciled and the read-only preflight returns `PROMOTION_PREFLIGHT_PASS`. No product deployment is authorized by this document.
+
+## Additional rehearsal evidence
+- The corrected temporary WebKit smoke passed the authenticated iPhone 14 Plus flow twice independently.
+- A fully temporary reconciliation rehearsal was added as `tools/habbo-v085-recovery-reconcile-rehearsal.sh`.
+- It rebuilds only a `/dev/shm` copy of the latest offsite archive with the two live WebKit runner files and updated manifests, then runs the same offsite store invariants with a one-archive isolated root.
+- Result: PASS for external SHA/gzip, internal manifest, critical files, nested tar safety, live control-plane hash match, recovery bootstrap rehearsal and deterministic recovery fingerprint.
+- No live backup, LATEST pointer, production file or systemd unit is modified by the rehearsal.

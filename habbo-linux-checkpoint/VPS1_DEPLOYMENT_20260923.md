@@ -392,3 +392,10 @@ Operational rule: production remains untouched. Any future promotion must start 
 - Read-only drift audit repeated after the latest soak: 83 matches, 0 drifts, 0 missing, 1 deliberate historical note.
 - Aggregate deployment validator remains PASS on `/srv/habbo/backups/manual-20260926T133735Z`.
 - Do not schedule the Git/live auditor as a fatal autonomous timer until the control-plane recovery/bootstrap also restores the Git checkout or another immutable audit baseline. Current autonomous monitors intentionally depend only on recoverable artifacts.
+
+### Automatic daily lifecycle proof (2026-09-26)
+- Real systemd daily-backup path was exercised end-to-end: recovery refresh -> verified backup -> retention -> runtime health.
+- Canonical exercised generation: `/srv/habbo/backups/manual-20260926T142531Z`; automatic retention reduced 17 candidate generations to 16 kept generations with `KEEP_RECENT=14` plus protected references/milestones.
+- A deliberately induced collision with the `:25` offsite pull proved the stale-generation guard: pull failed while backup state was `activating`, then a retry after publication copied the new latest and cleared the failure latch. Normal production timing remains backup at 05:10 and hourly pull at :25.
+- Matching VPS2 offsite restore, VPS2 heartbeat, VPS1 disaster drill and aggregate deployment validator all PASS for `142531Z`; offsite archive SHA256 is `7503ca581b9d72a2bad017f36c5afb666da9fbf55805ebed3832ce734003542c`.
+- Final operational state after the exercise: `OVERALL READY`, 16 local backups, latest/offsite/runtime/disaster aligned, all relevant failure latches clear.

@@ -261,3 +261,13 @@ A pre-v0.8.5 Cloudflare config backup was retained on VPS1. Rollback is to resto
 - The live↔Git auditor remains a deployment/manual gate rather than a fatal autonomous timer because the VPS2 disaster/bootstrap contract does not currently restore the operational Git checkout itself.
 - This is intentional: autonomous production/recovery monitors must remain self-contained in the recovery kit. A timer that requires an unrecovered checkout would turn a clean disaster rebuild into a false degraded state.
 - Promotion to a scheduled drift monitor is deferred until the Git checkout (or an equivalent immutable audit baseline) is itself part of the recovery contract.
+
+## Automatic daily backup / retention / offsite cycle proof
+- Executed `habbo-backup-daily.service` through the same systemd path used by its timer, with no product changes.
+- The daily wrapper refreshed the VPS2 recovery kit, created and verified `/srv/habbo/backups/manual-20260926T142531Z`, applied retention, and advanced runtime health.
+- Retention proved the intended steady state: `total=17`, `keep=16`, `candidates=1`, `KEEP_RECENT=14`; the newly published backup remained protected as `latest` and the prior validated generation remained protected as `referenced`.
+- The offsite pull timer fired while this deliberately manual backup was still `activating`; its concurrency guard correctly refused to bless the previous generation instead of publishing stale state. This was an induced collision, not a production schedule collision: the real daily backup timer is `05:10` and the hourly offsite pull is at `:25`, leaving 15 minutes under normal scheduling.
+- After the backup completed, a successful offsite pull published `manual-20260926T142531Z` to VPS2 and cleared the induced failure latch.
+- VPS2 isolated restore of that exact archive PASS: SHA256 `7503ca581b9d72a2bad017f36c5afb666da9fbf55805ebed3832ce734003542c`, tmpfs datadir, network=none, 88 tables, 40 navigator styles, RogerVideo=1, room1000=1.
+- VPS2 heartbeat and VPS1 disaster drill were refreshed against the same generation. `habbo-status.sh` returned `OVERALL READY` with 16 local backups and all latches clear.
+- Final aggregate deployment validator PASS against `manual-20260926T142531Z`; both Chromium desktop and WebKit iPhone proofs still require `home+register+login+me+V31+R39`.

@@ -336,3 +336,10 @@ Operational rule: production remains untouched. Any future promotion must start 
 - Real `habbo-backup-daily.service` rehearsal PASS: kit refresh -> backup -> prune to 16 -> runtime health.
 - Automatic generation `/srv/habbo/backups/manual-20260926T120051Z` then passed VPS2 offsite store, isolated offsite restore, heartbeat, VPS1 disaster drill and the full deployment validator.
 - Offsite SHA256: `2de76580cf895d7aa74a7c2492e0c9333ba0f4878fada44c99b84f967487524c`; recovery fingerprint: `432b6678ed7ca13e3481e133b8557dc88fd0211ff62a17fdbaced707c79decbc`.
+
+### Forced-fresh offsite restore scheduling (2026-09-26)
+- VPS2 `habbo-vps1-offsite-restore-drill.service` now `Requires=habbo-vps1-offsite-pull.service` and remains ordered `After=` it. A restore can no longer silently rely on a stale hourly copy.
+- Verified behavior by launching only the restore service: systemd started a new pull first, waited for it to finish, then restored the resulting latest archive.
+- The official daily wrapper was then exercised to refresh the 29-file / 14-script / 15-unit recovery kit, create and retain `/srv/habbo/backups/manual-20260926T122914Z`, and advance runtime health.
+- The forced-fresh restore path restored that exact generation in tmpfs/network-none with 88 tables, 40 navigator styles, RogerVideo=1 and room1000=1; archive SHA256 `8d6d06217aeadd4b46981173c1db9b90b266be833321322c7e66cbbf6489e881`.
+- Disaster drill and aggregate final validator both PASS against `122914Z`; VPS2 heartbeat reports 5/5 timers healthy and recovery fingerprint `1a1e4b01016f2d5ef331ee35e127276ebf774312a128759ad7e8dd97dc539c5a`.

@@ -174,3 +174,12 @@ A pre-v0.8.5 Cloudflare config backup was retained on VPS1. Rollback is to resto
 - Matching VPS2 store smoke and isolated offsite restore PASS; recovery fingerprint `432b6678ed7ca13e3481e133b8557dc88fd0211ff62a17fdbaced707c79decbc`.
 - VPS1 disaster drill and runtime health both reference `manual-20260926T120051Z`.
 - Final aggregate deployment validator PASS after the fully automated rehearsal.
+
+## Weekly offsite restore forced-fresh pull closure
+- The VPS2 weekly restore service previously had only `After=habbo-vps1-offsite-pull.service`; ordering alone did not guarantee the pull service would actually be started.
+- `habbo-vps1-offsite-restore-drill.service` now declares `Requires=habbo-vps1-offsite-pull.service` while retaining `After=...`, so every restore activation first starts and successfully completes a fresh offsite pull or fails visibly.
+- Behavioral proof: starting only the restore service advanced the pull `ExecMainStartTimestampMonotonic` from `432429865963` to `432514250540`; the restore remained queued until pull completion and then restored the newly pulled generation.
+- Real daily wrapper rehearsal then refreshed the complete VPS2 recovery kit (29 files / 14 scripts / 15 units), created `/srv/habbo/backups/manual-20260926T122914Z`, applied retention to 16 protected local generations, and advanced runtime health.
+- Starting only the restore service after that rehearsal pulled and restored exactly `manual-20260926T122914Z` on VPS2; archive SHA256 `8d6d06217aeadd4b46981173c1db9b90b266be833321322c7e66cbbf6489e881`; tmpfs/network-none restore invariants PASS.
+- VPS1 disaster drill also advanced to `manual-20260926T122914Z`.
+- Final aggregate validator PASS with both Chromium desktop and WebKit iPhone full `home+register+login+me+V31+R39` proofs, 5/5 VPS2 timers, recovery fingerprint `1a1e4b01016f2d5ef331ee35e127276ebf774312a128759ad7e8dd97dc539c5a`, backup count 16 and no failed Habbo units.

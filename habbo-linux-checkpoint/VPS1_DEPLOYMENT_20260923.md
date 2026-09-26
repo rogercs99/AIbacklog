@@ -211,3 +211,19 @@ Operational rule: production remains untouched. Any future promotion must start 
 - Final v0.8.5 read-only promotion preflight: `PROMOTION_PREFLIGHT_PASS`, blockers=0, warnings=0.
 - Final aggregate `/srv/habbo/ops/deployment-final-validate.sh`: PASS.
 - Product promotion is still gated and has not occurred.
+
+### v0.8.5 production promotion (2026-09-26)
+- Preflight was green before promotion: `PROMOTION_PREFLIGHT_PASS`, recovery/backup/control-plane checks healthy.
+- v0.8.5 frontend service is `habbo-web-v085.service` on `127.0.0.1:18100`; historical static assets remain on `18080`.
+- Canary WebKit iPhone 14 Plus PASS: home/register/login/me, V31 native Director/Wine noVNC, R39 native Flash noVNC.
+- First transient Cloudflare cutover failed only at public V31 noVNC because WebSocket ingress paths were omitted; login still passed.
+- Immediate rollback restored `cloudflared-stremio-legacy.service` active and the old public path.
+- Root cause: v0.8.5 already emitted `wss://habbo.gamemodai.pro/v31-websockify` and `/r39-websockify`; Cloudflare needed explicit path routing.
+- Corrected ingress routes `/v31-websockify` to `18131` and `/r39-websockify` to `18139`, default Habbo web to `18100`, static historical paths to `18080`.
+- Corrected staged config passed `cloudflared tunnel ingress validate: OK`.
+- Second transient cutover PASS end-to-end over the public domain: home/register/login/me + V31 noVNC + R39 native Flash noVNC.
+- Validated config was installed persistently at `/etc/cloudflared-stremio-legacy/config.yml`, mode `0600 root:root`.
+- Persistent `cloudflared-stremio-legacy.service` was active before the transient cutover unit was stopped; final switch state persistent=active, transient=inactive.
+- Non-secret ingress fragment is versioned at `habbo-linux-checkpoint/vps1-overlay/cloudflared-v085-habbo-ingress.yml`.
+- Deployment record commit: `77a1216` on `project/habbo-2009-dual-linux-vps1-deploy-20260923`.
+- Pre-v0.8.5 Cloudflare configuration backup retained on VPS1 for rollback.

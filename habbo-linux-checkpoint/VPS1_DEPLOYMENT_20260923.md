@@ -195,3 +195,19 @@ Operational rule: production remains untouched. Any future promotion must start 
 - This independently confirms the recovery-store drift is reconcilable by the existing supported refresh path after the WebKit runner correction.
 - The dry-run exited before `flock` and before any write to `/srv/habbo/releases/disaster`; production/recovery state remained unchanged.
 - Further progress now requires the explicit live-change gate: install the versioned WebKit smoke on VPS2, refresh/promote the VPS2 recovery kit on VPS1, create/verify a fresh backup, pull/verify it offsite, then rerun the read-only v0.8.5 promotion preflight.
+
+### v0.8.5 promotion preflight READY (2026-09-26)
+- Validation/recovery infrastructure was reconciled without deploying v0.8.5 application/frontend/runtime code.
+- Real WebKit iPhone 14 Plus authenticated smoke now PASS for `home+register+login+me`; failure latch clear.
+- Recovery-store contract now preserves old generations as self-consistent immutable recovery artifacts while requiring only `LATEST` to match the live VPS2 control plane.
+- VPS2 heartbeat updated to consume that explicit contract and now PASS with 4/4 timers, 0 failed units, 3 valid offsite generations and deterministic recovery fingerprint.
+- VPS1 disaster-source smoke cleanup trap fixed; offline Havana bundle clone/fsck PASS.
+- Final recovery kit regenerated and validated: 23 files, 11 scripts, 12 units, exact inventory/hashes, bootstrap rehearsal PASS.
+- Final latest backup: `/srv/habbo/backups/manual-20260926T070100Z`; isolated DB restore PASS (88 tables / 40 navigator_styles / RogerVideo=1 / room1000=1).
+- Matching VPS2 offsite archive: `/var/backups/habbo-vps1/manual-20260926T070100Z.tar.gz`; retained-generation store smoke PASS.
+- Runtime health marker and disaster drill refreshed against the same latest backup.
+- `/etc/cloudflared-stremio-legacy/config.yml` corrected to `0600 root:root`; secret-permissions smoke PASS.
+- Final `habbo-status.sh`: `OVERALL READY`.
+- Final v0.8.5 read-only promotion preflight: `PROMOTION_PREFLIGHT_PASS`, blockers=0, warnings=0.
+- Final aggregate `/srv/habbo/ops/deployment-final-validate.sh`: PASS.
+- Product promotion is still gated and has not occurred.

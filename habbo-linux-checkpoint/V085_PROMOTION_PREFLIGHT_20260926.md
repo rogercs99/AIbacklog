@@ -65,3 +65,25 @@ Result:
 - explicit dry-run stop executed before `flock`, temporary live filenames or atomic `mv` promotion.
 
 This proves the existing canonical refresh path can reconcile the live VPS2 control plane once the corrected WebKit smoke is installed. No live recovery artifact was changed during this proof.
+
+## Blockers resolved / preflight ready
+The validation-infrastructure blockers were subsequently reconciled without deploying the v0.8.5 product/frontend/runtime candidate.
+
+Resolved sequence:
+- WebKit authenticated smoke hardened: final `/me` settle uses bounded visible-body readiness rather than fragile final `networkidle`.
+- WebKit's `Load request cancelled` for `/security_check` is ignored only when the same navigation already produced HTTP 200; all other request failures remain fatal.
+- Real systemd WebKit smoke PASS; `WEBKIT_FAILED` cleared on VPS1.
+- VPS2 recovery store semantics corrected: every retained generation must be internally complete, hashed, safe, bootstrap-rehearsable and deterministic for its own manifest; only `LATEST` must byte-match the current live control plane.
+- VPS2 heartbeat parser updated to require the new explicit `semantic+bootstrap+per-generation-deterministic` + `live_match=latest-only` proof.
+- VPS1 disaster recovery source smoke cleanup trap fixed and full offline clone/fsck path revalidated.
+- Canonical VPS2 recovery kit regenerated and validated.
+- Final promoted backup: `/srv/habbo/backups/manual-20260926T070100Z`; isolated restore PASS with 88 tables, 40 navigator styles, RogerVideo=1 and room1000=1.
+- Offsite replica on VPS2: `/var/backups/habbo-vps1/manual-20260926T070100Z.tar.gz`; store smoke PASS across three retained generations.
+- VPS2 control-plane heartbeat PASS, 4/4 timers healthy, failed units 0, failure latch clear.
+- Runtime health marker and non-destructive disaster drill regenerated against the final backup.
+- Cloudflare config live permission corrected from 0644 to required 0600; secret-permissions smoke PASS.
+- `habbo-status.sh`: `OVERALL READY`.
+- `habbo-v085-promotion-preflight.sh`: `PROMOTION_PREFLIGHT_PASS`, blockers=0, warnings=0.
+- `/srv/habbo/ops/deployment-final-validate.sh`: PASS end to end.
+
+Important gate: **v0.8.5 application/frontend/runtime code is still not deployed to production**. The changes above are operational validation/recovery hardening only. Any actual promotion of the v0.8.5 candidate remains a separate explicit deployment action.

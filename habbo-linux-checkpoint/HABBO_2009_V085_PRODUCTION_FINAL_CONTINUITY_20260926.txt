@@ -58,3 +58,15 @@ Resumen para continuar: v0.8.5 está en producción y validada; solo continuar a
 - deployment-final-validate.sh fresco: PASS.
 - Drift audit read-only: VPS1 31/31 exacto; VPS2 23/23 exacto.
 - No se modificó producción; la fase sigue TERMINADA y estable.
+
+ÚLTIMA AUDITORÍA DE HIGIENE / ZERO-DRIFT (2026-09-26 15:52 CEST)
+- Producción sigue OVERALL READY.
+- Generación canónica observada: /srv/habbo/backups/manual-20260926T133735Z.
+- Offsite SHA256: d979e65f9010f4d537a4f986448bf75a160e0dfc0df5bb5ff5fa6604757728cb.
+- Recovery fingerprint: 350d044edf0688a16f5b11255b3cefa82b0a20a7dd0f3f5cdb272eec37c5c9fe.
+- WebKit/iPhone y Chromium/desktop conservan PASS del escenario completo home+register+login+me+V31+R39.
+- Auditoría live↔Git: scripts críticos de WebKit, Chromium, offsite pull/restore, heartbeat, backup, verifier, status, postboot y validadores coinciden por SHA256.
+- Auditoría systemd live↔Git: unidades/timers/failure units críticas de VPS1 y VPS2 coinciden por SHA256; timers esperados habilitados y activos.
+- Se eliminaron únicamente temporales habbo-public-* / habbo-v085-* de /tmp y /dev/shm después de comprobar que ningún unit/script/proceso activo los referenciaba.
+- deployment-final-validate.sh posterior a la limpieza: PASS completo.
+- El fichero histórico no trackeado habbo-linux-checkpoint/vps1-overlay/v31-web-touch-lab.sh continúa deliberadamente intacto.

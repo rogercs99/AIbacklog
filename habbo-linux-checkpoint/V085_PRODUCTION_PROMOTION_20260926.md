@@ -236,3 +236,13 @@ A pre-v0.8.5 Cloudflare config backup was retained on VPS1. Rollback is to resto
 - Runtime health and VPS1 disaster drill both advanced to manual-20260926T133735Z.
 - VPS2 recovery fingerprint: 350d044edf0688a16f5b11255b3cefa82b0a20a7dd0f3f5cdb272eec37c5c9fe.
 - Aggregate deployment-final-validate.sh PASS with the new postboot failure unit present in the backup/restore contract.
+
+## Live/Git zero-drift + temporary hygiene audit
+- Current production remained OVERALL READY during the audit; canonical generation observed: /srv/habbo/backups/manual-20260926T133735Z.
+- Current offsite SHA256: d979e65f9010f4d537a4f986448bf75a160e0dfc0df5bb5ff5fa6604757728cb; recovery fingerprint: 350d044edf0688a16f5b11255b3cefa82b0a20a7dd0f3f5cdb272eec37c5c9fe.
+- Critical VPS2 live scripts matched Git byte-for-byte: WebKit smoke/daily, Chromium smoke/daily, offsite pull/restore and control-plane heartbeat.
+- Critical VPS1 live scripts matched Git byte-for-byte: WebKit/Chromium remote proofs, final validator, backup/verifier, status, postboot and durable failure-latch handlers.
+- Critical VPS1/VPS2 systemd units and timers also matched their Git mirrors byte-for-byte; expected timers were enabled and active.
+- Temporary habbo-public-* / habbo-v085-* files in /tmp and /dev/shm were removed only after confirming zero references from installed systemd units/scripts and zero active processes.
+- The historical untracked v31-web-touch-lab.sh was not touched.
+- Aggregate deployment-final-validate.sh PASS after the cleanup, including dual-browser gameplay proofs, offsite restore, recovery bootstrap and backup restore verifier.

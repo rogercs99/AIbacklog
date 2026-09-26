@@ -374,3 +374,10 @@ Operational rule: production remains untouched. Any future promotion must start 
 - Canonical generation after this change: /srv/habbo/backups/manual-20260926T133735Z.
 - Offsite SHA256 d979e65f9010f4d537a4f986448bf75a160e0dfc0df5bb5ff5fa6604757728cb; isolated VPS2 restore PASS.
 - Runtime health + VPS1 disaster drill reference 133735Z; final aggregate validator PASS; recovery fingerprint 350d044edf0688a16f5b11255b3cefa82b0a20a7dd0f3f5cdb272eec37c5c9fe.
+
+### Live/Git zero-drift + temp hygiene audit (2026-09-26)
+- Production remained OVERALL READY against /srv/habbo/backups/manual-20260926T133735Z.
+- Selected critical scripts and systemd units on both VPS1 and VPS2 were SHA256-identical to their Git mirrors; all expected timers were enabled/active.
+- Unreferenced Habbo test artifacts under VPS2 /tmp and /dev/shm were removed after checking installed-unit/script references and active processes.
+- WebKit/iPhone and Chromium/desktop periodic proofs remain green for full home+register+login+me+V31+R39 gameplay.
+- Final aggregate validator PASS after the hygiene cleanup; no production runtime/configuration change was needed.

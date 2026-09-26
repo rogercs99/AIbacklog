@@ -487,3 +487,11 @@ Operational rule: production remains untouched. Any future promotion must start 
 - Intentional live-drift was reconciled through the canonical deterministic baseline builder; new baseline SHA256 `698f2f698ed86c61726ee7ba093382bfdecf11b1806cf15c74d6ff4fdebf9b6e` yields 87 matches / 0 drifts.
 - Recovery kit was regenerated with exact 35-file inventory and bootstrap rehearsal PASS; repository manifest matches live manifest byte-for-byte.
 - Canonical recovery generation is `/srv/habbo/backups/manual-20260926T181406Z`; local and offsite isolated restores PASS, runtime/disaster markers match it, and final deployment validation PASSes.
+
+### Canonical continuity live resync (2026-09-26 20:19 CEST)
+- Canonical handoff was resynced to the current READY state after the Chromium resolver promotion and extended soak.
+- Current generation: `/srv/habbo/backups/manual-20260926T181406Z`; matching VPS2 archive SHA256 `beb0bb1292c0aff2b79a457719703a4386d5e3ca70b704d1a0bd984d23fbb9e3`; offsite restore PASS.
+- Autonomous live drift: `matches=87 drifts=0 missing=0`, baseline SHA256 `698f2f698ed86c61726ee7ba093382bfdecf11b1806cf15c74d6ff4fdebf9b6e`.
+- VPS2 recovery fingerprint: `055bdf7848783cd6bf4ab57e0de3ba1bc83e00522a2c1d0de8f426f5dc58606d`; six timers healthy, zero failed units.
+- WebKit and Chromium periodic proofs both cover `home+register+login+me+V31+R39`; current production remains `OVERALL READY`.
+- This is documentation/continuity maintenance only; no production runtime was changed.

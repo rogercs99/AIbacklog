@@ -1,0 +1,33 @@
+name: Habbo R39 Flash Player export v08
+on:
+  push:
+    branches: [project/habbo-2009-dual-linux-vps1-deploy-20260923]
+    paths:
+      - '.github/workflows/habbo-r39-flashplayer-export-v08.yml'
+permissions:
+  contents: read
+jobs:
+  export:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Download and verify official standalone Flash Player
+        shell: bash
+        run: |
+          set -euxo pipefail
+          url='https://fpdownload.macromedia.com/pub/flashplayer/updaters/32/flash_player_sa_linux.x86_64.tar.gz'
+          curl -fL --retry 5 --retry-delay 2 "$url" -o flash_player_sa_linux.x86_64.tar.gz
+          echo '883f7aa23301fc80de879501157533a4acdbfee0721ed7c57676dc032fdf96c3  flash_player_sa_linux.x86_64.tar.gz' | sha256sum -c -
+          mkdir runtime
+          tar -xzf flash_player_sa_linux.x86_64.tar.gz -C runtime
+          echo '0bdd5116aa4e8dc88fb9e705c85c1f7ef4a29415ffb9b2132a3eb1aeafaae7b0  runtime/flashplayer' | sha256sum -c -
+          sha256sum flash_player_sa_linux.x86_64.tar.gz runtime/flashplayer > SHA256SUMS.txt
+      - uses: actions/upload-artifact@v4
+        with:
+          name: habbo-v08-r39-flashplayer
+          path: |
+            flash_player_sa_linux.x86_64.tar.gz
+            runtime/flashplayer
+            SHA256SUMS.txt
+          retention-days: 7
+          compression-level: 0

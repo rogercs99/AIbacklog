@@ -479,3 +479,4 @@ Operational rule: production remains untouched. Any future promotion must start 
 - Current authority is `habbo-linux-checkpoint/HABBO_2009_V085_PRODUCTION_FINAL_CONTINUITY_20260926.txt` together with this deployment record and `V085_PRODUCTION_PROMOTION_20260926.md`.
 - Regression `tools/test_historical_checkpoint_supersession_v085.py` ensures the historical checkpoint cannot regress to an unqualified “gameplay pending” state.
 - Operational state remains unchanged: v0.8.5 is in production, WebKit+Chromium prove `home+register+login+me+V31+R39`, autonomous drift/recovery checks are healthy and `habbo-status.sh` is `OVERALL READY`.
+- Relay authority `/srv/chat-session-relay/data/task-inputs/20260926/HABBO_2009_V085_PRODUCTION_FINAL_CONTINUITY.txt` was re-synchronized after this supersession and is byte-identical to the repository continuity; shared SHA256 `ff954560449d3c740d7de4c35ed74f0a1b8854a5a3cf76469af42fac905a3c17`.

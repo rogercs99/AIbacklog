@@ -246,3 +246,11 @@ A pre-v0.8.5 Cloudflare config backup was retained on VPS1. Rollback is to resto
 - Temporary habbo-public-* / habbo-v085-* files in /tmp and /dev/shm were removed only after confirming zero references from installed systemd units/scripts and zero active processes.
 - The historical untracked v31-web-touch-lab.sh was not touched.
 - Aggregate deployment-final-validate.sh PASS after the cleanup, including dual-browser gameplay proofs, offsite restore, recovery bootstrap and backup restore verifier.
+
+## Live-vs-repository drift closure
+- Added read-only `tools/habbo-live-drift-audit.sh` to compare the tracked VPS1/VPS2 operational surface against the actually installed files.
+- SSH multiplexing keeps the complete audit to roughly 8 seconds instead of opening a fresh SSH session per file.
+- The audit covers VPS2 scripts/units, generated control-plane manifest, VPS1 scripts/units, docker compose, recovery manifests, frontend register template and the promoted Habbo Cloudflare ingress as a semantic subset of the shared tunnel config.
+- Repository drift discovered and reconciled from already-validated production state: reverse-SSH bootstrap notes in `HOST_PREREQUISITES.md`, Havana-Web `me.tpl` mount in `docker-compose.yml`, current generated recovery manifests, and newline-only normalization for static manifests/template.
+- Final drift audit: `matches=83 drifts=0 missing=0 notes=1`; the sole note is the deliberately untracked historical `v31-web-touch-lab.sh`.
+- No production runtime files were changed during this reconciliation, so the canonical backup generation remains `manual-20260926T093550Z`.

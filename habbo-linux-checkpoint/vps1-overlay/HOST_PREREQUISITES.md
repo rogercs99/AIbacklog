@@ -38,3 +38,22 @@ The restored Havana application images may be rebuilt from the backed-up offline
 MariaDB must use the pinned registry digest recorded there.
 
 After host preparation and restore, run `/srv/habbo/ops/deployment-final-validate.sh` and the external WebKit iPhone smoke.
+## Reverse SSH bootstrap dependency
+
+The Habbo control plane on VPS2 reaches VPS1 through a persistent reverse SSH route. The service definition `bridge-reverse-ssh.service` is included in promoted VPS1 backups, but SSH private keys are intentionally NOT copied into Habbo backups.
+
+Expected VPS1 side:
+- SSH alias: `bridge-new`
+- destination: `152.114.195.138`, user `root`
+- identity fingerprint: `SHA256:fS2n8UX5oFW9jWoU+LLzqHDH9ljPP38YfrqNJnTIOlM`
+- `bridge-reverse-ssh.service` opens `-R 127.0.0.1:22022:127.0.0.1:22 bridge-new`
+- VPS1 host ED25519 fingerprint: `SHA256:PzuiYZ42mk2R0T1DA6trACSppxrfXBmxJP21cnwtG7g`
+
+Expected VPS2 side:
+- SSH alias: `bridge-old`
+- endpoint: `127.0.0.1:22022`, user `root`
+- identity fingerprint: `SHA256:wV37m0XRxH8D7KV+0gfdi8KAJq4KoFmEpRpXIM8b/TY`
+- VPS2 host ED25519 fingerprint: `SHA256:cROtEMBN/CRvn1YcDkRoHgj5vugEKCgwC7A84NUifWc`
+
+The two private identities and their SSH config entries are bootstrap secrets outside the Habbo backup set. Restore them through the operator's secret-management path before enabling the recovered reverse-tunnel/control-plane services. The VPS2 bootstrap refuses `--apply` unless `bridge-old` works and both identity/host fingerprints match.
+

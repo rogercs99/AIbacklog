@@ -381,3 +381,9 @@ Operational rule: production remains untouched. Any future promotion must start 
 - Unreferenced Habbo test artifacts under VPS2 /tmp and /dev/shm were removed after checking installed-unit/script references and active processes.
 - WebKit/iPhone and Chromium/desktop periodic proofs remain green for full home+register+login+me+V31+R39 gameplay.
 - Final aggregate validator PASS after the hygiene cleanup; no production runtime/configuration change was needed.
+
+### Live/repo drift audit closure (2026-09-26)
+- Added `habbo-linux-checkpoint/tools/habbo-live-drift-audit.sh`, a read-only VPS1/VPS2 drift checker using SSH multiplexing.
+- Reconciled Git with the already-running canonical production state (`HOST_PREREQUISITES.md`, `docker-compose.yml`, generated asset/control-plane manifests and register template normalization).
+- Final result: 83 exact/semantic matches, 0 drifts, 0 missing; only the deliberately untracked historical `v31-web-touch-lab.sh` is reported as a note.
+- Production was not modified by this reconciliation; backup `manual-20260926T093550Z` remains the current recovery generation.

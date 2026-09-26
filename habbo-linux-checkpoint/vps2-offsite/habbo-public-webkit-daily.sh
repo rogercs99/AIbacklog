@@ -32,7 +32,8 @@ while :; do
   exit "$rc"
 done
 now=$(date -u +%Y-%m-%dT%H:%M:%SZ)
-printf 'validated_at_utc=%s\nresult=success\nengine=webkit\ndevice=iPhone 14 Plus\nattempts=%s\nsummary=%s\n' "$now" "$attempt" "$OUT" >/var/backups/habbo-vps1/WEBKIT_STATUS
+SUMMARY=$(printf '%s\n' "$OUT" | tail -n 1)
+printf 'validated_at_utc=%s\nresult=success\nengine=webkit\ndevice=iPhone 14 Plus\nattempts=%s\nsummary=%s\n' "$now" "$attempt" "$SUMMARY" >/var/backups/habbo-vps1/WEBKIT_STATUS
 chmod 600 /var/backups/habbo-vps1/WEBKIT_STATUS
-printf 'validated_at_utc=%s\nresult=success\nengine=webkit\ndevice=iPhone 14 Plus\nscenario=home+register+login+me\nattempts=%s\n' "$now" "$attempt" | ssh -o BatchMode=yes bridge-old 'set -e; tmp=/srv/habbo/.WEBKIT_STATUS.tmp; cat >"$tmp"; chmod 600 "$tmp"; mv "$tmp" /srv/habbo/WEBKIT_STATUS; rm -f /srv/habbo/WEBKIT_FAILED; cp /srv/habbo/WEBKIT_STATUS /run/habbo-webkit-status; chmod 0644 /run/habbo-webkit-status; rm -f /run/habbo-webkit-failed'
+printf 'validated_at_utc=%s\nresult=success\nengine=webkit\ndevice=iPhone 14 Plus\nscenario=home+register+login+me+V31+R39\nattempts=%s\n' "$now" "$attempt" | ssh -o BatchMode=yes bridge-old 'set -e; tmp=/srv/habbo/.WEBKIT_STATUS.tmp; cat >"$tmp"; chmod 600 "$tmp"; mv "$tmp" /srv/habbo/WEBKIT_STATUS; rm -f /srv/habbo/WEBKIT_FAILED; cp /srv/habbo/WEBKIT_STATUS /run/habbo-webkit-status; chmod 0644 /run/habbo-webkit-status; rm -f /run/habbo-webkit-failed'
 printf '%s\n' "$OUT"

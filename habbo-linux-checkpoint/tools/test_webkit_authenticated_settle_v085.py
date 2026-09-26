@@ -17,4 +17,18 @@ assert "reason == 'Load request cancelled' and urlparse(url).path in successful_
 assert "status == 200" in s, 'HTTP 200 prerequisite for cancellation filter missing'
 assert "'/local-web/habbo-es.js'" in s, 'habbo-es.js response tracking missing'
 
-print('PASS: authenticated WebKit /me settle avoids fragile networkidle and only suppresses proven-200 navigation cancellations')
+
+assert "def assert_first_party_clean" in s, 'first-party gameplay network filter missing'
+assert "BASE + '/play/v31'" in s and "window.__habboV31 && window.__habboV31.connected === true" in s, 'V31 gameplay proof missing'
+assert "BASE + '/play/r39'" in s and "window.__habboR39 && window.__habboR39.connected === true" in s, 'R39 gameplay proof missing'
+assert "browser contract leaked legacy client material" in s, 'plugin/SSO leak guard missing'
+assert "home+register+login+me+V31+R39" in s, 'full gameplay summary missing'
+
+daily = (Path(__file__).resolve().parents[1] / 'vps2-offsite' / 'habbo-public-webkit-daily.sh').read_text(encoding='utf-8')
+assert "SUMMARY=$(printf '%s\\n'" in daily and "| tail -n 1)" in daily, 'single-line WebKit summary normalization missing'
+assert 'scenario=home+register+login+me+V31+R39' in daily, 'full remote WebKit scenario marker missing'
+remote = (Path(__file__).resolve().parents[1] / 'vps1-overlay' / 'public-webkit-remote-smoke.sh').read_text(encoding='utf-8')
+assert "\"$scenario\" == 'home+register+login+me+V31+R39'" in remote, 'VPS1 remote WebKit checker still accepts a partial scenario'
+
+
+print('PASS: authenticated WebKit settle + V31/R39 gameplay proof contract verified')

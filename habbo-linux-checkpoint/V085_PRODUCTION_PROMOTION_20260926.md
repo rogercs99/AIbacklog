@@ -51,3 +51,18 @@ A pre-v0.8.5 Cloudflare config backup was retained on VPS1. Rollback is to resto
 - Post-hardening canonical backup: `/srv/habbo/backups/manual-20260926T091819Z`; isolated restore PASS and matching VPS2 offsite store PASS.
 - Runtime healthcheck and disaster drill both reference `manual-20260926T091819Z` and PASS.
 - Final aggregate deployment validator PASS after the hardening.
+
+## Periodic gameplay proof + fresh offsite restore closure
+- The official daily WebKit smoke now covers the full authenticated path `home+register+login+me+V31+R39`, not only login/navigation.
+- V31 is required to reach `window.__habboV31.connected === true`; R39 is required to reach `window.__habboR39.connected === true`.
+- V31/R39 browser HTML is checked for SSO leakage and legacy `<object>/<embed>` plugin material; browser delivery remains noVNC-only.
+- Gameplay network failures are evaluated first-party-only so unrelated third-party cancellations (for example Discord assets) do not create false production failures; JavaScript errors remain fatal.
+- Official systemd WebKit proof PASS with `attempts=1`, iPhone 14 Plus and scenario `home+register+login+me+V31+R39`.
+- VPS1 remote proof checker now requires that exact complete scenario; regression test locks the contract.
+- The VPS2 offsite restore drill had an obsolete Havana bundle SHA (`77672...`) while the canonical disaster source already used `9e3ee88b...`; the pin was reconciled to `9e3ee88b2670e7156c7c05bca13646b9d5378e1b8d83f3a7f2eb53fefa344a4f`.
+- Fresh offsite restore of the current generation is now proven, not merely inherited from an older backup.
+- Final canonical backup: `/srv/habbo/backups/manual-20260926T093550Z`, SHA256 `4eb59c3b6ee937b2cee95ae844f5c90d3d9c4c703d4b4bd10da7cd9e23a40095`.
+- Matching VPS2 offsite restore PASS: tmpfs, network=none, 88 tables, 40 navigator styles, RogerVideo=1, room1000=1.
+- Recovery fingerprint: `d35f3a8faf8d46133ae96874e5996147a8d9c6515a4236771740cf7f1e9adf13`.
+- Runtime health and disaster drill both reference `manual-20260926T093550Z`.
+- Final aggregate deployment validator PASS with the complete WebKit gameplay scenario and fresh offsite restore proof.

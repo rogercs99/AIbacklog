@@ -26,6 +26,17 @@ def assert_clean(page, bad, failed, errors, label):
     if errors:
         raise SystemExit(f'{label}: JS errors: {errors}')
 
+def assert_first_party_clean(page, bad, failed, errors, label):
+    first_party = urlparse(BASE).hostname
+    own_bad = [x for x in bad if urlparse(x[1]).hostname == first_party]
+    own_failed = [x for x in failed if urlparse(x[1]).hostname == first_party]
+    if own_bad:
+        raise SystemExit(f'{label}: first-party HTTP failures: {own_bad}')
+    if own_failed:
+        raise SystemExit(f'{label}: first-party request failures: {own_failed}')
+    if errors:
+        raise SystemExit(f'{label}: JS errors: {errors}')
+
 with sync_playwright() as p:
     browser = p.webkit.launch(headless=True)
     context = browser.new_context(**p.devices['iPhone 14 Plus'])
@@ -110,5 +121,30 @@ with sync_playwright() as p:
                  if not (reason == 'Load request cancelled' and urlparse(url).path in successful_cancel_paths)]
     assert_clean(page, bad, failed, errors, 'authenticated')
 
-    print(f"PASS: WebKit iPhone smoke home+register+login+me, scale={order['scale']:.6f}, layout_width={order['width']}, auth_user={USER}")
+    bad.clear(); failed.clear(); errors.clear()
+    response = page.goto(BASE + '/play/v31', wait_until='domcontentloaded', timeout=35000)
+    if response.status != 200:
+        raise SystemExit(f'V31 page failed: status={response.status} url={page.url}')
+    page.wait_for_function("window.__habboV31 && window.__habboV31.connected === true", timeout=35000)
+    v31_html = page.content().lower()
+    if 'sso.ticket=' in v31_html or '<object' in v31_html or '<embed' in v31_html:
+        raise SystemExit('V31 browser contract leaked legacy client material')
+    if 'habbo v31 conectado' not in page.locator('#v31-status').inner_text().lower():
+        raise SystemExit('V31 connected status missing')
+    assert_first_party_clean(page, bad, failed, errors, 'v31')
+    print('PASS: V31 public noVNC connected')
+
+    bad.clear(); failed.clear(); errors.clear()
+    response = page.goto(BASE + '/play/r39', wait_until='domcontentloaded', timeout=35000)
+    if response.status != 200:
+        raise SystemExit(f'R39 page failed: status={response.status} url={page.url}')
+    page.wait_for_function("window.__habboR39 && window.__habboR39.connected === true", timeout=35000)
+    r39_html = page.content().lower()
+    if 'sso.ticket=' in r39_html or '"sso.ticket"' in r39_html or '<object' in r39_html or '<embed' in r39_html:
+        raise SystemExit('R39 browser contract leaked legacy client material')
+    if 'habbo r39 conectado' not in page.locator('#r39-status').inner_text().lower():
+        raise SystemExit('R39 connected status missing')
+    assert_first_party_clean(page, bad, failed, errors, 'r39')
+    print('PASS: R39 public native noVNC connected')
+    print(f"PASS: WebKit iPhone smoke home+register+login+me+V31+R39, scale={order['scale']:.6f}, layout_width={order['width']}, auth_user={USER}")
     context.close(); browser.close()

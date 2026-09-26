@@ -243,3 +243,11 @@ Operational rule: production remains untouched. Any future promotion must start 
 - Two temporary real runs plus the official systemd run PASS; `WEBKIT_FAILED` cleared.
 - VPS2 recovery kit regenerated, backup `/srv/habbo/backups/manual-20260926T091819Z` verified/restored, matching offsite generation PASS, runtime health PASS, disaster drill PASS and final deployment validator PASS.
 - Recovery fingerprint after this control-plane update: `23bf18e3ff0366c6f517a971e1c1503c56e43c45fae7987ed88b209eea75c981`.
+
+### Periodic gameplay + offsite restore closure (2026-09-26)
+- Daily WebKit monitoring now proves the authenticated V31 -> R39 gameplay transport, not only home/register/login/me. V31 and R39 must each establish their public noVNC connection and must not leak SSO/plugin markup to the browser.
+- VPS1 `public-webkit-remote-smoke.sh` requires scenario `home+register+login+me+V31+R39`; the repo regression enforces the same contract.
+- Third-party request cancellations during the gameplay pages do not fail the smoke; first-party HTTP/request failures and JS errors still do.
+- VPS2 offsite restore drill pin was reconciled with the canonical Havana bundle SHA `9e3ee88b2670e7156c7c05bca13646b9d5378e1b8d83f3a7f2eb53fefa344a4f`.
+- Canonical generation `/srv/habbo/backups/manual-20260926T093550Z` passed local restore, VPS2 store smoke, VPS2 isolated restore, runtime health, VPS1 disaster drill and aggregate final validation.
+- Backup SHA256: `4eb59c3b6ee937b2cee95ae844f5c90d3d9c4c703d4b4bd10da7cd9e23a40095`; recovery fingerprint: `d35f3a8faf8d46133ae96874e5996147a8d9c6515a4236771740cf7f1e9adf13`.

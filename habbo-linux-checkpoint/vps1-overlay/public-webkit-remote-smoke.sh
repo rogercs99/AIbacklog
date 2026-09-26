@@ -20,7 +20,7 @@ age=$(( $(date -u +%s) - $(date -u -d "$ts" +%s) ))
 [[ "$result" == success ]] || fail "WebKit result is $result"
 [[ "$engine" == webkit ]] || fail "unexpected browser engine: $engine"
 [[ "$device" == 'iPhone 14 Plus' ]] || fail "unexpected device profile: $device"
-[[ "$scenario" == 'home+register' ]] || fail "unexpected scenario: $scenario"
+[[ "$scenario" == 'home+register+login+me+V31+R39' ]] || fail "unexpected scenario: $scenario"
 [[ "$attempts" =~ ^[12]$ ]] || fail "unexpected WebKit attempt count: $attempts"
 echo 'PASS: Habbo remote WebKit iPhone smoke proof'
 echo "age_seconds=$age engine=$engine device=$device scenario=$scenario attempts=$attempts"
